@@ -1,8 +1,8 @@
 # Site wide configuration
 
-title: "My Site"
-description: "This is a description of my awesome site."
-logo: # 120x120 px default image used for Twitter summary card
+title: "jian.li"
+description: "来自LJ的问候"
+logo: favicon.ico # 120x120 px default image used for Twitter summary card
 teaser: # 400x250 px default teaser image used in image archive grid
 locale: en
 url:
@@ -26,8 +26,8 @@ gems:
 
 # Site owner
 owner:
-  name:
-  email:
+  name: jython.li
+  email: zijian1012@gmail.com
   twitter:
   google:
     ad-client:
