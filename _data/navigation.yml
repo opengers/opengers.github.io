@@ -10,11 +10,11 @@
 - title: 虚拟化
   url: /virtualization/
 
+- title: 自动化运维
+  url: /devops/
+
 - title: MySQL
   url: /mysql/
-
-- title: Shell
-  url: /shell/
 
 - title: About Me
   url: about.html

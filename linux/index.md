@@ -1,6 +1,6 @@
 ---
 layout: archive
-title: "Latest Posts {% site.categories %}"
+title: "Latest Posts - Linux"
 excerpt: "Linux"
 ---
 
