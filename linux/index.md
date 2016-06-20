@@ -1,7 +1,7 @@
 ---
 layout: archive
-title: "Latest Posts"
-excerpt: ""
+title: "Latest Posts {% site.categories %}"
+excerpt: "Linux"
 ---
 
 <div class="tiles">
@@ -9,5 +9,3 @@ excerpt: ""
 	{% include post-grid.html %}
 {% endfor %}
 </div><!-- /.tiles -->
-
-{% site.categories %}
