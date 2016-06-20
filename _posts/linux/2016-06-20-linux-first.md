@@ -2,8 +2,6 @@
 layout: article
 title: "linux-first1"
 categories: linux
-image:
-    teaser: images/linux/bio-photo.jpg
 ---
 
 
@@ -15,4 +13,4 @@ test
 ## second2
 second2`code1`
 NUMA中，虽然内存直接attach在CPU上，但是由于内存被平均分配在了各个die上。
-![numa](/images/bio-photo.jpg)
+![numa](images/linux/bio-photo.jpg)
