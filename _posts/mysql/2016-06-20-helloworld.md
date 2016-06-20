@@ -1,13 +1,15 @@
 ---
 layout: article
 title: "first post"
-categories: linux
+categories: mysql
 ---
 
 > this is main
 > sites: <http://www.isjian.com/{{ page.url }}>
 
 ## sub1
+
+## add2-test-git
 
 this is sub1
 `this is code`
@@ -24,7 +26,7 @@ this is sub2
 
 顺序执行的单线程(single_thread.py)
 
-{% highlight python %}
+{% highlight shell %}
 {% raw %}
 
 #! /usr/bin/python
