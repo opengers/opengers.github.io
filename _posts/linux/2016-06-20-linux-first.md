@@ -3,7 +3,7 @@ layout: article
 title: "linux-first1"
 categories: linux
 image:
-    teaser: /teaser/numa.png
+    teaser: images/linux/bio-photo.jpg
 ---
 
 
