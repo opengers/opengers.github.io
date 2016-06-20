@@ -9,3 +9,5 @@ excerpt: ""
 	{% include post-grid.html %}
 {% endfor %}
 </div><!-- /.tiles -->
+
+{% site.categories %}
