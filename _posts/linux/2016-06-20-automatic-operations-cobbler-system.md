@@ -19,7 +19,7 @@ cobbler封装了tftp,pxe,kickstart,dhcp这些技术, 而且不会使网段中多
 ### 关于KickStart  
 KickStart是RedHat提供的一种无人值守安装系统的方式。KickStart的工作原理是通过记录安装过程中所需人工干预填写的各种参数，然后生成一个名为ks.cfg的文件；其后，只要提供给引导程序此ks文件位置，引导程序便能够完成后续的安装
 
-### 安装cobbler  
+### 安装cobbler
 ``` shell
 yum install cobbler dhcp xinetd tftp-server createrepo pykickstart cman libwrap mod_wsgi
 #httpd 依赖 mod_wsgi
