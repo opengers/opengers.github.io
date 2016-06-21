@@ -3,7 +3,7 @@ layout: article
 title: "自动化运维之cobbler批量部署服务器系统"
 categories: linux
 ---
-><small><small>借助cobbler完成服务器系统的批量安装
+><small><small>借助cobbler完成服务器系统的批量安装  
 cobbler封装了tftp,pxe,kickstart,dhcp这些技术, 而且不会使网段中多出一台dhcp服务器  
 我们由一批服务器上架的流程来看cobbler所处的地位  
 1. 服务器机房上架，配置好IDRAC(远程管理)  
