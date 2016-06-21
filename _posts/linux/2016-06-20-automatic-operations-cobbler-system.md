@@ -9,7 +9,7 @@ categories: linux
 
 >我们由一批服务器上架的流程来看cobbler所处的地位
 
->1. 服务器机房上架，配置好IDRAC(远程管理卡)
+>1. 服务器机房上架，配置好IDRAC(远程管理)
 
 >2. 从IDRAC中启动虚拟控制台，设置服务器BIOS，RAID（BIOS参数也可以通过IDRAC用命令设置）
 
