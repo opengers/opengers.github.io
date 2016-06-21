@@ -42,7 +42,7 @@ cobbler check
 #debmirror package is not installed,  这个提示不需要，针对debian的
 ```
 
-- 设定server,next-server
+- 设定server,next-server  
 设定`/etc/cobbler/settings`中的 `server` 和 `next_server`  
 `server`为客户端安装程序获取安装源IP，cobbler接管了httpd，因此这里就是cobbler服务器地址
 一个实际的例子是cobbler服务器可能配置了多个IP，这样cobler就可以管理多个网段的服务器安装，这里需要指定的是客户机所在网段  
