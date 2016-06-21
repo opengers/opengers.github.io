@@ -50,7 +50,7 @@ cobbler check
 - 启用tftp  
 修改`/etc/xinetd.d/tftp`文件,将`disable = yes` 改成 `disable = no`
 
-- Cobbler管理dhcp, tftp  
+- Cobbler管理dhcp, tftp    
 ``` shell
 sed -i 's/manage_dhcp: 0/manage_dhcp: 1/g' /etc/cobbler/settings
 sed -i 's/manage_tftpd: 0/manage_tftpd: 1/g' /etc/cobbler/settings
