@@ -34,7 +34,8 @@ service cobblerd start
 ```
 
 ### 配置cobbler  
-- cobbler check  
+- cobbler check
+  
 ``` shell
 cobbler check
 #check命令可以检查cobbler配置是否正确
@@ -50,7 +51,8 @@ cobbler check
 - 启用tftp  
 修改`/etc/xinetd.d/tftp`文件,将`disable = yes` 改成 `disable = no`
 
-- Cobbler管理dhcp, tftp    
+- Cobbler管理dhcp, tftp
+ 
 ``` shell
 sed -i 's/manage_dhcp: 0/manage_dhcp: 1/g' /etc/cobbler/settings
 sed -i 's/manage_tftpd: 0/manage_tftpd: 1/g' /etc/cobbler/settings
@@ -58,17 +60,20 @@ sed -i 's/manage_tftpd: 0/manage_tftpd: 1/g' /etc/cobbler/settings
 ```
 
 - 修改密码
+
 ``` shell
 openssl passwd -1 -salt 'random-phrase-here' '123456'
 #vi /etc/cobbler/settings 　#default_password_crypted参数
 ```
 
 - ks脚本关闭pxe  
+
 ``` shell
 sed -i 's/pxe_just_once: 0/pxe_just_once: 1/g' /etc/cobbler/settings
 ```
 
 - 加载启动引导文件  
+
 ``` shell
 cobbler get-loaders
 ```
