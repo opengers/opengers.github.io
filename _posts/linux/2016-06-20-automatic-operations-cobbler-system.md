@@ -110,6 +110,7 @@ cobbler profile list
 cobbler distro list
 cobbler distro report --name=iso_name
 ```
+
 ![numa](/images/linux/cobbler/cobbler-1.png)
 
 
