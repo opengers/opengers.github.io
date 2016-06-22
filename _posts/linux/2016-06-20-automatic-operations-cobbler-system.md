@@ -58,20 +58,17 @@ sed -i 's/manage_tftpd: 0/manage_tftpd: 1/g' /etc/cobbler/settings
 ```
 
 ##### 修改密码
-
 ``` shell
 openssl passwd -1 -salt 'random-phrase-here' '123456'
 #vi /etc/cobbler/settings 　#default_password_crypted参数
 ```
 
 ##### ks脚本关闭pxe  
-
 ``` shell
 sed -i 's/pxe_just_once: 0/pxe_just_once: 1/g' /etc/cobbler/settings
 ```
 
-##### 加载启动引导文件  
-
+##### 加载启动引导文件
 ``` shell
 cobbler get-loaders
 ```
