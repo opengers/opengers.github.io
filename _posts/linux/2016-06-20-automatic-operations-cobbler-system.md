@@ -18,11 +18,11 @@ KickStart是RedHat提供的一种无人值守安装系统的方式。KickStart�
 我们由一批DELL服务器上架的流程来看cobbler所处的地位
 
 1. 服务器到货，机房上架，配置IDRAC(远程管理)
-* IDRAC远程管理，设置BIOS，RAID（BIOS，RAID也可以通过IDRAC用命令操作实现）  
-* 记录下每台服务器网卡MAC地址  
-* 网段内部署cobbler服务器，定制ks文件  
-* 根据上面获取的MAC地址，cobbler服务器添加部署任务  
-* 服务器从指定网卡启动，cobbler中的DHCP服务器验证其MAC地址，通过后，运行后续自动化部署步骤  
+1. IDRAC远程管理，设置BIOS，RAID（BIOS，RAID也可以通过IDRAC用命令操作实现）
+1. 记录下每台服务器网卡MAC地址
+1. 网段内部署cobbler服务器，定制ks文件
+1. 根据上面获取的MAC地址，cobbler服务器添加部署任务
+1. 服务器从指定网卡启动，cobbler中的DHCP服务器验证其MAC地址，通过后，运行后续自动化部署步骤
 
 
 ### 安装cobbler
