@@ -80,6 +80,7 @@ service httpd start
 service xinetd start
 service cobblerd start
 cobbler sync
+#sync后，cobbler会配置dhcp，并启动它
 ```
 
 ### 导入centos7.2镜像
@@ -99,15 +100,25 @@ cobbler profile list
 ```
 
 ### 理解distro，profile，system
-- `distro`
-cobbler中可以导入多个系统镜像(安装源)，比如centos7，centos6，镜像name可以唯一标示它们
-
+- `distro`  
+cobbler中可以导入多个系统镜像，比如centos7.2，centos7.1,centos6，镜像name可以唯一标示它们,使用以下命令查看所有cobbler管理的镜像  
 ``` shell
 cobbler distro list
-cobbler distro report --name=iso_name
+cobbler distro report --name=distro_name
 ```
 
-![numa](/images/linux/cobbler/cobbler-1.png)
+![cobbler](/images/linux/cobbler/cobbler-1.png)
+
+- `profile`  
+`profile`可以理解为一种配置，一个镜像(distro)可以有多个配置(profile)，考虑以下情况，我们有两批服务器，都安装centos7.2，但两批服务器磁盘分区方式不同，预装的软件包也不一样，显然此时无法使用同一个ks文件，这时就需要借助cobbler的`profile`，我们建立两个`profile`，在两个`profile`中指定不同的ks文件，同一个`distro`源，这样就实现差异化安装系统  
+``` shell
+#查看所有的profile
+cobbler profile list
+#查看某个profile的具体配置(可以看到其所使用的ks文件，distro镜像源)
+cobbler profile report --name=profile_name
+```
+
+![cobbler](/images/linux/cobbler/cobbler-2.png)
 
 
 cobbler system add --name=centos7.2-xj --profile=CentOS7.2-oldmachine-x86_64 --ip-address=192.168.6.170 --mac-address=d4:ae:52:b9:d1:15 --interface=eth0 --netboot-enabled=1
