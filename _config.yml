@@ -22,6 +22,11 @@ gems:
   - jekyll-gist
   - jekyll-feed
 
+comments :
+  provider : duoshuo
+  duoshuo :
+    short_name : opengers
+
 
 # Site owner
 owner:
