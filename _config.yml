@@ -22,12 +22,6 @@ gems:
   - jekyll-gist
   - jekyll-feed
 
-comments :
-  provider : duoshuo
-  duoshuo :
-    short_name : opengers
-
-
 # Site owner
 owner:
   name: jython.li
@@ -40,6 +34,8 @@ owner:
   avatar: bio-photo.jpg # 160x160 px image for author byline
   disqus-shortname: jython.li
 
+
+disqus-shortname: opengers
 
 include:
   - .htaccess
