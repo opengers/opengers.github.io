@@ -35,7 +35,6 @@ service cobblerd start
 
 ### 配置cobbler
 #### cobbler check
-
 ``` shell
 cobbler check
 #check命令可以检查cobbler配置是否正确
