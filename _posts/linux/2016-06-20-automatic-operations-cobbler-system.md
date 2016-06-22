@@ -34,8 +34,7 @@ service cobblerd start
 ```
 
 ### 配置cobbler
-
-####cobbler check
+#### cobbler check
 
 ``` shell
 cobbler check
