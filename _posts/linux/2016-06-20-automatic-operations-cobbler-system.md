@@ -33,7 +33,7 @@ service xinetd start
 service cobblerd start
 ```
 
-### 配置cobbler  
+### 配置cobbler
 ####cobbler check
 ``` shell
 cobbler check
