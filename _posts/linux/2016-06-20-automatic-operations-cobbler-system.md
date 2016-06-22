@@ -82,24 +82,25 @@ service cobblerd start
 cobbler sync
 ```
 
-### centos7  
+### 导入centos7.2镜像
 ``` shell
-#挂载CentOS7.2镜像到/mnt目录,运行如下命令
+#挂载CentOS7.2镜像到/mnt目录,运行如下命令导入镜像
 cobbler import --arch=x86_64 --path=/mnt/ --name=CentOS7.2
 #导入镜像的同时，cobbler会自动创建一个配置文件
 cobbler profile list
-#更改profile名字
-cobbler profile rename --name=CentOS7.2-x86_64 --newname=CentOS7.2-default-x86_64
+#可能会需要更改profile名字
+cobbler profile rename --name=CentOS7.2-x86_64 --newname=newname
 #修改指定profile使用的ks文件
-cobbler profile edit --name=CentOS7.2-default-x86_64 --kickstart=/var/lib/cobbler/kickstarts/ centos7.2-default.ks
+cobbler profile edit --name=newname --kickstart=/var/lib/cobbler/kickstarts/ centos7.2-default.ks
 #添加一个profile
 cobbler profile add --name=centos6.3 --distro=centos6.3-x86_64
 #查看profile
 cobbler profile list
 ```
 
-### 理解profile  
-- cobbler中可以导入多个系统镜像，比如centos7，centos6，镜像name可以唯一标示它们(上步骤的`--name`参数)
+### 理解distro，profile，system
+- `distro`
+cobbler中可以导入多个系统镜像(安装源)，比如centos7，centos6，镜像name可以唯一标示它们
 
 ``` shell
 cobbler distro list
