@@ -34,6 +34,7 @@ service cobblerd start
 ```
 
 ### 配置cobbler  
+
 ##### cobbler check  
 ``` shell
 cobbler check
@@ -100,7 +101,7 @@ cobbler profile list
 ```
 
 ### 理解distro，profile，system
-- `distro`  
+- **`distro`** 
 cobbler中可以导入多个系统镜像，比如centos7.2，centos7.1,centos6，镜像name可以唯一标示它们,使用以下命令查看所有cobbler管理的镜像  
 ``` shell
 cobbler distro list
@@ -109,8 +110,9 @@ cobbler distro report --name=distro_name
 
 ![cobbler](/images/linux/cobbler/cobbler-1.png)
 
-- `profile`  
-`profile`可以理解为一种配置，一个镜像(distro)可以有多个配置(profile)，考虑以下情况，我们有两批服务器，都安装centos7.2，但两批服务器磁盘分区方式不同，预装的软件包也不一样，显然此时无法使用同一个ks文件，这时就需要借助cobbler的`profile`，我们建立两个`profile`，在两个`profile`中指定不同的ks文件，同一个`distro`源，这样就实现差异化安装系统  
+- **`profile`**  
+`profile`可以理解为一种配置，一个镜像(distro)可以有多个配置(profile)，考虑以下情况，我们有两批服务器，都安装centos7.2，但两批服务器磁盘分区方式不同，预装的软件包也不一样，显然此时无法使用同一个ks文件，这时就需要借助cobbler的`profile`，我们建立两个`profile`，在两个`profile`中指定不同的ks文件，同一个`distro`源，这样就实现差异化安装系统
+
 ``` shell
 #查看所有的profile
 cobbler profile list
