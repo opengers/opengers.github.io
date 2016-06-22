@@ -52,7 +52,7 @@ cobbler check
 设定`/etc/cobbler/settings`中的 `server` 和 `next_server`  
 `server`为客户端指定安装镜像源IP，cobbler中使用httpd为客户端提供http访问，这里就是cobbler服务器地址  
 `next_server`为客户端指定TFTP服务器，用以获取引导所需内核文件, 我们是使用cobbler来管理tftp，dhcp，httpd等，因此这里还是cobbler服务器地址  
-**cobbler服务器可能有多个网卡接口，用以连接不通网段，此时， `server`, `next_server`应为连接客户端那个网段的网卡IP
+**cobbler服务器可能有多个网卡接口，用以连接不通网段，此时， `server`, `next_server`应为连接客户端那个网段的网卡IP**
 
 ##### Cobbler接管dhcp, tftp  
 ``` shell
