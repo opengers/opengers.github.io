@@ -43,25 +43,13 @@
     <script src="{{ site.url }}/js/main.js"></script>
 
 
-
-
-
-    <meta charset="utf-8">
-  
-    <meta name="HandheldFriendly" content="True">
-    <meta name="MobileOptimized" content="320">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="cleartype" content="on">
-
-    <link rel="stylesheet" href="{{ site.url }}/css/main.css">
-
   <!-- 多说评论框 start -->
-  <div class="ds-thread" data-thread-key="{{ page.title }}" data-title="{{ page.title }}" data-url="{{ page.url }}"></div>
+  <div class="ds-thread=12" data-thread-key="{{ page.id }}" data-title="{{ page.title }}" data-url="{{ page.url }}"></div>
 <!-- 多说评论框 end -->
 <!-- 多说公共JS代码 start (一个网页只需插入一次) -->
-<script type="text/javascript">
-var duoshuoQuery = {short_name:"opengers"};
-  (function() {
+  <script type="text/javascript">
+    var duoshuoQuery = {short_name:"opengers"};
+    (function() {
     var ds = document.createElement('script');
     ds.type = 'text/javascript';ds.async = true;
     ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
