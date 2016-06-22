@@ -6,8 +6,8 @@ categories: linux
 ><small><small>借助cobbler完成服务器系统的批量安装  
 cobbler封装了tftp,pxe,kickstart,dhcp这些技术, 而且不会使网段中多出一台dhcp服务器</small></small>  
 ><small><small>我们由一批服务器上架的流程来看cobbler所处的地位  
-	1. 服务器机房上架，配置好IDRAC(远程管理)  
-	2. 从IDRAC中启动虚拟控制台，设置服务器BIOS，RAID（BIOS参数也可以通过IDRAC用命令设置）  
+1. 服务器机房上架，配置好IDRAC(远程管理)  
+2. 从IDRAC中启动虚拟控制台，设置服务器BIOS，RAID（BIOS参数也可以通过IDRAC用命令设置）  
 3. 记录下每台服务器MAC地址(ks文件中指定pxe启动的网卡)  
 4. 网段内部署cobbler服务器，定制ks文件  
 5. cobbler服务器添加部署此批服务器任务  
@@ -33,46 +33,44 @@ service xinetd start
 service cobblerd start
 ```
 
-### 配置cobbler
-
-#### cobbler check
+### 配置cobbler  
+##### cobbler check  
 ``` shell
 cobbler check
 #check命令可以检查cobbler配置是否正确
 #debmirror package is not installed,  这个提示不需要，针对debian的
 ```
 
-#### 设定server,next-server
+##### 设定server,next-server
 设定`/etc/cobbler/settings`中的 `server` 和 `next_server`  
 `server`为客户端安装程序获取安装源IP，cobbler接管了httpd，因此这里就是cobbler服务器地址
 	一个实际的例子是cobbler服务器可能配置了多个IP，这样cobler就可以管理多个网段的服务器安装，这里需要指定的是客户机所在网段  
 `next_server`为客户端指定TFTP服务器，用以获取引导所需内核文件, 我们是使用cobbler来管理tftp，dhcp，httpd等，因此这里还是cobbler服务器地址  
 
-#### 启用tftp
+##### 启用tftp
 修改`/etc/xinetd.d/tftp`文件,将`disable = yes` 改成 `disable = no`
 
-#### Cobbler管理dhcp, tftp
- 
+##### Cobbler管理dhcp, tftp  
 ``` shell
 sed -i 's/manage_dhcp: 0/manage_dhcp: 1/g' /etc/cobbler/settings
 sed -i 's/manage_tftpd: 0/manage_tftpd: 1/g' /etc/cobbler/settings
 #上面两行确保`manage_dhcp`, `manage_tftpd`参数为`1`
 ```
 
-#### 修改密码
+##### 修改密码
 
 ``` shell
 openssl passwd -1 -salt 'random-phrase-here' '123456'
 #vi /etc/cobbler/settings 　#default_password_crypted参数
 ```
 
-#### ks脚本关闭pxe  
+##### ks脚本关闭pxe  
 
 ``` shell
 sed -i 's/pxe_just_once: 0/pxe_just_once: 1/g' /etc/cobbler/settings
 ```
 
-#### 加载启动引导文件  
+##### 加载启动引导文件  
 
 ``` shell
 cobbler get-loaders
