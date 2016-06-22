@@ -4,14 +4,14 @@ title: "自动化运维之cobbler批量部署服务器系统"
 categories: linux
 ---
 ><small><small>借助cobbler完成服务器系统的批量安装  
-cobbler封装了tftp,pxe,kickstart,dhcp这些技术, 而且不会使网段中多出一台dhcp服务器  
-我们由一批服务器上架的流程来看cobbler所处的地位  
-	- 1. 服务器机房上架，配置好IDRAC(远程管理)  
-	- 2. 从IDRAC中启动虚拟控制台，设置服务器BIOS，RAID（BIOS参数也可以通过IDRAC用命令设置）  
-	- 3. 记录下每台服务器MAC地址(ks文件中指定pxe启动的网卡)  
-	- 4. 网段内部署cobbler服务器，定制ks文件  
-	- 5. cobbler服务器添加部署此批服务器任务  
-	- 6. 服务器从网卡启动，运行后续自动化部署步骤</small></small>
+cobbler封装了tftp,pxe,kickstart,dhcp这些技术, 而且不会使网段中多出一台dhcp服务器</small></small>
+> 我们由一批服务器上架的流程来看cobbler所处的地位  
+1. 服务器机房上架，配置好IDRAC(远程管理)  
+2. 从IDRAC中启动虚拟控制台，设置服务器BIOS，RAID（BIOS参数也可以通过IDRAC用命令设置）  
+3. 记录下每台服务器MAC地址(ks文件中指定pxe启动的网卡)  
+4. 网段内部署cobbler服务器，定制ks文件  
+5. cobbler服务器添加部署此批服务器任务  
+6. 服务器从网卡启动，运行后续自动化部署步骤
 
 ### 关于PXE
 -------------------------
