@@ -103,6 +103,7 @@ cobbler profile list
 ### 理解distro，profile，system
 - **`distro`**  
 cobbler中可以导入多个系统镜像，比如centos7.2，centos7.1,centos6，镜像name可以唯一标示它们,使用以下命令查看所有cobbler管理的镜像  
+
 ``` shell
 cobbler distro list
 cobbler distro report --name=distro_name
