@@ -42,16 +42,16 @@ cobbler check
 #debmirror package is not installed,  这个提示不需要，针对debian的
 ```
 
-- 设定server,next-server  
+#### 设定server,next-server  
 设定`/etc/cobbler/settings`中的 `server` 和 `next_server`  
 `server`为客户端安装程序获取安装源IP，cobbler接管了httpd，因此这里就是cobbler服务器地址
 一个实际的例子是cobbler服务器可能配置了多个IP，这样cobler就可以管理多个网段的服务器安装，这里需要指定的是客户机所在网段  
 `next_server`为客户端指定TFTP服务器，用以获取引导所需内核文件, 我们是使用cobbler来管理tftp，dhcp，httpd等，因此这里还是cobbler服务器地址  
 
-- 启用tftp  
+#### 启用tftp  
 修改`/etc/xinetd.d/tftp`文件,将`disable = yes` 改成 `disable = no`
 
-- Cobbler管理dhcp, tftp
+#### Cobbler管理dhcp, tftp
  
 ``` shell
 sed -i 's/manage_dhcp: 0/manage_dhcp: 1/g' /etc/cobbler/settings
@@ -59,20 +59,20 @@ sed -i 's/manage_tftpd: 0/manage_tftpd: 1/g' /etc/cobbler/settings
 #上面两行确保`manage_dhcp`, `manage_tftpd`参数为`1`
 ```
 
-- 修改密码
+#### 修改密码
 
 ``` shell
 openssl passwd -1 -salt 'random-phrase-here' '123456'
 #vi /etc/cobbler/settings 　#default_password_crypted参数
 ```
 
-- ks脚本关闭pxe  
+#### ks脚本关闭pxe  
 
 ``` shell
 sed -i 's/pxe_just_once: 0/pxe_just_once: 1/g' /etc/cobbler/settings
 ```
 
-- 加载启动引导文件  
+#### 加载启动引导文件  
 
 ``` shell
 cobbler get-loaders
