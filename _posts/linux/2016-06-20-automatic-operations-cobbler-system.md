@@ -161,13 +161,15 @@ cobbler system add --name=install_171 --profile=CentOS7.2-nginx --ip-address=192
 #`--name` 任务名称
 #`--profile` 任务使用的profile
 #`--ip-address` 指定分配给客户端的ip地址
-#`--mac-address` 只有这个mac地址的客户端网卡才允许安装
+#`--mac-address` 某个客户端匹配到这个mac地址，才分配上面的ip地址给它，否则拒绝分配IP，以及安装系统
 #`--interface` 这个任务使用cobbler服务器哪个网卡，跨网段安装
-#上面指定了mac地址，所以只有指定的那台客户端(mac)才可以安装系统，若有多台客户端，可以依照上面继续添加其它，也可以用脚本完成
+#若有多台客户端，可以用脚本完成
+
+#最后不要忘了sync，才能真正添加这两个任务，并会更新dhcpd.conf文件
+cobbler sync
 
 #查看所有的安装任务
 cobbler system list
-
 ```
 
 ---------
@@ -201,4 +203,79 @@ cobbler profile report --name=profile_name
 ``` shell
 cobbler system list
 cobbler system report --name=install_170
+```
+
+--------
+
+#### 关于cobbler其它
+
+- 上面是安装centos7系统，其它系统步骤类似，你可以不用考虑不同系统的引导启动文件不一样，cobbler会自动处理这些
+`system`任务中指定mac，ip等信息做到量身定做安装系统,不干扰网段其它机器，你也可以不指定这些信息，那么同网段所有客户端都可以从cobbler中的dhcp获取IP地址，以及安装系统
+
+- cobbler接管了dhcpd服务，但其实还是使用系统的dhcpd来给客户端分配IP地址，只是我们不需要直接配置`dhcpd.conf`，而是配置`/etc/cobbler/dhcp.template`，`cobbler sync`后cobbler会自动同步配置给`dhcpd.conf`，查看下`/etc/cobbler/dhcp.template`的内容，会发现下面代码，在我们添加`system`任务，`cobbler sync`之后，cobbler会更新这个文件到`/etc/dhcp/dhcpd.conf`，这段代码也会更新，作用就是匹配`system`里指定的mac地址，然后分配ip地址，没有匹配到mac地址的客户端全部拒绝，这就是dhcpd的功能，并不是cobbler自身实现的
+
+``` shell
+#cat /etc/cobbler/dhcp.template
+...
+#for dhcp_tag in $dhcp_tags.keys():
+    ## group could be subnet if your dhcp tags line up with your subnets
+    ## or really any valid dhcpd.conf construct ... if you only use the
+    ## default dhcp tag in cobbler, the group block can be deleted for a
+    ## flat configuration
+# group for Cobbler DHCP tag: $dhcp_tag
+group {
+        #for mac in $dhcp_tags[$dhcp_tag].keys():
+            #set iface = $dhcp_tags[$dhcp_tag][$mac]
+    host $iface.name {
+        hardware ethernet $mac;
+        #if $iface.ip_address:
+        fixed-address $iface.ip_address;
+        #end if
+        #if $iface.hostname:
+        option host-name "$iface.hostname";
+        #end if
+        #if $iface.netmask:
+        option subnet-mask $iface.netmask;
+        #end if
+        #if $iface.gateway:
+        option routers $iface.gateway;
+        #end if
+        #if $iface.enable_gpxe:
+        if exists user-class and option user-class = "gPXE" {
+            filename "http://$cobbler_server/cblr/svc/op/gpxe/system/$iface.owner";
+        } else if exists user-class and option user-class = "iPXE" {
+            filename "http://$cobbler_server/cblr/svc/op/gpxe/system/$iface.owner";
+        } else {
+            filename "undionly.kpxe";
+        }
+        #else
+        filename "$iface.filename";
+        #end if
+        ## Cobbler defaults to $next_server, but some users
+        ## may like to use $iface.system.server for proxied setups
+        next-server $next_server;
+        ## next-server $iface.next_server;
+    }
+        #end for
+}
+#end for
+
+
+#cat /etc/dhcp/dhcpd.conf
+...
+# group for Cobbler DHCP tag: default
+group {
+    host generic1 {
+        hardware ethernet d4:ae:52:b9:d1:25;
+        fixed-address 192.168.6.170;
+        filename "/pxelinux.0";
+        next-server 192.168.6.249;
+    }
+    host generic2 {
+        hardware ethernet d4:ae:52:b9:d2:26;
+        fixed-address 192.168.6.171;
+        filename "/pxelinux.0";
+        next-server 192.168.6.249;
+    }
+}
 ```
