@@ -91,7 +91,7 @@ subnet 192.168.6.0 netmask 255.255.255.0 {             #网段
 #authoritative参数也不需要
 ```
 
->cobbler接管了dhcp，tftp，因此上面只需要更改dhcp.template，tftpd.template即可，每次更改配置文件之后，需要执行`cobbler sync`，以同步最新配置
+><small>cobbler接管了dhcp，tftp，因此上面只需要更改dhcp.template，tftpd.template即可，每次更改配置文件之后，需要执行`cobbler sync`，以同步最新配置<small>
 
 ##### 修改密码
 ``` bash
