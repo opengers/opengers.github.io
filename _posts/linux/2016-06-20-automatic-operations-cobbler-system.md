@@ -24,6 +24,8 @@ KickStart是RedHat提供的一种无人值守安装系统的方式。KickStart�
 1. 根据上面获取的MAC地址，cobbler服务器添加部署任务
 1. 服务器从指定网卡启动，cobbler中的DHCP服务器验证其MAC地址，通过后，运行后续自动化部署步骤
 
+------
+
 ### 安装cobbler
 ``` shell
 yum install cobbler dhcp xinetd tftp-server createrepo pykickstart cman libwrap mod_wsgi
@@ -37,6 +39,8 @@ service httpd start
 service xinetd start
 service cobblerd start
 ```
+
+------
 
 ### 配置cobbler  
 
@@ -108,7 +112,7 @@ sed -i 's/pxe_just_once: 0/pxe_just_once: 1/g' /etc/cobbler/settings
 cobbler get-loaders
 ```
 
-### 重启服务  
+##### 重启服务  
 ``` shell
 cobbler check
 service cobblerd start
@@ -119,14 +123,16 @@ service dhcpd restart
 #先执行`cobbler sync`同步配置，然后重启dhcp,tftp
 ```
 
-### 添加centos7.2系统
-给下面这两台服务器安装系统
+------
 
-name  | ip  | mac地址  
---------- | -------- | --------
-client1  | 192.168.6.170  | d4:a2:52:b9:d1:25  
-client2  | 192.168.6.171  | d4:a2:52:b9:d2:26  
+### 安装centos7.2系统
 
+name  | ip  | mac地址  | 用途 
+--------- | -------- | -------- | --------
+client1  | 192.168.6.170  | d4:a2:52:b9:d1:25  | kvm
+client2  | 192.168.6.171  | d4:a2:52:b9:d2:26  | nginx
+
+用途不同的两台服务器
 ``` shell
 #挂载CentOS7.2镜像到/mnt目录,运行如下命令导入镜像
 cobbler import --arch=x86_64 --path=/mnt/ --name=CentOS7.2
@@ -159,6 +165,7 @@ cobbler system add --name=install_171 --profile=CentOS7.2-nginx-x86_64 --ip-addr
 cobbler system list
 
 ```
+---------
 
 ### 理解distro，profile，system
 - **distro**  
@@ -184,4 +191,9 @@ cobbler profile report --name=profile_name
 ![cobbler](/images/linux/cobbler/cobbler-2.png)
 
 - **system**
-每一个`system`都指定了mac地址，profile，可以说是为客户端量身定制
+每一个`system`都指定了mac地址，profile，可以说是为每个客户端量身定制
+
+``` shell
+cobbler system list
+cobbler system report --name=install_170
+```
