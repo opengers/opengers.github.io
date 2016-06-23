@@ -208,11 +208,11 @@ cobbler system report --name=install_170
 --------
 
 #### 关于cobbler其它
+- 上面是安装centos7系统，其它系统步骤类似，你可以不用考虑不同系统的引导启动文件不一样，cobbler会自动处理这些  
 
-- 上面是安装centos7系统，其它系统步骤类似，你可以不用考虑不同系统的引导启动文件不一样，cobbler会自动处理这些
-`system`任务中指定mac，ip等信息做到量身定做安装系统,不干扰网段其它机器，你也可以不指定这些信息，那么同网段所有客户端都可以从cobbler中的dhcp获取IP地址，以及安装系统
+- `system`任务中指定mac，ip等信息可以只给匹配mac的客户端安装系统，不干扰网段其它机器，假如网段其它机器意外从网络启动，也不会被刷掉系统，但你也可以不指定这些信息，那么同网段所有客户端都可以从cobbler中的dhcp获取IP地址，以及安装系统  
 
-- cobbler接管了dhcpd服务，但其实还是使用系统的dhcpd来给客户端分配IP地址，只是我们不需要直接配置`dhcpd.conf`，而是配置`/etc/cobbler/dhcp.template`，`cobbler sync`后cobbler会自动同步配置给`dhcpd.conf`，查看下`/etc/cobbler/dhcp.template`的内容，会发现下面代码，在我们添加`system`任务，`cobbler sync`之后，cobbler会更新这个文件到`/etc/dhcp/dhcpd.conf`，这段代码也会更新，作用就是匹配`system`里指定的mac地址，然后分配ip地址，没有匹配到mac地址的客户端全部拒绝，这就是dhcpd的功能，并不是cobbler自身实现的
+- cobbler接管了系统dhcpd服务，但还是使用系统的dhcpd来给客户端分配IP地址，只是我们不需要直接配置`dhcpd.conf`，而是配置`/etc/cobbler/dhcp.template`，`cobbler sync`后cobbler会自动同步配置给`dhcpd.conf`，查看下`/etc/cobbler/dhcp.template`的内容，会发现下面代码，在我们添加`system`任务，`cobbler sync`之后，cobbler会更新这个文件到`/etc/dhcp/dhcpd.conf`，这段代码也会更新，作用就是匹配`system`里指定的mac地址，然后分配ip地址，没有匹配到mac地址的客户端全部拒绝，这就是dhcpd的功能，并不是cobbler自身实现的
 
 ``` shell
 #cat /etc/cobbler/dhcp.template
