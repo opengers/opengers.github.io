@@ -24,7 +24,6 @@ KickStart是RedHat提供的一种无人值守安装系统的方式。KickStart�
 1. 根据上面获取的MAC地址，cobbler服务器添加部署任务
 1. 服务器从指定网卡启动，cobbler中的DHCP服务器验证其MAC地址，通过后，运行后续自动化部署步骤
 
-
 ### 安装cobbler
 ``` shell
 yum install cobbler dhcp xinetd tftp-server createrepo pykickstart cman libwrap mod_wsgi
@@ -93,9 +92,8 @@ subnet 192.168.6.0 netmask 255.255.255.0 {             #网段
 **cobbler接管了dhcp，tftp，因此上面只需要更改dhcp.template，tftpd.template即可，每次更改配置文件之后，需要执行`cobbler sync`，以同步最新配置**
 
 ##### 修改密码
-
-``` shell
-openssl passwd -1 -salt 'random-phrase-here' '123456'
+``` bash
+penssl passwd -1 -salt 'random-phrase-here' '123456'
 #vi /etc/cobbler/settings 　#default_password_crypted参数
 ```
 
@@ -121,24 +119,49 @@ service dhcpd restart
 #先执行`cobbler sync`同步配置，然后重启dhcp,tftp
 ```
 
-### 导入centos7.2镜像
+### 添加centos7.2系统
+给下面这两台服务器安装系统
+
+name  | ip  | mac地址  
+--------- | -------- | --------
+client1  | 192.168.6.170  | d4:a2:52:b9:d1:25  
+client2  | 192.168.6.171  | d4:a2:52:b9:d2:26  
+
 ``` shell
 #挂载CentOS7.2镜像到/mnt目录,运行如下命令导入镜像
 cobbler import --arch=x86_64 --path=/mnt/ --name=CentOS7.2
-#导入镜像的同时，cobbler会自动创建一个配置文件
+#`--name`是镜像名称，可以通过`cobbler distro list`查看
+
+#导入镜像的同时，cobbler会自动创建一个profile，查看
 cobbler profile list
-#可能会需要更改profile名字
-cobbler profile rename --name=CentOS7.2-x86_64 --newname=newname
-#修改指定profile使用的ks文件
-cobbler profile edit --name=newname --kickstart=/var/lib/cobbler/kickstarts/ centos7.2-default.ks
-#添加一个profile
-cobbler profile add --name=centos6.3 --distro=centos6.3-x86_64
-#查看profile
+
+#可以更改profile名字
+cobbler profile rename --name=CentOS7.2-x86_64 --newname=centos7.2-kvm
+#默认profile使用cobbler提供的一个ks文件，我们需要修改成自己编写的ks文件
+cobbler profile edit --name=centos7.2-kvm --kickstart=/var/lib/cobbler/kickstarts/centos7.2-kvminstall.ks
+#新建一个profile，使用同一个安装镜像(distro)
+cobbler profile add --name=centos7.2-nginx --distro=CentOS7.2
+#`--distro` 是上面导入的镜像名称
+#查看这两个profile
 cobbler profile list
+
+#添加两个安装任务
+cobbler system add --name=install_170 --profile=CentOS7.2-kvm-x86_64 --ip-address=192.168.6.170 --mac-address=d4:a2:52:b9:d1:25 --interface=eth0 --netboot-enabled=1
+cobbler system add --name=install_171 --profile=CentOS7.2-nginx-x86_64 --ip-address=192.168.6.171 --mac-address=d4:a2:52:b9:d2:26 --interface=eth0 --netboot-enabled=1
+#`--name` 任务的名称
+#`--profile` 任务使用的profile
+#`--ip-address` 指定分配给客户端的ip地址
+#`--mac-address` 只有这个mac地址的客户端网卡才允许安装
+#`--interface` 这个任务使用cobbler服务器哪个网卡
+#上面指定了mac地址，所以只有指定的那台客户端(mac)才可以安装系统，若有多台客户端，可以依照上面继续添加其它，也可以用脚本完成
+
+#查看所有的安装任务
+cobbler system list
+
 ```
 
 ### 理解distro，profile，system
-- **`distro`**  
+- **distro**  
 cobbler中可以导入多个系统镜像，比如centos7.2，centos7.1,centos6，镜像name可以唯一标示它们,使用以下命令查看所有cobbler管理的镜像  
 
 ``` shell
@@ -148,8 +171,8 @@ cobbler distro report --name=distro_name
 
 ![cobbler](/images/linux/cobbler/cobbler-1.png)
 
-- **`profile`**  
-`profile`可以理解为一种配置，一个镜像(distro)可以有多个配置(profile)，考虑以下情况，我们有两批服务器，都安装centos7.2，但两批服务器磁盘分区方式不同，预装的软件包也不一样，显然此时无法使用同一个ks文件，这时就需要借助cobbler的`profile`，我们建立两个`profile`，在两个`profile`中指定不同的ks文件，同一个`distro`源，这样就实现差异化安装系统
+- **profile**  
+`profile`可以理解为一种配置，一个镜像(distro)可以有多个配置(profile)，这些`profile`可能使用不同的ks文件。考虑以下情况，我们有两批服务器，都安装centos7.2，但两批服务器所需磁盘分区方式不同，预装的软件包也不一样，显然此时无法使用同一个ks文件，这时就需要借助cobbler的`profile`，我们建立两个`profile`，在两个`profile`中指定不同的ks文件，同一个`distro`，这样就实现差异化安装系统
 
 ``` shell
 #查看所有的profile
@@ -160,4 +183,5 @@ cobbler profile report --name=profile_name
 
 ![cobbler](/images/linux/cobbler/cobbler-2.png)
 
-cobbler system add --name=centos7.2-xj --profile=CentOS7.2-oldmachine-x86_64 --ip-address=192.168.6.170 --mac-address=d4:ae:52:b9:d1:15 --interface=eth0 --netboot-enabled=1
+- **system**
+每一个`system`都指定了mac地址，profile，可以说是为客户端量身定制
