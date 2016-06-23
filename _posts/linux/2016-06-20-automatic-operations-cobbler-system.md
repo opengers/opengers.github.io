@@ -123,14 +123,14 @@ service dhcpd restart
 
 ------
 
-### 安装centos7.2系统
+### 安装centos系统
 
 name  | ip  | mac地址  | 用途 
 --------- | -------- | -------- | --------
 client1  | 192.168.6.170  | d4:a2:52:b9:d1:25  | kvm
 client2  | 192.168.6.171  | d4:a2:52:b9:d2:26  | nginx
 
-用途不同的两台服务器
+为用途不同的两台客户端安装centos7.2系统
 
 ``` shell
 #挂载CentOS7.2镜像到/mnt目录,运行如下命令导入镜像
