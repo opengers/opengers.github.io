@@ -24,16 +24,14 @@ KickStart是RedHat提供的一种无人值守安装系统的方式。KickStart�
 1. 根据上面获取的MAC地址，cobbler服务器添加部署任务
 1. 服务器从指定网卡启动，cobbler中的DHCP服务器验证其MAC地址，通过后，运行后续自动化部署步骤
 
-------
-
-### 安装cobbler
+##### 安装cobbler
 ``` shell
 yum install cobbler dhcp xinetd tftp-server createrepo pykickstart cman libwrap mod_wsgi
 #httpd 依赖 mod_wsgi
 #tftp 需要 syslinux
 ```
 
-### 启动相关服务  
+##### 启动相关服务  
 ``` shell
 service httpd start
 service xinetd start
@@ -93,7 +91,7 @@ subnet 192.168.6.0 netmask 255.255.255.0 {             #网段
 #authoritative参数也不需要
 ```
 
-**cobbler接管了dhcp，tftp，因此上面只需要更改dhcp.template，tftpd.template即可，每次更改配置文件之后，需要执行`cobbler sync`，以同步最新配置**
+>cobbler接管了dhcp，tftp，因此上面只需要更改dhcp.template，tftpd.template即可，每次更改配置文件之后，需要执行`cobbler sync`，以同步最新配置
 
 ##### 修改密码
 ``` bash
@@ -133,6 +131,7 @@ client1  | 192.168.6.170  | d4:a2:52:b9:d1:25  | kvm
 client2  | 192.168.6.171  | d4:a2:52:b9:d2:26  | nginx
 
 用途不同的两台服务器
+
 ``` shell
 #挂载CentOS7.2镜像到/mnt目录,运行如下命令导入镜像
 cobbler import --arch=x86_64 --path=/mnt/ --name=CentOS7.2
@@ -145,26 +144,32 @@ cobbler profile list
 cobbler profile rename --name=CentOS7.2-x86_64 --newname=centos7.2-kvm
 #默认profile使用cobbler提供的一个ks文件，我们需要修改成自己编写的ks文件
 cobbler profile edit --name=centos7.2-kvm --kickstart=/var/lib/cobbler/kickstarts/centos7.2-kvminstall.ks
-#新建一个profile，使用同一个安装镜像(distro)
+
+#为另一台nginx应用建立profile，使用同一个安装镜像(distro)
 cobbler profile add --name=centos7.2-nginx --distro=CentOS7.2
+cobbler profile edit --name=centos7.2-nginx --kickstart=/var/lib/cobbler/kickstarts/centos7.2-nginxinstall.ks
 #`--distro` 是上面导入的镜像名称
+
 #查看这两个profile
 cobbler profile list
+#查看某个profile使用的具体配置
+cobbler profile report --name=centos7.2-nginx
 
 #添加两个安装任务
-cobbler system add --name=install_170 --profile=CentOS7.2-kvm-x86_64 --ip-address=192.168.6.170 --mac-address=d4:a2:52:b9:d1:25 --interface=eth0 --netboot-enabled=1
-cobbler system add --name=install_171 --profile=CentOS7.2-nginx-x86_64 --ip-address=192.168.6.171 --mac-address=d4:a2:52:b9:d2:26 --interface=eth0 --netboot-enabled=1
-#`--name` 任务的名称
+cobbler system add --name=install_170 --profile=CentOS7.2-kvm --ip-address=192.168.6.170 --mac-address=d4:a2:52:b9:d1:25 --interface=eth0 --netboot-enabled=1
+cobbler system add --name=install_171 --profile=CentOS7.2-nginx --ip-address=192.168.6.171 --mac-address=d4:a2:52:b9:d2:26 --interface=eth0 --netboot-enabled=1
+#`--name` 任务名称
 #`--profile` 任务使用的profile
 #`--ip-address` 指定分配给客户端的ip地址
 #`--mac-address` 只有这个mac地址的客户端网卡才允许安装
-#`--interface` 这个任务使用cobbler服务器哪个网卡
+#`--interface` 这个任务使用cobbler服务器哪个网卡，跨网段安装
 #上面指定了mac地址，所以只有指定的那台客户端(mac)才可以安装系统，若有多台客户端，可以依照上面继续添加其它，也可以用脚本完成
 
 #查看所有的安装任务
 cobbler system list
 
 ```
+
 ---------
 
 ### 理解distro，profile，system
