@@ -1,0 +1,17 @@
+---
+author: lijian
+comments: true
+date: 2015-09-06 14:20:58+00:00
+layout: post
+link: http://blog.isjian.com/2015/09/%e7%9c%9f%e6%ad%a3%e7%9a%84%e9%80%9f%e5%ba%a6%e6%98%af%e7%9c%8b%e4%b8%8d%e8%a7%81%e7%9a%84/
+slug: '%e7%9c%9f%e6%ad%a3%e7%9a%84%e9%80%9f%e5%ba%a6%e6%98%af%e7%9c%8b%e4%b8%8d%e8%a7%81%e7%9a%84'
+title: 真正的速度是看不见的
+wordpress_id: 372
+categories:
+- 随笔
+---
+
+<blockquote>真正的速度是看不见的
+就像日升月落，风起云涌
+就像你不知道树叶什么时候变黄，婴儿什么时候长出第一颗牙齿
+就像你不知道什么时候会爱上一个人</blockquote>
