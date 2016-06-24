@@ -14,9 +14,9 @@ tags:
 - 桌面虚拟化
 ---
 
-> 本系类其它文章
-> [spice在kvm虚拟机中的应用(二)](http://www.isjian.com/virtualization/spice-kvm-usbredir-qxl-2/)
-> [spice在kvm虚拟化中的应用(三)](http://www.isjian.com/virtualization/spice-kvm-usbredir-qxl-3/)
+> <small>本系类其它文章
+[spice在kvm虚拟机中的应用(二)](http://www.isjian.com/virtualization/spice-kvm-usbredir-qxl-2/)  
+[spice在kvm虚拟化中的应用(三)](http://www.isjian.com/virtualization/spice-kvm-usbredir-qxl-3/)</small>
 
 ### spice介绍
 
@@ -24,7 +24,7 @@ tags:
 spice是由Qumranet开发的开源网络协议，2008年红帽收购了Qumranet获得了这个协议。SPICE是红帽在虚拟化领域除了KVM的又一“新兴技术”，它提供与虚拟桌面设备的远程交互实现.
 目前,spice主要目标是为qemu虚拟机提供高质量的远程桌面访问,它致力于克服传统虚拟桌面的一些弊端,并且强调用户体验
 
-![spice1(1)](images/virtualization/2014-12-25-spice-kvm-usbredir-qxl-1/spice1-1.png)
+![spice1-1](images/virtualization/2014-12-25-spice-kvm-usbredir-qxl-1/spice1-1.png)
 
 spice包含有3个组件：
 SPICE Driver：SPICE驱动器 存在于每个虚拟桌面内的组件
