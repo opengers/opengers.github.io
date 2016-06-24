@@ -24,7 +24,7 @@ tags:
 spice是由Qumranet开发的开源网络协议，2008年红帽收购了Qumranet获得了这个协议。SPICE是红帽在虚拟化领域除了KVM的又一“新兴技术”，它提供与虚拟桌面设备的远程交互实现.
 目前,spice主要目标是为qemu虚拟机提供高质量的远程桌面访问,它致力于克服传统虚拟桌面的一些弊端,并且强调用户体验
 
-![spice1-1](spice1-1.png)
+![spice1-1](/images/virtualization/spice-kvm-usbredir-qxl-1/spice1-1.png)
 
 spice包含有3个组件：
 SPICE Driver：SPICE驱动器 存在于每个虚拟桌面内的组件
@@ -36,7 +36,7 @@ SPICE Client： SPICE客户端 存在于终端设备上的组件，可以是瘦�
 
 ##### spice架构
 
-![spice2](images/virtualization/2014-12-25-spice-kvm-usbredir-qxl-1/spice2.png)
+![spice2](/images/virtualization/spice-kvm-usbredir-qxl-1/spice2.png)
 
 Spice agent运行在客户机（虚拟机）操作系统中。Spice server和Spice client利用spice agent来执行一些需要在虚拟机里执行的任务，如配置分辨率，另外还有通过剪贴板来拷贝文件等。从上图可以看出，Spice client与server与Spice Agent的通信需要借助一些其他的软件模块，如在客户机里面，Spice Agent需要通过VDIPort Driver与主机上 QEMU的VDIPort Device进行交互，他们的交互通过一种叫做输入/输出的环进行。Spice Client和Server产生的消息被写入到设备的输出环中，由VDI Port Driver读取；而Spice Agent发出的消息则通过VDI Port Driver先写入到VDI Port Device输入环中,被QEMU读入到Spice server的缓冲区中，然后再根据消息决定由Spice Server直接处理，还是被发往Spice Client中
 以上参考http://blog.csdn.net/hbsong75/article/details/9465683
@@ -176,7 +176,7 @@ virt-manager是一个图形化的虚拟机管理工具,它可以方便地创建�
 
 ##### 客户端使用TightVNC工具远程连接
 
-![image2014-12-25 19-29-4](images/virtualization/2014-12-25-spice-kvm-usbredir-qxl-1/image2014-12-25-19-29-4.png)
+![image2014-12-25 19-29-4](/images/virtualization/spice-kvm-usbredir-qxl-1/image2014-12-25-19-29-4.png)
 
 ### 启用spice进行远程连接
 
@@ -220,7 +220,7 @@ virt-manager是一个图形化的虚拟机管理工具,它可以方便地创建�
 
 使用virt-viewer工具,其支持vnc和spice两种协议,所以这里需要指定使用spice   
 
-![image2014-12-25 20-2-0](images/virtualization/2014-12-25-spice-kvm-usbredir-qxl-1/image2014-12-25-20-2-0.png)
+![image2014-12-25 20-2-0](/images/virtualization/spice-kvm-usbredir-qxl-1/image2014-12-25-20-2-0.png)
 
 ##### 使用virt-manager图形工具配置spice
 
@@ -232,11 +232,11 @@ virt-manager是一个图形化的虚拟机管理工具,它可以方便地创建�
 	
 * 如下图Display中更改Type为spice
 
-![123](images/virtualization/2014-12-25-spice-kvm-usbredir-qxl-1/123.png)
+![123](/images/virtualization/spice-kvm-usbredir-qxl-1/123.png)
 	
 * video中更改Model为qxl,修改完成之后,启动虚拟机
 
-![2](images/virtualization/2014-12-25-spice-kvm-usbredir-qxl-1/2.png)
+![2](/images/virtualization/spice-kvm-usbredir-qxl-1/2.png)
 
 ### 提高虚拟机性能(鼠标同步,共享剪贴板,音视频传输等)
 
@@ -261,6 +261,6 @@ chkconfig spice-vdagentd on
 
 用virt-manager工具添加音频设备
 
-![image2014-12-25 20-31-28](images/virtualization/2014-12-25-spice-kvm-usbredir-qxl-1/image2014-12-25-20-31-28.png)
+![image2014-12-25 20-31-28](/images/virtualization/spice-kvm-usbredir-qxl-1/image2014-12-25-20-31-28.png)
  
 选择Sound的Model(ac97或者ich6)
