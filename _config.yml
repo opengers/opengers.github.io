@@ -2,7 +2,7 @@
 
 title: "jian.li"
 description: "来自LJ的问候"
-logo: /images/favicon.ico # 120x120 px default image used for Twitter summary card
+logo: favicon.ico # 120x120 px default image used for Twitter summary card
 locale: en
 url:
 feed:
@@ -31,7 +31,7 @@ owner:
     ad-client:
     ad-slot:
   bio:
-  avatar: /images/bio-photo.jpg # 160x160 px image for author byline
+  avatar: bio-photo.jpg # 160x160 px image for author byline
   disqus-shortname: opengers
 
 disqus-shortname: opengers
