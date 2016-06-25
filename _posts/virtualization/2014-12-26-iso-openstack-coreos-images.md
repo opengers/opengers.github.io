@@ -74,10 +74,10 @@ coreos-install -d /dev/vda -C stable -V 444.5.0 -c cloud-config.yaml
 echo "192.168.11.166 stable.release.core-os.net" >> /etc/hosts
 ```
 
-* 配置一台http主机代替官网地址
+2. 配置一台http主机代替官网地址
 我们需要另外使用一台虚拟机，在其上搭建一个http服务器，替代`http://stable.release.core-os.net/amd64-usr/444.5.0`这个地址，假设其IP为`192.168.11.166`
 
-* 创建目录结构
+3. 创建目录结构
 
 ``` shell
 mkdir /data/coreos/amd64-usr/444.5.0 -p
