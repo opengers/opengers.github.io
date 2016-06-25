@@ -91,10 +91,10 @@ yum -y install spice-protocol spice-server xorg-x11-drv-qxl spice-gli
 <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'>
     <listen type='address' address='0.0.0.0'/>
 </graphics>
-
-<!-- #默认情况下,kvm使用vnc建立远程连接,监听地址为0.0.0.0(`listen`),其端口为自动分配(`port=-1 autoport='yes'`)   
-`port=-1`表示端口自动分配,分配范围`5900+N`,即第一个虚拟机会是5900端口，第二个虚拟机会是5900+1，以此类推-->
 ```
+默认情况下,kvm使用vnc建立远程连接,监听地址为0.0.0.0(`listen`),其端口为自动分配(`port=-1 autoport='yes'`)    
+`port=-1`表示端口自动分配,分配范围`5900+N`,即第一个虚拟机会是5900端口，第二个虚拟机会是5900+1，以此类推
+
 
 **关于virt-manager工具**  
 virt-manager是一个图形化的虚拟机管理工具,它可以方便地创建虚拟机,修改虚拟机配置,添加新设备等. 但是由于其是图形界面管理,所以效率不是很高,而且对网络也有要求
@@ -133,10 +133,10 @@ netstat -ntpl | grep qemu-kvm
     <model type='qxl' heads='1'/>
     <alias name='video0'/>
 </video>
-<!-- `type`由`vnc`变为`spice`
-指定`port`为`5902`端口
-`tlsPort`为加密端口，spice也支持加密的连接，测试时可以删除此参数-->
 ```
+`type`由`vnc`改为`spice`  
+指定`port`为`5902`端口，也可以使用`-1`自动分配端口  
+`tlsPort`为加密端口，spice也支持加密的连接，这会启动两个端口，`5902`是未加密端口，`5903`是加密端口，测试时可以不需要此参数    
 
 ##### 支持音频传输
 spice也支持音视频，这对于windows虚拟机来说，可能是必须的配置  
