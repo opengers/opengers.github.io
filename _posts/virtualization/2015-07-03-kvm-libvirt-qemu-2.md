@@ -47,7 +47,7 @@ kvm_intel 148361 61
 kvm 468666 1 kvm_intel
 ```
 
-<font color="red">kvm虚拟机就是一个标准的linux进程，而运行虚拟机的命令是`qemu-kvm`， 如下是从物理机上看到的一个虚拟机</font>
+<font color="red">kvm虚拟机就是一个标准的linux进程，而运行虚拟机的命令是qemu-kvm， 如下是物理机上的一个进程，其代表一个虚拟机</font>
 
 ``` shell
 [root@test ~]# ps -ef | grep qemu-kvm
