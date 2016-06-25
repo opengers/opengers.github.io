@@ -9,7 +9,8 @@ categories: virtualization
 - 文中VMM为虚拟机管理程序，即hypervisor，guest为由KVM创建的虚拟机，Host为宿主机，即安装虚机的物理机，vcpu即为虚拟机的cpu，vmemory即为虚拟机内存  
 
 ### KVM简介
-KVM是由Quramnet 开发，08年被RedHat收购，目前KVM由RedHat工程师开发维护，准确来说，KVM(Kernel-based Virtual Machine)只是一个linux内核模块，包括核心虚拟化模块kvm.ko，以及针对特定CPU的模块kvm-intel.ko或者kvm-amd.ko，其实现需要宿主机CPU支持硬件虚拟化，在x86平台下，CPU硬件虚拟化技术有Intel的VT-x，AMD的 AMD-V  
+KVM是由Quramnet 开发，08年被RedHat收购，目前KVM由RedHat工程师开发维护，准确来说，KVM(Kernel-based Virtual Machine)只是一个linux内核模块，包括核心虚拟化模块kvm.ko，以及针对特定CPU的模块kvm-intel.ko或者kvm-amd.ko，其实现需要宿主机CPU支持硬件虚拟化，在x86平台下，CPU硬件虚拟化技术有Intel的VT-x，AMD的 AMD-V
+
 目前，由于kvm良好发展，其能够运行在x86, ARM (Cortex A15, AArch64), MIPS32等平台下，因为vcpu是由Host硬件模拟，x86平台下Host上安装的kvm能够虚拟出一颗x86架构的vcpu，却无法虚拟出arm,Powerpc等其它架构的vcpu，同样arm平台下安装的kvm只能够虚拟出arm架构的vcpu.   
 
 ##### kvm模块
@@ -39,13 +40,13 @@ modprobe kvm-intel
 
 - 单靠内核中的kvm模块并不能启动一台虚拟机，其只能模拟vcpu,vmemory, 像io设备的模拟还需要借助用户空间程序qemu
 
-### KVM 与 Qemu
+### KVM 与 qemu
 前面说过，KVM只是一个内核模块，它可以模拟虚拟机的CPU，但虚拟机的I/O设备是通过qemu这个用户空间程序来模拟的  
-Qemu本身就是一套完整的开源的全虚拟化解决方案，它有两种使用方式
+qemu本身就是一套完整的开源的全虚拟化解决方案，它有两种使用方式
 
 - 第一种是单独使用，对宿主机硬件没什么要求，也并不要求宿主机CPU支持虚拟化，qemu为虚拟机操作系统模拟整套硬件环境，虚拟机操作系统感觉不到自己运行在模拟的硬件环境中，这种纯软件模拟效率很低，但可以模拟出各种硬件设备，包括像软盘驱动器这样的老旧设备  
 
-- 第二种是作为一个用户空间工具和运行在内核中的KVM配合完成硬件环境的模拟，在Qemu1.3版本之前，Qemu有一个专门的分支版本qemu-kvm作为KVM的用户空间程序(centos6.x yum源中就是这个)，qemu-kvm通过ioctl调用/dev/kvm这个接口与KVM交互，这样，KVM在内核空间模拟虚拟机CPU，qemu-kvm负责模拟虚拟机I/O设备，但是从Qemu1.3版本开始，qemu-kvm分支代码已经合并到Qemu的master分支中，因此在qemu 1.3以上版本中，只需在编译qemu时开启`--enable-kvm`选项就能够使用kvm的硬件模拟，具体说明可以查看[Qemu官网](http://wiki.qemu.org/)  
+- 第二种是作为一个用户空间工具，和运行在内核中的KVM配合完成硬件环境的模拟，qemu1.3版本之前，其有一个专门的分支版本qemu-kvm作为KVM的用户空间程序(centos6.x yum源中就是这个)，qemu-kvm通过`ioctl`调用`/dev/kvm`这个接口与KVM交互，这样KVM在内核空间模拟虚拟机CPU，qemu-kvm负责模拟虚拟机I/O设备。qemu1.3及其以后版本中，qemu-kvm分支代码已经合并到qemu的master分支中，因此在qemu 1.3以上版本中，只需在编译qemu时开启`--enable-kvm`选项就能够是qemu支持kvm，具体说明可以查看[qemu官网](http://wiki.qemu.org/)  
 
 KVM  centos6.x yum源中，提供了一个qemu-kvm包，版本为0.12，也就是qemu的分支版本，安装此rpm包后，可以使用`/usr/libexec/qemu-kvm`命令来创建虚拟机
 
@@ -95,10 +96,14 @@ yum install libguestfs libguestfs-tools-c libguestfs-tools libguestfs-devel -y
 
 
 ### 源码安装
-centos6.5系统，Linux 内核2.6.32-573下，若要搭建kvm运行环境，需要下面几步  
+centos6.5系统，Linux 内核2.6.32-573下，若要搭建kvm运行环境，需要下面几步
+
 - 加载内核模块kvm,kvm_intel  
+
 - 编译安装用户空间程序qemu  
+
 - 编译安装libvirt，虚拟机创建，管理工具  
+
 - 编译安装libguestfs，查看和修改虚拟机文件系统，此工具可选安装  
 
 ##### 编译安装qemu
@@ -223,3 +228,6 @@ do
         /bin/ln -s -f $i /usr/bin/
 done  
 ```
+
+><small>[本文链接](http://www.isjian.com/virtualization/kvm-libvirt-qemu-1/)  
+以上介绍了kvm及其安装，关于创建虚拟机，及其管理方面，参考其它博文</small>
