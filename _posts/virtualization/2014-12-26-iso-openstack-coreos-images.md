@@ -47,7 +47,7 @@ ssh_authorized_keys:
 
 ### 安装coreOS到虚拟磁盘  
 客户端使用vnc viewer工具连接虚拟机，当前运行的系统是我们下载的ISO镜像`coreos_production_iso_image.iso`，不同于centos可以直接安装系统到磁盘，对于coreOS，我们需要使用这个ISO提供的安装工具`coreos-install`去安装coreOS到磁盘  
-<small><font color=red>内容注意：最好使用第6步中的本地下载方法</font></small>
+<small><font color="red">内容注意：最好使用第6步中的本地下载方法</font></small>
 
 ``` shell
 coreos-install -d /dev/vda -C stable -V 444.5.0 -c cloud-config.yaml
