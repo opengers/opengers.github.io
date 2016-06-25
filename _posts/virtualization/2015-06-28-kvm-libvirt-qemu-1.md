@@ -27,8 +27,9 @@ modprobe kvm-intel
 #注意：如果加载失败，说明服务器硬件不支持或BIOS中未开启虚拟化扩展
 ```
 
-如上, Linux内核加载KVM模块之后  
-- 从宿主机中来看，Linux内核成为一个hypervisor（VMM），虚拟机则实现为标准的Linux进程，启动一台虚拟机就是在宿主机上运行了一个进程(可以使用命令查看某个虚拟机对应的进程：ps -ef | grep "虚拟机名字")，因此虚拟机可以接受linux调度程序的管理，vcpu实现为Linux线程
+如上, Linux内核加载KVM模块之后
+
+- 从宿主机中来看，Linux内核成为一个hypervisor（VMM），虚拟机则实现为标准的Linux进程，启动一台虚拟机就是在宿主机上运行了一个进程(可以使用命令查看某个虚拟机对应的进程：`ps -ef | grep "虚拟机名字"`)，因此虚拟机可以接受linux调度程序的管理，vcpu实现为Linux线程
 
 - KVM需要借助Linux内核，因此KVM运行在操作系统之上，幸运的是， KVM模块已包含在Linux 内核2.6.20版本及其以上版本中
 
