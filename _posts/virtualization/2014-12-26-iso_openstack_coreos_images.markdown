@@ -1,19 +1,7 @@
 ---
-author: lijian
-comments: true
-date: 2014-12-26 02:55:57+00:00
-layout: post
-link: http://blog.isjian.com/2014/12/iso_openstack_coreos_images/
-slug: iso_openstack_coreos_images
-title: 基于ISO制作openstack使用的coreOS镜像
-wordpress_id: 158
-categories:
-- 虚拟化
-tags:
-- cloudinit
-- coreOS
-- OpenStack
-- systemd
+layout: article
+title: "自动化运维之cobbler批量部署服务器系统"
+categories: virtualization
 ---
 
 

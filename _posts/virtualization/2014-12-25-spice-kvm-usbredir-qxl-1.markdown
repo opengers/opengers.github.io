@@ -1,17 +1,7 @@
 ---
-author: lijian
-comments: true
-date: 2014-12-25 12:36:24+00:00
 layout: article
-title: spice在KVM虚拟机中的应用(一)
+title: "自动化运维之cobbler批量部署服务器系统"
 categories: virtualization
-tags:
-- libvirt
-- qemu-kvm
-- spice
-- virtio
-- vnc
-- 桌面虚拟化
 ---
 
 > <small>本文测试服务器为centos6.4
