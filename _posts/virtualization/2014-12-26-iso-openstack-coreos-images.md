@@ -65,47 +65,32 @@ coreos-install -d /dev/vda -C stable -V 444.5.0 -c cloud-config.yaml
     wget http://stable.release.core-os.net/amd64-usr/444.5.0/coreos_production_image.bin.bz2.sig
 ```
 
-由于网络的原因，下载可能不会成功，或者下载很慢，我们可以设置让coreos-install从本地地址下载代替从官网下载，从而节省时间  
-
-1. 首先需要设置解析
+由于网络的原因，下载可能不会成功，或者下载很慢，我们可以设置让coreos-install从本地地址下载代替从官网下载，从而节省时间
 
 ``` shell
-#使stable.release.core-os.net解析为本地IP
+#首先需要设置解析，使stable.release.core-os.net解析为本地IP
 echo "192.168.11.166 stable.release.core-os.net" >> /etc/hosts
-```
 
-2. 配置一台http主机代替官网地址
+#配置一台http主机代替官网地址  
 我们需要另外使用一台虚拟机，在其上搭建一个http服务器，替代`http://stable.release.core-os.net/amd64-usr/444.5.0`这个地址，假设其IP为`192.168.11.166`
 
-3. 创建目录结构
-
-``` shell
+#创建目录结构
 mkdir /data/coreos/amd64-usr/444.5.0 -p
 cd /data/coreos/amd64-usr/444.5.0
-```
 
-1. 复制第一步下载的安装文件到本目录
-
-``` shell
+#复制第一步下载的安装文件到本目录
 cp coreos_production_image.bin.bz2 coreos_production_image.bin.bz2.sig .
-```
 
-1. 进入/data/coreos目录
-
-``` shell
-#使用python启动一个http服务，其根目录为python运行目录
+#进入/data/coreos目录，使用python启动一个http服务，其根目录为python运行目录
 cd /data/coreos
 python -m SimpleHTTPServer 80
-```
 
-1. 现在coreos-install可以使用本地安装文件了，重新执行下面命令
-
-``` shell
+#现在coreos-install可以使用本地安装文件了，重新执行下面命令
 coreos-install -d /dev/vda -C stable -V 444.5.0 -c cloud-config.yaml
 ```
 
 ### 开机启动脚本cloud-init
-安装完成之后，为了使其可以从openstack获取主机名，密钥等，需要添加一个开机启动脚本
+安装完成之后，为了使其可以从openstack获取主机名，密钥等，需要添加一个开机启动脚本  
 
 ``` shell
 cat cloudinit.sh
@@ -178,6 +163,7 @@ WantedBy=multi-user.target
 ```
 
 ##### 加入systemd管理(设置开机启动)
+
 ``` shell
 systemctl enable cloudinit.service
 #执行enable之后，cloudinit.service这个服务就会开机启动，从而我们的脚本cloud-init.sh就可以执行
