@@ -4,7 +4,7 @@ title: "基于ISO制作openstack使用的coreOS镜像"
 categories: virtualization
 ---
 
-><small>本篇文章是使用ISO镜像手动制作openstack云平台使用的qcow2镜像文件，关于coreOS的介绍，可以看[这里](http://www.infoq.com/cn/articles/what-is-coreos)</small>
+><small>本篇文章是使用ISO镜像手动制作openstack云平台使用的qcow2镜像文件，关于coreOS的介绍，可以看[CoreOS 实战：CoreOS 及管理工具介绍](http://www.infoq.com/cn/articles/what-is-coreos)</small>
 
 ### 下载coreOS镜像（444.5.0版本）  
 ``` shell
@@ -32,9 +32,8 @@ virt-install -n core -r 1024 -c /data_lij/coreOS/coreos_production_iso_image.iso
 
 ### 设置cloud-config  
 ><small>cloud-config介绍  
-CoreOS allows you to declaratively customize various OS-level items, such as network configuration, user accounts, and systemd units. This document describes the full list of items we can configure. The `coreos-cloudinit` program uses these files as it configures the OS after startup or during runtime.
-
->Your cloud-config is processed during each boot. Invalid cloud-config won't be processed but will be logged in the journal. You can validate your cloud-config with the [CoreOS validator](https://coreos.com/validate) or by running `coreos-cloudinit -validate`</small>
+CoreOS allows you to declaratively customize various OS-level items, such as network configuration, user accounts, and systemd units. This document describes the full list of items we can configure. The `coreos-cloudinit` program uses these files as it configures the OS after startup or during runtime.  
+Your cloud-config is processed during each boot. Invalid cloud-config won't be processed but will be logged in the journal. You can validate your cloud-config with the [CoreOS validator](https://coreos.com/validate) or by running `coreos-cloudinit -validate`</small>
 
 由于coreOS默认使用密钥登陆，所以我们必须想办法注入一个公钥到系统中，就是使用cloud-config.yaml文件，最简单的cloud-config.yaml只包括一个ssh_authorized_keys字段，用于密钥注入  
 新建一个cloud-config.yaml文件，ssh-rsa 后面粘贴需要注入的公钥
