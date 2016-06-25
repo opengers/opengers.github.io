@@ -44,7 +44,8 @@ modprobe kvm-intel
 Qemu本身就是一套完整的开源的全虚拟化解决方案，它有两种使用方式
 
 - 第一种是单独使用，对宿主机硬件没什么要求，也并不要求宿主机CPU支持虚拟化，qemu为虚拟机操作系统模拟整套硬件环境，虚拟机操作系统感觉不到自己运行在模拟的硬件环境中，这种纯软件模拟效率很低，但可以模拟出各种硬件设备，包括像软盘驱动器这样的老旧设备
-- 第二种是作为一个用户空间工具和运行在内核中的KVM配合完成硬件环境的模拟，在Qemu1.3版本之前，Qemu有一个专门的分支版本qemu-kvm作为KVM的用户空间程序(centos6.x yum源中就是这个)，qemu-kvm通过ioctl调用/dev/kvm这个接口与KVM交互，这样，KVM在内核空间模拟虚拟机CPU，qemu-kvm负责模拟虚拟机I/O设备，但是从Qemu1.3版本开始，qemu-kvm分支代码已经合并到Qemu的master分支中，因此在qemu 1.3以上版本中，只需在编译qemu时开启"--enable-kvm"选项就能够使用kvm的硬件模拟，具体说明可以查看[Qemu官网](http://wiki.qemu.org/)
+
+- 第二种是作为一个用户空间工具和运行在内核中的KVM配合完成硬件环境的模拟，在Qemu1.3版本之前，Qemu有一个专门的分支版本qemu-kvm作为KVM的用户空间程序(centos6.x yum源中就是这个)，qemu-kvm通过ioctl调用/dev/kvm这个接口与KVM交互，这样，KVM在内核空间模拟虚拟机CPU，qemu-kvm负责模拟虚拟机I/O设备，但是从Qemu1.3版本开始，qemu-kvm分支代码已经合并到Qemu的master分支中，因此在qemu 1.3以上版本中，只需在编译qemu时开启`--enable-kvm`选项就能够使用kvm的硬件模拟，具体说明可以查看[Qemu官网](http://wiki.qemu.org/)
 
 KVM  centos6.x yum源中，提供了一个qemu-kvm包，版本为0.12，也就是qemu的分支版本，安装此rpm包后，可以使用`/usr/libexec/qemu-kvm`命令来创建虚拟机
 
