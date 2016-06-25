@@ -29,9 +29,13 @@ modprobe kvm-intel
 
 如上, Linux内核加载KVM模块之后  
 - 从宿主机中来看，Linux内核成为一个hypervisor（VMM），虚拟机则实现为标准的Linux进程，启动一台虚拟机就是在宿主机上运行了一个进程(可以使用命令查看某个虚拟机对应的进程：ps -ef | grep "虚拟机名字")，因此虚拟机可以接受linux调度程序的管理，vcpu实现为Linux线程
+
 - KVM需要借助Linux内核，因此KVM运行在操作系统之上，幸运的是， KVM模块已包含在Linux 内核2.6.20版本及其以上版本中
+
 - 与KVM不同，Xen的hypervisor代码完全由自己开发，本身就是一套完整的虚拟机管理程序，因此Xen可以直接安装在裸机上，不需要先安装操作系统，就像esxi
+
 - 内核加载kvm模块后，其会暴露一个/dev/kvm接口来与用户空间程序（qemu）交互，提供模拟vcpu，vmemory的功能  
+
 - 单靠内核中的kvm模块并不能启动一台虚拟机，其只能模拟vcpu,vmemory, 像io设备的模拟还需要借助用户空间程序qemu
 
 ### KVM 与 Qemu
