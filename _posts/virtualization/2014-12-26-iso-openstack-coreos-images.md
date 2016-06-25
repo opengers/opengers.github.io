@@ -166,8 +166,10 @@ WantedBy=multi-user.target
 
 ``` shell
 systemctl enable cloudinit.service
-#执行enable之后，cloudinit.service这个服务就会开机启动，从而我们的脚本cloud-init.sh就可以执行
-``` [本文链接](http://www.isjian.com)
+#执行enable之后，cloudinit.service这个服务就会开机启动，从而我们的脚本cloud-init.sh就可以执行  
+``` 
+
+[本文链接](http://www.isjian.com)
 
 
 
