@@ -16,13 +16,13 @@ kvm虚拟机创建的磁盘默认使用qcow2格式，qcow2格式一个特性是c
 现在有一台虚拟机openstack1-1，用的磁盘是openstack1-1.disk，查看它磁盘的详细信息
 
 ``` shell
-    [root@controller1 openstack]# qemu-img info openstack1-1.disk 
-    image: openstack1-1.disk
-    file format: qcow2
-    virtual size: 40G (42949672960 bytes)
-    disk size: 10G
-    cluster_size: 65536
-    backing file: /data/images/centos65x64.qcow2
+[root@controller1 openstack]# qemu-img info openstack1-1.disk 
+image: openstack1-1.disk
+file format: qcow2
+virtual size: 40G (42949672960 bytes)
+disk size: 10G
+cluster_size: 65536
+backing file: /data/images/centos65x64.qcow2
 ```
 现在，可以很方便创建多个虚拟机，centos65x64.qcow2为磁盘openstack1-1.disk的后端镜像(`backing file`)，这个centos65x64.qcow2磁盘是制作好的镜像，包含完整的系统和定制的的软件包，新建的磁盘openstack1-1.disk可以使用后端镜像的文件，用户操作虚拟机时，读文件是从后端镜像读，写新文件是写入到新磁盘openstack1-1.disk，关于具体介绍，参考[kvm libvirt qemu实践系列(五)](http://www.isjian.com/virtualization/kvm-libvirt-qemu-5/)中关于`backing file`的介绍
 
