@@ -1,24 +1,15 @@
 ---
-author: lijian
-comments: true
-date: 2015-07-10 07:45:47+00:00
-layout: post
-link: http://blog.isjian.com/2015/07/kvm-libvirt-qemu-xml-3/
-slug: kvm-libvirt-qemu-xml-3
-title: kvm libvirt qemu实践系列(三)-使用xml文件定义虚拟机
-wordpress_id: 328
-categories:
-- 虚拟化
-tags:
-- guestfish
-- libvirt
-- qemu-img
-- qemu-kvm
-- virsh
+layout: article
+title: "kvm libvirt qemu实践系列(三)-虚拟机xml文件使用"
+categories: virtualization
 ---
 
-## 1.qcow2格式介绍
+>- 本篇文章介绍通过xml文件来管理虚拟机
+- [kvm libvirt qemu实践系列(一)](http://www.isjian.com/virtualization/kvm-libvirt-qemu-1/)  
+  [kvm libvirt qemu实践系列(二)](http://www.isjian.com/virtualization/kvm-libvirt-qemu-2/)
+- 测试环境为centos6.5，kvm程序来自rpm包  
 
+### qcow2格式介绍
 
 kvm虚拟机创建的磁盘默认使用qcow2格式，qcow2格式一个特性是copy-on-write，即写入时复制
 

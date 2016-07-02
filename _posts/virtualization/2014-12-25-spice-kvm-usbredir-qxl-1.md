@@ -1,6 +1,6 @@
 ---
 layout: article
-title: "自动化运维之cobbler批量部署服务器系统"
+title: "spice在kvm虚拟机中的应用(一)"
 categories: virtualization
 ---
 
