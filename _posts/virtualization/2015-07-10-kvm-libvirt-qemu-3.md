@@ -137,7 +137,7 @@ virsh edit kvm-1
 
 ##### virsh其它命令
 下面是管理虚拟机常用命令，你可以使用`virsh help`查看所有virsh提供的命令
-<font color="red">virsh管理的对象是`domain`，即用`virsh list`看到的虚拟机`name`</font>
+<font color="red">virsh管理的对象是domain，即用virsh list看到的虚拟机Name</font>
 
 ``` shell
 #关机
