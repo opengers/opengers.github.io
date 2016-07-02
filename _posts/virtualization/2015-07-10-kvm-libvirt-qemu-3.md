@@ -5,7 +5,8 @@ categories: virtualization
 ---
 
 >- 本篇文章介绍通过xml文件来管理虚拟机
-- [kvm libvirt qemu实践系列(一)](http://www.isjian.com/virtualization/kvm-libvirt-qemu-1/)  
+- 本系列之前文章  
+  [kvm libvirt qemu实践系列(一)](http://www.isjian.com/virtualization/kvm-libvirt-qemu-1/)  
   [kvm libvirt qemu实践系列(二)](http://www.isjian.com/virtualization/kvm-libvirt-qemu-2/)
 - 测试环境为centos6.5，kvm程序来自rpm包  
 
