@@ -1,21 +1,7 @@
 ---
-author: lijian
-comments: true
-date: 2015-07-03 02:01:33+00:00
-layout: post
-link: http://blog.isjian.com/2015/07/kvm-libvirt-qemu-3/
-slug: kvm-libvirt-qemu-3
-title: kvm libvirt qemu实践系列(五)-虚拟机快照链
-wordpress_id: 283
-categories:
-- 虚拟化
-tags:
-- guestfish
-- libvirt
-- QEMU
-- qemu-img
-- qemu-kvm
-- virsh
+layout: article
+title: "kvm libvirt qemu实践系列(五)-虚拟机快照链"
+categories: virtualization
 ---
 
 1. 关于kvm，qemu的介绍，可以参考这篇文章：[kvm libvirt qemu实践系列(一)](http://blog.isjian.com/2015/06/kvm-libvirt-qemu-1/)
