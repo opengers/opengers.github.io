@@ -32,9 +32,8 @@ owner:
     ad-slot:
   bio:
   avatar: bio-photo.jpg # 160x160 px image for author byline
-  disqus-shortname: opengers
-
-disqus-shortname: opengers
+  
+duoshuo_shortname: your-duoshuo-shortname
 
 include:
   - .htaccess
