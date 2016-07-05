@@ -12,8 +12,9 @@ categories: virtualization
 
 ### 关于backing file
 
-kvm虚拟机创建的磁盘默认使用qcow2格式，qcow2格式一个特性是copy-on-write，即写入时复制
-现在有一台虚拟机openstack1-1，用的磁盘是openstack1-1.disk，查看它磁盘的详细信息
+`backing file`可以作为虚拟机的模板镜像，用来快速创建虚拟机。qcow2磁盘格式支持`backing file`，即可以给qcow2格式的磁盘指定一个`backing file`，qcow2磁盘还有一个特性是copy-on-write，即写入时复制，下面说明这两个特性
+
+现在有一台虚拟机openstack1-1，用的磁盘是openstack1-1.disk，我们使用`qemu-img`来查看一下其磁盘信息
 
 ``` shell
 [root@controller1 openstack]# qemu-img info openstack1-1.disk 
@@ -24,7 +25,12 @@ disk size: 10G
 cluster_size: 65536
 backing file: /data/images/centos65x64.qcow2
 ```
-现在，可以很方便创建多个虚拟机，centos65x64.qcow2为磁盘openstack1-1.disk的后端镜像(`backing file`)，这个centos65x64.qcow2磁盘是制作好的镜像，包含完整的系统和定制的的软件包，新建的磁盘openstack1-1.disk可以使用后端镜像的文件，用户操作虚拟机时，读文件是从后端镜像读，写新文件是写入到新磁盘openstack1-1.disk，关于具体介绍，参考[kvm libvirt qemu实践系列(五)](http://www.isjian.com/virtualization/kvm-libvirt-qemu-5/)中关于`backing file`的介绍
+可以看到`openstack1-1.disk`使用的`backing file`是`/data/images/centos65x64.qcow2`，这个`centos65x64.qcow2`即为模板镜像，其包含完整的系统和自定义的软件包。可以自己制作模板镜像，也可以从网上下载，例如[centos6的模板镜像](http://cloud.centos.org/centos/6/images/)
+其它Linux发行版镜像，请参考http://docs.openstack.org/image-guide/content/ch_obtaining_images.html
+
+由于指定了模板镜像，虚拟机`openstack1-1`启动后，其数据将会与模板镜像`centos65x64.qcow2`完全一致，操作虚拟机时，读文件是从后端镜像读，写新文件是写入到自身磁盘`openstack1-1.disk`，这个特性被称为`copy-on-write`关于更多信息，请参考[kvm libvirt qemu实践系列(五)-虚拟机快照链](http://www.isjian.com/2015/07/kvm-libvirt-qemu-5/)
+
+如下，利用qcow2格式支持`backing file`的特性，我们可以快速创建四台虚拟机，而不用复制其整块磁盘
 
 ``` shell
 qemu-img create -b /data/images/centos65x64.qcow2 -f qcow2 openstack1-1.disk 20G
@@ -32,11 +38,10 @@ qemu-img create -b /data/images/centos65x64.qcow2 -f qcow2 openstack1-2.disk 20G
 qemu-img create -b /data/images/centos65x64.qcow2 -f qcow2 openstack1-3.disk 20G
 qemu-img create -b /data/images/centos65x64.qcow2 -f qcow2 openstack1-4.disk 20G
 ```
-这四台虚拟机都使用同一个后端镜像，但是四台虚拟机互不影响，后端镜像centos65x64.qcow2是只读的，四台虚拟机都从后端镜像读数据，但是写入新数据是写入到各自的新磁盘
 
 ### 虚拟机xml文件
 
-下面步骤来具体解释虚拟机xml文件是如何控制虚拟机运行的，假设你已经有了一个backin file`centos65x64.qcow2`，可以参考[这一篇文章](http://www.isjian.com/virtualization/kvm-libvirt-qemu-2/)来运行一个虚拟机
+下面步骤来具体解释虚拟机xml文件是如何控制虚拟机运行的，假设你已经有了一个`backin file`是`centos65x64.qcow2`，可以参考[这一篇文章](http://www.isjian.com/virtualization/kvm-libvirt-qemu-2/)来运行一个虚拟机
 
 ##### 创建虚拟磁盘
 
@@ -46,7 +51,7 @@ qemu-img create -b /data/images/centos65x64.qcow2 -f qcow2 kvm-1.disk 40G
 
 ##### 一个具体的xml文件
 
-下面是一个标准的xml文件，其虚拟了虚拟机系统运行所必须的硬件环境，注意修改`<disk>...</disk>`，此标签指定了虚拟机所使用的虚拟磁盘
+下面是一个标准的xml文件，其配置了虚拟机系统运行所必须的硬件环境，注意修改`<disk>...</disk>`，此标签指定了虚拟机所使用的磁盘
 
 ``` html
 [root@controller1 openstack]$ cat kvm-1.xml
@@ -137,7 +142,7 @@ virsh edit kvm-1
 
 ##### virsh其它命令
 下面是管理虚拟机常用命令，你可以使用`virsh help`查看所有virsh提供的命令
-<font color="red">virsh管理的对象是domain，即用virsh list看到的虚拟机Name</font>
+<font color="red">virsh管理的对象是domain，即用virsh list看到的虚拟机Name，不是磁盘，因此virsh命令后跟的操作对象一定是某个domain，如下</font>
 
 ``` shell
 #关机
@@ -158,9 +163,9 @@ virsh domiflist kvm-1
 
 ### xml文件解析
 
-- 如果虚拟机已经存在，要修改虚拟配置，首先使用vish list查看要修改哪台虚拟机，然后使用virsh edit name 编译虚拟机xml定义文件，编辑完成退出时，会自动检测xml文件，如果xml文件有语法错误，则系统会自动把此模块移除，因此退出之后，需要再次virsh edit name 进去查看添加修改的模块是否真的存在
+- 如果虚拟机已经存在，要修改虚拟配置，首先使用`vish list`查看要修改哪台虚拟机，然后使用`virsh edit domain` 编辑虚拟机xml文件，编辑完成退出时，libvirt会自动检测xml文件，如果xml文件有语法错误，则会提示修改
 
-- xml文件中有许多配置项不需要手动添加，`edit`退出之后，系统会自动添加这些，比如xml文件中有很多 <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>，编辑时，直接删掉这行，退出系统就会自动生成这行，其它会自动添加的有UUID，虚拟机mac地址等
+- xml文件中有许多配置项不需要手动添加，`edit`退出之后，系统会自动添加这些，比如xml文件中有很多` <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>`，编辑时，直接删掉这行，退出系统就会自动生成这行，其它会自动添加的有UUID，虚拟机mac地址等
 
 - xml配置项解析
 
@@ -246,7 +251,7 @@ virsh domiflist kvm-1
 </domain>
 ```
 
-### 常用xml文件模块
+### 常用xml配置模块
 
 - 使用CDROM
 
@@ -376,13 +381,15 @@ virsh domiflist kvm-1
 
 ### 创建虚拟机快照
 
-kvm创建快照有多种方法，但是最简单的是使用qemu-img命令，这种方式创建的快照内置于虚拟磁盘内，是同一个文件，因此如果创建过多快照，虚拟磁盘会变得很大，迁移不方便
-关于虚拟机创建快照详细信息，请参考本博客其它博文  
+kvm创建快照有多种方法，最简单的是使用qemu-img命令，这种方式创建的快照内置于虚拟磁盘内，是同一个文件，因此如果创建过多快照，虚拟磁盘会变得很大，迁移不方便
+关于虚拟机创建快照详细信息，参考[kvm libvirt qemu实践系列(五)-虚拟机快照链](http://www.isjian.com/2015/07/kvm-libvirt-qemu-5/) 
 
-创建快照，恢复快照前最好关闭虚拟机
+创建快照，恢复快照前最好关闭虚拟机，下面为test-1这台虚拟机创建快照
+
+###### 先查看下磁盘信息
 
 ``` shell
-#如果要为test-1这台创建快照，先查看下磁盘信息
+
 qemu-img info test-1.disk 
 image: test-1.disk
 file format: qcow2
@@ -390,8 +397,11 @@ virtual size: 60G (64424509440 bytes)
 disk size: 6.0G
 cluster_size: 65536
 backing file: /data/images/centos65x64.qcow2
+```
 
-#创建快照
+##### 创建快照
+
+``` shell
 qemu-img snapshot -c test-1-snap1 test-1.disk 
 #上面命令中，-c表示创建快照，test-1-snap1是快照名称，test-1.disk是虚拟磁盘，即为磁盘test-1.disk创建一个名称为test-1-snap1的快照
  
@@ -406,7 +416,11 @@ backing file: /data/images/centos65x64.qcow2
 Snapshot list:
 ID        TAG                 VM SIZE                DATE       VM CLOCK
 1         test-1-snap1              0 2015-07-10 11:50:37   00:00:00.000
- 
+```
+
+##### 快照恢复
+
+``` shell
 #恢复虚拟机到快照test-1-snap1状态
 qemu-img snapshot -a test-1-snap1 test-1.disk
  
@@ -415,6 +429,7 @@ qemu-img snapshot -l test-1.disk
 Snapshot list:
 ID        TAG                 VM SIZE                DATE       VM CLOCK
 1         test-1-snap1              0 2015-07-10 11:50:37   00:00:00.000
+
 #删除test-1.disk虚拟磁盘的test-1-snap1这个快照
 qemu-img snapshot -d test-1-snap1 test-1.disk
 ```
