@@ -1,18 +1,7 @@
 ---
-author: lijian
-comments: true
-date: 2015-08-26 02:57:04+00:00
-layout: post
-link: http://blog.isjian.com/2015/08/spice-kvm-usbredir-qxl-3/
-slug: spice-kvm-usbredir-qxl-3
-title: spice在kvm虚拟化中的应用(三)
-wordpress_id: 364
-categories:
-- 虚拟化
-tags:
-- spice
-- usbredirect
-- 桌面虚拟化
+layout: article
+title: "spice在kvm虚拟机中的应用(三)"
+categories: virtualization
 ---
 
 <blockquote>
