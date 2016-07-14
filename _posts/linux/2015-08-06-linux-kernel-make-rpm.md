@@ -1,19 +1,7 @@
 ---
-author: lijian
-comments: true
-date: 2015-08-06 02:43:16+00:00
-layout: post
-link: http://blog.isjian.com/2015/08/linux-kernel-make-rpm/
-slug: linux-kernel-make-rpm
-title: 编译制作Linux kernel 3.18 rpm包(升级centos6.x虚拟机内核)
-wordpress_id: 350
-categories:
-- 虚拟化
-tags:
-- ceph_fs
-- hotplug
-- kernel
-- virtio
+layout: article
+title: "编译制作Linux kernel 3.18 rpm包(升级centos6.x虚拟机内核)"
+categories: linux
 ---
 
 #### 
