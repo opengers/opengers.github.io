@@ -1,0 +1,15 @@
+- title: "Linux"
+  href: "/linux/"
+
+- title: "虚拟化"
+  href: "/virtualization/"
+
+- title: "Python"
+  href: "/python/"
+
+- title: "自动化运维"
+  href: "/devops/"
+
+- title: "About"
+  href: "/about/"
+
