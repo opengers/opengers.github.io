@@ -1,9 +1,13 @@
 ---
-layout: archive
-title: "Latest Posts - Linux"
-excerpt: "Linux"
+title: Latest Posts - Linux
+author: opengers
+layout: post
 permalink: /linux/
+categories: linux
+format: quote
 ---
+
+
 
 <ul class="listing">
 {% for post in site.categories.linux %}
