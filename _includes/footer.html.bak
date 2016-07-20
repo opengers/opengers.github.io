@@ -48,7 +48,8 @@
 
       <div class="footer-col  footer-col-3">
          <p class="text">
-		www.isjian.com<br /></p> <!-- {{ site.description }} -->
+		www.isjian.com
+	</p>
       </div>
     </div>
 
