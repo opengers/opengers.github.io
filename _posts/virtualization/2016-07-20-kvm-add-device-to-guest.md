@@ -17,6 +17,7 @@ centos6.x, 7.x平台下，cpu core数只能在线增加，不能在线减小
 
 ## 查看虚拟机信息  
 文中使用虚拟机domain为"cos"
+
 ``` html
 <memory unit='KiB'>4194304</memory>
 <currentMemory unit='KiB'>2097152</currentMemory>
@@ -65,7 +66,7 @@ KVM 可以将得到的内存分配到任何需要的地方。
 KM 也可以将内存返还到客户机中。
 更多信息：http://www.cnblogs.com/sammyliu/p/4543657.html
 
-cpu调整(只能增大，不能减小)
+## cpu调整(只能增大，不能减小)
 #cpu增大为4 core
 virsh setvcpus cos 4 --config --live
 #增大为8 core
@@ -73,7 +74,7 @@ virsh setvcpus cos 8 --config --live
 
 同样，能够动态调整的最大VCPU个数也不能超过为虚拟机设置的最大VCPU数量
 
-添加移除硬盘
+## 添加移除硬盘
 #创建新lv磁盘test-data1
 lvcreate -L 20G -n test-data1 CentOS_kvm
 #添加新lv磁盘
@@ -107,7 +108,7 @@ attach-device才是更通用的添加硬件方法，添加硬件的同时可以�
 virsh attach-device centos7.2_6_152_lij disk.xml --persistent
 #persistent保证了永久生效 
 
-添加移除网卡
+## 添加移除网卡
 virsh attach-interface --domain cos --type bridge --source br1 --model virtio --persistent
 #--type bridge: 虚拟机使用桥接模式
 #--source br1 指定使用的网桥
@@ -133,6 +134,6 @@ cat eth2-nic.xml
 #永久生效
 virsh attach-device cos eth2-nic.xml --persistent
 
-在线添加光盘
+## 在线添加光盘
 virsh attach-disk cos /data_lij/iso/CentOS-6.4-x86_64-bin-DVD1.iso vdd 
 
