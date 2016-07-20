@@ -5,8 +5,9 @@ layout: post
 permalink: /linux/automatic-operations-cobbler-system/
 categories: linux
 tags:
-  - Congress
-  - NSF
+  - cobbler
+  - pxe
+  - kickstart
 format: quote
 ---
 

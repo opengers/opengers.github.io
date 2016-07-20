@@ -1,8 +1,17 @@
 ---
-layout: article
 title: "编译制作Linux kernel 3.18 rpm包(升级centos6.x虚拟机内核)"
+author: opengers
+layout: post
+permalink: /linux/linux-kernel-make-rpm/
 categories: linux
+tags:
+  - Congress
+  - NSF
+format: quote
 ---
+
+
+
 
 #### 
 	介绍
