@@ -1,7 +1,7 @@
 ---
 title: Posts List - Linux
 author: opengers
-layout: post
+layout: page
 permalink: /linux/
 categories: linux
 format: quote

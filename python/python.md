@@ -1,7 +1,7 @@
 ---
 title: Posts List - python
 author: opengers
-layout: post
+layout: page
 permalink: /python/
 categories: python
 format: quote

@@ -1,7 +1,7 @@
 ---
 title: Posts List - virtualization
 author: opengers
-layout: post
+layout: page
 permalink: /virtualization/
 categories: virtualization
 format: quote

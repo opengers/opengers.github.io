@@ -1,7 +1,7 @@
 ---
 title: Posts List - devops
 author: opengers
-layout: post
+layout: page
 permalink: /devops/
 categories: devops
 format: quote
