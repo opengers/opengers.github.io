@@ -12,3 +12,7 @@ test
 ping -c www.baidu.com &>/dev/null
 ```
 
+``` shell
+test
+ping -c www.baidu.com &>/dev/null
+```
