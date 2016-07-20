@@ -12,7 +12,7 @@ test
 ping -c www.baidu.com &>/dev/null
 ```
 
-``` shell
+``` python
 test
 ping -c www.baidu.com &>/dev/null
 ```
