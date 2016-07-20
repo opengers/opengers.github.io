@@ -5,14 +5,19 @@ permalink: /about/
 format: quote
 ---
 
-this is a test about page
+![cobbler](/images/photo.jpg)
+
+this is a test
+
+{% include image.html url="/images/photo.jpg" caption="jian" width=300 align="right" %}
 
 ``` shell
 test
 ping -c www.baidu.com &>/dev/null
 ```
 
-``` python
-test
-ping -c www.baidu.com &>/dev/null
-```
+## att
+### first
+#### one
+##### two
+###### three
