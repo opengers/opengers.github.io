@@ -29,7 +29,7 @@ centos6.x, 7.x平台下，cpu core数只能在线增加，不能在线减小
 ```
 为虚拟机分配最多8个core,目前使用2个core，因此下文cpu在线增加最多到8个core
 
-要使在线添加硬件重启后依然生效，需要在命令上加"–config"，"--live或"--persistent"参数，具体使用virsh setmem --help查看  
+要使在线添加硬件重启后依然生效，需要在命令上加"–config"，"--live或"--persistent"参数，具体使用`virsh setmem --help`查看  
 以下操作虚拟机处于运行状态
 
 ## 内存调整
@@ -117,8 +117,6 @@ virsh attach-interface --domain cos --type bridge --source br1 --model virtio --
 virsh domiflist cos
 #根据mac地址移除网卡
 virsh detach-interface cos bridge 52:54:00:a2:29:2a --persistent 
-
- ---------------------------------------------------------------------------------------
 
 上面使用attach-interface方式添加网卡，也可以使用"virsh attach-device"配合xml文件添加硬件，比如需要添加新网卡eth2
 
