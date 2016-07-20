@@ -1,8 +1,16 @@
 ---
-layout: article
-title: "自动化运维之cobbler批量部署服务器系统"
+title: 自动化运维之cobbler批量部署服务器系统
+author: opengers
+layout: post
+permalink: /linux/automatic-operations-cobbler-system/
 categories: linux
+tags:
+  - Congress
+  - NSF
+format: quote
 ---
+
+
 ><small><small>借助cobbler完成服务器系统的批量安装  
 cobbler封装了tftp,pxe,kickstart,dhcp这些技术, 而且不会使网段中多出一台dhcp服务器  
 文中客户端是相对cobbler服务器来说，即为需要安装系统的服务器</small></small>  
