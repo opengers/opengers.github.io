@@ -9,15 +9,22 @@ format: quote
 
 this is a test
 
-{% include image.html url="/images/photo.jpg" caption="jian" width=300 align="left" %}
-
 ``` shell
 test
 ping -c www.baidu.com &>/dev/null
 ```
 
 ## att  
+one
+
 ### first  
+two
+
 #### one  
+three
+
 ##### two  
+second
+
 ###### three  
+last
