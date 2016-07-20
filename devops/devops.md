@@ -1,8 +1,10 @@
 ---
-layout: archive
-title: "Latest Posts - devops"
-excerpt: "devops"
+title: Posts List - devops
+author: opengers
+layout: post
 permalink: /devops/
+categories: devops
+format: quote
 ---
 
 <ul class="listing">

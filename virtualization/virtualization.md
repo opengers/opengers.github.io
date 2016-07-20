@@ -1,8 +1,10 @@
 ---
-layout: archive
-title: "Latest Posts - virtualization"
-excerpt: "virtualization"
+title: Posts List - virtualization
+author: opengers
+layout: post
 permalink: /virtualization/
+categories: virtualization
+format: quote
 ---
 
 <ul class="listing">

@@ -1,5 +1,5 @@
 ---
-title: Latest Posts - Linux
+title: Posts List - Linux
 author: opengers
 layout: post
 permalink: /linux/

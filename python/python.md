@@ -1,9 +1,12 @@
 ---
-layout: archive
-title: "Latest Posts - python"
-excerpt: "python"
+title: Posts List - python
+author: opengers
+layout: post
 permalink: /python/
+categories: python
+format: quote
 ---
+
 
 <ul class="listing">
 {% for post in site.categories.python %}
