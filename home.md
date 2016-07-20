@@ -1,6 +1,8 @@
 ---
 layout: default
 permalink: /home/
+format: quote
+title: About Me
 ---
 
 home page
