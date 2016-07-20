@@ -9,7 +9,7 @@ format: quote
 
 this is a test
 
-{% include image.html url="/images/photo.jpg" caption="jian" width=300 align="right" %}
+{% include image.html url="/images/photo.jpg" caption="jian" width=300 align="left" %}
 
 ``` shell
 test
