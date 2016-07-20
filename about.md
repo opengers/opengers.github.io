@@ -5,31 +5,6 @@ permalink: /about/
 format: quote
 ---
 
-![cobbler](/images/photo.jpg)
+{% include image.html url="/images/snake.gif" caption="joke" width=350 align="center" %}
 
-this is a test
-
-``` shell
 test
-ping -c www.baidu.com &>/dev/null
-```
-
-# begin
-begin
-
-## att  
-one
-
---------
-
-### first  
-two
-
-#### one  
-three
-
-##### two  
-second
-
-###### three  
-last
