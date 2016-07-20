@@ -1,9 +1,10 @@
 ---
-layout: default
+layout: page
+title: Home Page
 permalink: /home/
 format: quote
-title: About Me
 ---
+
 
 home page
 
