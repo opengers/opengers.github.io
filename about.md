@@ -2,10 +2,9 @@
 layout: about
 title: About Me
 permalink: /about/
-format: quote
 ---
 
-{% include image.html url="/images/snake.gif" width=300 align="right" %}
+{% include image.html url="/images/photo.jpg" width=300 align="right" %}
 
 ## 先介绍博客历程
  
