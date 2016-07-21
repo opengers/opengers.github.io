@@ -1,7 +1,14 @@
 ---
-layout: article
 title: "kvm libvirt qemu实践系列(一)-kvm介绍"
+author: opengers
+layout: post
+permalink: /virtualization/kvm-libvirt-qemu-1/
 categories: virtualization
+tags:
+  - virtualization
+  - kvm
+  - libvirt
+format: quote
 ---
 
 >- 文中使用centos6.5系统, Intel CPU, Linux 2.6.32内核  

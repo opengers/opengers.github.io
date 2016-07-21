@@ -1,7 +1,14 @@
 ---
-layout: article
 title: "kvm libvirt qemu实践系列(四)-kvm虚拟机在线调整配置"
+author: opengers
+layout: post
+permalink: /virtualization/kvm-libvirt-qemu-4/
 categories: virtualization
+tags:
+  - virtualization
+  - kvm
+  - libvirt
+format: quote
 ---
 
 >- centos5.x版本不支持动态调整内存，CPU，以下是在centos6.x上测试

@@ -1,7 +1,14 @@
 ---
-layout: article
 title: "kvm libvirt qemu实践系列(五)-虚拟机快照链"
+author: opengers
+layout: post
+permalink: /virtualization/kvm-libvirt-qemu-5/
 categories: virtualization
+tags:
+  - virtualization
+  - kvm
+  - libvirt
+format: quote
 ---
 
 1. 关于kvm，qemu的介绍，可以参考这篇文章：[kvm libvirt qemu实践系列(一)](http://blog.isjian.com/2015/06/kvm-libvirt-qemu-1/)

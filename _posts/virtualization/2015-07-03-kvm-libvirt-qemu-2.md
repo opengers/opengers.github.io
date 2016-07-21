@@ -1,7 +1,14 @@
 ---
-layout: article
 title: "kvm libvirt qemu实践系列(二)-虚拟机管理"
+author: opengers
+layout: post
+permalink: /virtualization/kvm-libvirt-qemu-2/
 categories: virtualization
+tags:
+  - virtualization
+  - kvm
+  - libvirt
+format: quote
 ---
 
 >- 在上一篇文章中[kvm libvirt qemu实践系列(一)](http://www.isjian.com/virtualization/kvm-libvirt-qemu-1/)，介绍了kvm，libvirt，以及qemu关系，本篇文章中则介绍如何创建，以及管理虚拟机  

@@ -1,8 +1,17 @@
 ---
-layout: article
 title: "spice在kvm虚拟机中的应用(二)"
+author: opengers
+layout: post
+permalink: /virtualization/kvm-usbredir-qxl-2/
 categories: virtualization
+tags:
+  - virtualization
+  - kvm
+  - usbredir
+  - qxl
+format: quote
 ---
+
 
 > <small>spice作为远程连接工具,可以支持远程桌面显示,鼠标拖拽,自适应分辨率  
 spice应用在桌面云中,主要是连接windows桌面,其支持的USB映射可以使在终端插入的U盘映射到云端的windows系统中,其效果就相当于在远端的windows系统上插入U盘    

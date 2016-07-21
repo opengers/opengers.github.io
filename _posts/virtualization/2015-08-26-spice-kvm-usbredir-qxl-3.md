@@ -1,7 +1,15 @@
 ---
-layout: article
 title: "spice在kvm虚拟机中的应用(三)"
+author: opengers
+layout: post
+permalink: /virtualization/kvm-usbredir-qxl-3/
 categories: virtualization
+tags:
+  - virtualization
+  - kvm
+  - usbredir
+  - qxl
+format: quote
 ---
 
 <blockquote>

@@ -1,7 +1,14 @@
 ---
-layout: article
 title: "kvm libvirt qemu实践系列(三)-虚拟机xml文件使用"
+author: opengers
+layout: post
+permalink: /virtualization/kvm-libvirt-qemu-3/
 categories: virtualization
+tags:
+  - virtualization
+  - kvm
+  - libvirt
+format: quote
 ---
 
 >- 本篇文章介绍通过xml文件来管理虚拟机
