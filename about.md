@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: about
 title: About Me
 permalink: /about/
 format: quote
