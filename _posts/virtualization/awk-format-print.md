@@ -1,15 +1,18 @@
 ---
-author: lijian
-comments: true
-date: 2016-02-27 07:18:56+00:00
-layout: post
-link: http://blog.isjian.com/2016/02/%e4%bd%bf%e7%94%a8awk%e6%a0%bc%e5%bc%8f%e5%8c%96%e8%be%93%e5%87%ba%e6%96%87%e6%9c%ac/
-slug: '%e4%bd%bf%e7%94%a8awk%e6%a0%bc%e5%bc%8f%e5%8c%96%e8%be%93%e5%87%ba%e6%96%87%e6%9c%ac'
 title: 使用awk格式化输出文本
-wordpress_id: 510
-categories:
-- Linux
+author: opengers
+layout: post
+permalink: /linux/awk-format-print/
+categories: linux
+tags:
+  - awk
+  - format
+  - print
+format: quote
 ---
+
+
+
 
 <blockquote>注意：本文并不是一篇awk入门文章，而是偏重实例讲解
 
