@@ -1,15 +1,17 @@
 ---
-author: lijian
-comments: true
-date: 2015-11-03 09:35:30+00:00
-layout: post
-link: http://blog.isjian.com/2015/11/awstats-nginx-log/
-slug: awstats-nginx-log
 title: 使用awstats分析nginx日志
-wordpress_id: 431
-categories:
-- Linux
+author: opengers
+layout: post
+permalink: /linux/awstats-nginx-log/
+categories: linux
+tags:
+  - awstats
+  - nginx
+  - log
+format: quote
 ---
+
+
 
 ## 1.awstats介绍
 

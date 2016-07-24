@@ -1,19 +1,16 @@
 ---
-author: lijian
-comments: true
-date: 2015-09-25 02:49:09+00:00
-layout: post
-link: http://blog.isjian.com/2015/09/gitlab7_update_to_8/
-slug: gitlab7_update_to_8
 title: gitlab(7.9)升级到8.0.1
-wordpress_id: 396
-categories:
-- 小微企业IT解决方案
+author: opengers
+layout: post
+permalink: /linux/gitlab7-update-to-8/
+categories: linux
 tags:
-- git
-- gitlab
-- ruby
+  - gitlab
+  - update
+format: quote
 ---
+
+
 
 ## 1.gitlab8.0更新说明
 
