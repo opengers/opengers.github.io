@@ -44,9 +44,10 @@ dracut -f /boot/initramfs-3.18.3-1.el6.elrepo.x86_64.img 3.18.3-1.el6.elrepo.x86
 
 ### 问题3. 挂载ceph文件系统  
 2.6.xx内核是不支持ceph文件系统挂载,Linux kernel从3.10版本开始支持ceph文件系统挂载,假如我们的模板镜像需要挂载ceph文件系统,那么也需要确保内核包含cephfs支持相关模块  
-下面是解决过程
+下面是解决过程  
+
 ### 制作centos6.5(3.18 kernel)模板镜像  
-**准备一台虚拟机** 
+**准备一台虚拟机**  
 首先需要有一个centos6.5(2.6.xx kernel)虚拟机,为了使编译出来的内核rpm包适应openstack虚拟机环境,最好使用一台KVM虚拟机,以下步骤都在此虚拟机环境中操作,我们需要在此环境中编译制作一个3.18 kernel的rpm包
 进入虚拟机, 为了解决[问题1],需要修改文件`/usr/share/dracut/modules.d/90kernel-modules/installkernel`
 
