@@ -12,7 +12,7 @@ format: quote
 ---
 
 ><small>openstack平台需要使用各种Linux发行版镜像,其制作方法主要有两种,要么是基于各大Linux发行版ISO光盘手动制作,要么是使用官方提供的制作好镜像进行修改  
-之前制作的openstack centos6.5模板镜像,其内核为2.6.xx,现需要升级其内核到3.18.x,使用[这里](http://mirrors.neterra.net/elrepo/kernel/el6/x86_64/RPMS/,)提供的rpm包kernel-ml-3.18.3-1.el6.elrepo.x86_64.rpm升级内核遇到了下面几个问题,下面谈谈我的解决过程</small>
+之前制作的openstack centos6.5模板镜像,其内核为2.6.xx,现需要升级其内核到3.18.x,使用[这里](http://mirrors.neterra.net/elrepo/kernel/el6/x86_64/RPMS/,)提供的rpm包kernel-ml-3.18.3-1.el6.elrepo.x86_64.rpm升级内核遇到了下面几个问题</small>
 
 ### 问题1.virtio驱动加载问题
 原有的一台kvm虚拟机是2.6.xx内核，使用上面提到的rpm包升级虚拟机kernel之后,重启虚拟机出现错误:  
@@ -21,9 +21,12 @@ format: quote
 FATAL: Module scsi_wait_scan not found.
 ```  
 
-再进一步测试,就会发现,在物理机上升级内核,一切ok!
+再进一步测试,就会发现,在物理机上升级内核,一切ok!  
 原因是KVM虚拟机使用了`virtio_blk.ko`这个半虚拟化驱动模块来使虚拟机支持scsi设备,而物理机升级时用不到virtio驱动,自然不会有问题,在kernel3.13版本以前,可以使用`blk_init_queue`这个函数加载`virtio_blk.ko`模块,而在kernel3.13版本之后,这个函数名变为`blk_mq_init_queue`, 此函数名位于`/usr/share/dracut/modules.d/90kernel-modules/installkernel`文件中,可以看到,centos6.5系统中的函数名为`blk_init_queue` 
-![](http://images.cnitblog.com/blog2015/673203/201504/291602590059077.png)   centos6系统中使用Dracut这个程序生成内核的`initramfs.img`, 而Dracut程序使用的是旧函数`blk_init_queue`(installkernel文件中),因此升级3.18.x内核后,Dracut程序生成的`initramfs.img`无法包含`virtio_blk.ko`模块,造成虚拟机启动报错, 因此**解决问题的关键在于要确保`virtio_blk.ko`能够被加载** 如果我们单纯是需要解决升级内核后启动失败问题,那么就没必要编译内核rpm包,直接下载文章开始提到的内核rpm包,然后使用下面的步骤解决启动问题
+
+![](http://images.cnitblog.com/blog2015/673203/201504/291602590059077.png)  
+
+centos6系统中使用Dracut这个程序生成内核的`initramfs.img`, 而Dracut程序使用的是旧函数`blk_init_queue`(installkernel文件中),因此升级3.18.x内核后,Dracut程序生成的`initramfs.img`无法包含`virtio_blk.ko`模块,造成虚拟机启动报错, 因此**解决问题的关键在于要确保`virtio_blk.ko`能够被加载** 如果我们单纯是需要解决升级内核后启动失败问题,那么就没必要编译内核rpm包,直接下载文章开始提到的内核rpm包,然后使用下面的步骤解决启动问题
 
 ``` shell    
 #安装rpm包
