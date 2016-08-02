@@ -11,10 +11,10 @@ tags:
 format: quote
 ---
 
->openstack平台需要使用各种Linux发行版镜像,其制作方法主要有两种,要么是基于各大Linux发行版ISO光盘手动制作,要么是使用官方提供的制作好镜像进行修改  
-之前制作的openstack centos6.5模板镜像,其内核为2.6.xx,现需要升级其内核到3.18.x,使用[这里](http://mirrors.neterra.net/elrepo/kernel/el6/x86_64/RPMS/,)提供的rpm包kernel-ml-3.18.3-1.el6.elrepo.x86_64.rpm升级内核遇到了下面几个问题,下面谈谈我的解决过程
+><small>openstack平台需要使用各种Linux发行版镜像,其制作方法主要有两种,要么是基于各大Linux发行版ISO光盘手动制作,要么是使用官方提供的制作好镜像进行修改  
+之前制作的openstack centos6.5模板镜像,其内核为2.6.xx,现需要升级其内核到3.18.x,使用[这里](http://mirrors.neterra.net/elrepo/kernel/el6/x86_64/RPMS/,)提供的rpm包kernel-ml-3.18.3-1.el6.elrepo.x86_64.rpm升级内核遇到了下面几个问题,下面谈谈我的解决过程</small>
 
-#####问题1.virtio驱动加载问题
+##### 问题1.virtio驱动加载问题
 原有的一台kvm虚拟机是2.6.xx内核，使用上面提到的rpm包升级虚拟机kernel之后,重启虚拟机出现错误:
 
 ``` shell
@@ -39,15 +39,14 @@ dracut -f /boot/initramfs-3.18.3-1.el6.elrepo.x86_64.img 3.18.3-1.el6.elrepo.x86
 
 **以上步骤可以解决虚拟机启动问题,如果你不需要制作centos6.5(3.18.x kernel)模板镜像,那么就不需要进行后续步骤**
 
-#####问题2.云硬盘热拔插问题  
+##### 问题2.云硬盘热拔插问题  
 解决了虚拟机启动问题,如果需要制作centos6.5(3.18kernel)模板镜像,那上面的方法是不行的,在openstack中使用此模板启动虚拟机后,其云硬盘的动态加载、移除功能无法使用,centos6.5(2.6.xx kernel)是可以动态加载云硬盘的, 检查3.18版本内核的配置文件`/boot/config-3.18.3-1.el6.elrepo.x86_64`(安装完kernel rpm包,就会生成此文件),其中并没有热拔插功能支持模块的配置项
 
-#####问题3. 挂载ceph文件系统  
+##### 问题3. 挂载ceph文件系统  
 2.6.xx内核是不支持ceph文件系统挂载,Linux kernel从3.10版本开始支持ceph文件系统挂载,假如我们的模板镜像需要挂载ceph文件系统,那么也需要确保内核包含cephfs支持相关模块
 
-#####制作centos6.5(3.18 kernel)模板镜像
-
-- 准备一台虚拟机  
+##### 制作centos6.5(3.18 kernel)模板镜像  
+**准备一台虚拟机** 
 首先需要有一个centos6.5(2.6.xx kernel)虚拟机,为了使编译出来的内核rpm包适应openstack虚拟机环境,最好使用一台KVM虚拟机,以下步骤都在此虚拟机环境中操作,我们需要在此环境中编译制作一个3.18 kernel的rpm包
 进入虚拟机, 为了解决[问题1],需要修改文件`/usr/share/dracut/modules.d/90kernel-modules/installkernel`
 
@@ -56,7 +55,7 @@ vim /usr/share/dracut/modules.d/90kernel-modules/installkernel
 #第四行中的"blk_init_queue" 替换为"blk_mq_init_queue"
 ```
 
-- 下载Linux内核源码(3.18)
+**下载Linux内核源码(3.18)**  
 
 ``` shell   
 #安装编译环境
@@ -69,7 +68,7 @@ tar -xf linux-3.18.12.tar.xz -C /usr/src/
 cd /usr/src/linux-3.18.12/
 ```
 
-- 添加编译模块  
+**添加编译模块**  
 我们在系统原有的内核(2.6.xx)配置文件的基础上建立新的编译选项，所以可以复制系统现有的配置文件`/boot/config-2.6.32-431.23.3.el6.x86_64`到源码目录`/usr/src/linux-3.18.12`下,再添加我们需要的编译参数来编译3.18.x内核
 
 ``` shell 
@@ -89,7 +88,7 @@ CONFIG_CEPH_FSCACHE=y
 CONFIG_CEPH_FS_POSIX_ACL=y
 ```
 
-- 制作内核rpm包  
+**制作内核rpm包**  
 接下来需要根据上一步骤配置的.config文件编译kernel,生成rpm包
 
 ``` shell 
@@ -100,7 +99,7 @@ make rpm
 #生成的内核rpm包目录位于/root/rpmbuild/RPMS/x86_64下
 ```
 
-- 修改grub.conf
+**修改grub.conf**  
 
 ``` shell   
 default=0    #default为新内核
@@ -112,4 +111,4 @@ title Red Hat Enterprise Linux Server (3.18.3-1.el6.elrepo.x86_64)
         kernel /vmlinuz-3.18.3-1.el6.elrepo.x86_64 ...
 ```
 
-- 重启系统
+**重启系统**
