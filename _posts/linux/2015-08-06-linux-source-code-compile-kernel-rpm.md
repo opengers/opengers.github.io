@@ -11,7 +11,6 @@ tags:
 format: quote
 ---
 
-#####介绍
 >openstack平台需要使用各种Linux发行版镜像,其制作方法主要有两种,要么是基于各大Linux发行版ISO光盘手动制作,要么是使用官方提供的制作好镜像进行修改  
 之前制作的openstack centos6.5模板镜像,其内核为2.6.xx,现需要升级其内核到3.18.x,使用[这里](http://mirrors.neterra.net/elrepo/kernel/el6/x86_64/RPMS/,)提供的rpm包kernel-ml-3.18.3-1.el6.elrepo.x86_64.rpm升级内核遇到了下面几个问题,下面谈谈我的解决过程
 
