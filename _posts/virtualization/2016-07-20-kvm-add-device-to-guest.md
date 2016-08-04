@@ -11,9 +11,9 @@ tags:
 format: quote
 ---
 
-> centos5.x版本不支持在线调整内存，cpu，以下在centos6.x,7.x测试  
+><small>centos5.x版本不支持在线调整内存，cpu，以下在centos6.x,7.x测试  
 centos6.x, 7.x平台下，cpu core数只能在线增加，不能在线减小  
-在线调整配置应该保证虚拟机重启之后依然生效  
+在线调整配置应该保证虚拟机重启之后依然生效</small>  
 
 ## 查看虚拟机信息  
 文中使用虚拟机domain为"cos"
@@ -21,7 +21,7 @@ centos6.x, 7.x平台下，cpu core数只能在线增加，不能在线减小
 ``` html
 <memory unit='KiB'>4194304</memory>
 <currentMemory unit='KiB'>2097152</currentMemory>
-```
+```  
 为此虚拟机最大分配4G内存,目前使用2G，因此下文内存最大可以调整4G，否则需要关闭虚拟机，调整该最大分配值
 
 ``` html
@@ -33,17 +33,18 @@ centos6.x, 7.x平台下，cpu core数只能在线增加，不能在线减小
 以下操作虚拟机处于运行状态
 
 ## 内存调整
-#临时调整为4G
-virsh setmem cos 4G
 
-#调整的同时更改xml文件，永久调整
-virsh setmem cos 2G --config --live
-#--config: 设置的同时更改虚拟机xml文件，这样就可以保证虚拟机重启后仍然生效
-#–live: 在线调整
-#其它添加硬件的命令同样可以使用上面两个参数
+**临时调整为4G**
+	virsh setmem cos 4G
 
-#减小为2G
-virsh setmem cos 2G --config --live
+**调整的同时更改xml文件，永久调整**
+	virsh setmem cos 2G --config --live
+	#--config: 设置的同时更改虚拟机xml文件，这样就可以保证虚拟机重启后仍然生效
+	#–live: 在线调整
+	#其它添加硬件的命令同样可以使用上面两个参数
+
+**减小为2G**
+	virsh setmem cos 2G --config --live
 
 能够在线调整的最大内存不能超过为虚拟机分配的最大内存（上面xml文件中设置`<memory unit='KiB'>4194304</memory>`最大为4G）
 
