@@ -35,9 +35,11 @@ centos6.x, 7.x平台下，cpu core数只能在线增加，不能在线减小
 ## 内存调整
 
 **临时调整为4G**
+
 	virsh setmem cos 4G
 
 **调整的同时更改xml文件，永久调整**
+
 	virsh setmem cos 2G --config --live
 	#--config: 设置的同时更改虚拟机xml文件，这样就可以保证虚拟机重启后仍然生效
 	#–live: 在线调整
