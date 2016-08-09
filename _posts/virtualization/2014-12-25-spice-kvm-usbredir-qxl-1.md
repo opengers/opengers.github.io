@@ -12,9 +12,9 @@ tags:
 format: quote
 ---
 
-> <small>本文测试服务器为centos6.4
+> <small>本文测试服务器为centos6.4  
 本系类其它文章    
-[spice在kvm虚拟机中的应用(二)](http://www.isjian.com/virtualization/spice-kvm-usbredir-qxl-2/)
+[spice在kvm虚拟机中的应用(二)](http://www.isjian.com/virtualization/spice-kvm-usbredir-qxl-2/)  
 [spice在kvm虚拟化中的应用(三)](http://www.isjian.com/virtualization/spice-kvm-usbredir-qxl-3/)</small>
 
 ### spice介绍
