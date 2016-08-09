@@ -22,14 +22,7 @@ cobbler封装了tftp, pxe, kickstart, dhcp这些技术, 而且不会使网段中
 **关于KickStart**  
 KickStart是RedHat提供的一种无人值守安装系统的方式。KickStart的工作原理是通过记录安装过程中所需人工干预填写的各种参数，然后生成一个名为ks.cfg的文件；其后，只要提供给引导程序此ks文件位置，引导程序便能够完成后续的安装
 
-## 关于cobbler  
-
-### 关于cobbler  
-
-#### 关于cobbler  
-
-##### 关于cobbler  
-
+**关于cobbler**  
 相比早期的tftp+dhcp+kickstart方式，cobbler配置简单，可以管理多系统的安装，而且可以通过指定客户端mac地址的方式来确保只有指定的某些服务器可以从dhcp服务器获取IP，这样不会干扰网络中正常的dhcp服务器
 我们由一批DELL服务器上架的流程来看cobbler所处的地位
 
@@ -40,17 +33,15 @@ KickStart是RedHat提供的一种无人值守安装系统的方式。KickStart�
 1. 根据上面获取的MAC地址，cobbler服务器添加部署任务
 1. 服务器从指定网卡启动，cobbler中的DHCP服务器验证其MAC地址，通过后，运行后续自动化部署步骤
 
-## cobbler安装配置
-
-**安装软件包**  
+## cobbler安装配置  
+**安装软件包**    
+httpd 依赖 mod_wsgi，tftp 需要 syslinux
 
 ``` shell
 yum install cobbler dhcp xinetd tftp-server createrepo pykickstart cman libwrap mod_wsgi
-#httpd 依赖 mod_wsgi
-#tftp 需要 syslinux
 ```
 
-**启动相关服务**  
+**启动服务**  
 
 ``` shell
 service httpd start
@@ -58,26 +49,26 @@ service xinetd start
 service cobblerd start
 ```
 
-------
-
 **cobbler check**   
-check命令可以检查cobbler配置是否正确,根据提示修改配置  
+check命令可以检查cobbler配置是否正确,根据提示修改配置
 
 ``` shell
 cobbler check
 #debmirror package is not installed,  这个是针对debian类系统的，根据需要安装
 ```
 
-**设定server,next-server**  
-设定`/etc/cobbler/settings`中的 `server` 和 `next_server`  
+**设定server,next-server**    
+我们需要设置`/etc/cobbler/settings`中的 `server` 和 `next_server`    
+
 `server`为客户端指定安装镜像源IP，cobbler中使用httpd为客户端提供http访问，这里就是cobbler服务器地址  
 `next_server`为客户端指定TFTP服务器，用以获取引导所需内核文件, 我们是使用cobbler来管理tftp，dhcp，httpd等，因此这里还是cobbler服务器地址  
-cobbler服务器可能有多个网卡接口，用以连接不通网段，此时， `server`, `next_server`应为连接客户端那个网段的网卡IP
+
+cobbler服务器可能有多个网卡接口，用以连接不通网段，此时, `server`, `next_server`应为连接客户端那个网段的网卡IP
 
 **使用Cobbler接管dhcp, tftp**    
 cobbler之前的pxe安装方式需要手动配置`dhcp，tftp`，但是在cobbler中，其接管了dhcp，tftp服务，因此我们不再需要直接去配置`dhcp，tftp`, 只需要更改`/etc/cobbler`下的`dhcp.template`，`tftpd.template`，然后执行`cobbler sync`，cobbler会根据我们配置的这两个`template`文件去配置`dhcp,tftp`服务
 
-首先允许cobbler接管dhcp，tftp
+* 首先允许cobbler接管dhcp，tftp
 
 ``` shell
 sed -i 's/manage_dhcp: 0/manage_dhcp: 1/g' /etc/cobbler/settings
@@ -85,10 +76,10 @@ sed -i 's/manage_tftpd: 0/manage_tftpd: 1/g' /etc/cobbler/settings
 #确保`manage_dhcp`, `manage_tftpd`参数为`1`
 ```
 
-启用tftp  
+* 启用tftp  
 修改`/etc/cobbler/tftpd.template`文件,将`disable = yes` 改成 `disable = no`
 
-配置dhcp    
+* 配置dhcp    
 下面我们需要修改`/etc/cobbler/dhcp.template`文件
 dhcp配置中有一个`range dynamic-boot`参数，它指定了dhcp服务器分配IP的范围，注意不要启动此参数，否则网段内会多出一台dhcp服务器  
 `authoritative`参数也不需要  
@@ -145,15 +136,16 @@ service dhcpd restart
 #先执行`cobbler sync`同步配置，然后重启dhcp,tftp
 ```
 
+cobbler配置完成了，可以再使用`cobbler sync`检查所有配置是否正确
+
 ## cobbler安装系统
 
 如下，需要安装两台不同用途的客户端系统，准备安装的系统为centos7
 
-|name  | ip  | mac地址  | 用途 |
-| --------- | -------- | -------- | -------- |
-|client1  | 192.168.6.170  | d4:a2:52:b9:d1:25  | kvm |
-|client2  | 192.168.6.171  | d4:a2:52:b9:d2:26  | nginx |
-
+name  | ip  | mac地址  | 用途 
+--------- | -------- | -------- | -------- 
+client1  | 192.168.6.170  | d4:a2:52:b9:d1:25  | kvm  
+client2  | 192.168.6.171  | d4:a2:52:b9:d2:26  | nginx  
 
 ``` shell
 #挂载CentOS7.2镜像到/mnt目录,运行如下命令导入镜像
