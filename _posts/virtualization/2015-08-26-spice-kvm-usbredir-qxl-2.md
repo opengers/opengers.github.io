@@ -2,7 +2,7 @@
 title: "spice在kvm虚拟机中的应用(二)"
 author: opengers
 layout: post
-permalink: /virtualization/kvm-usbredir-qxl-2/
+permalink: /virtualization/spice-kvm-usbredir-qxl-2/
 categories: virtualization
 tags:
   - virtualization
