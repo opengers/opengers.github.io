@@ -20,10 +20,13 @@ cobbler封装了tftp, pxe, kickstart, dhcp这些技术, 而且不会使网段中
 
 现代服务器的网卡(NIC)一般都支持PXE(Pre-boot Execution Environment)启动。即常说的网络启动。PXE协议分为 client 和 server 端，PXE client 在网卡的 ROM 中，当计算机启动时，BIOS 把 PXE client 调入内存执由 PXE client将放置在远端的文件通过网络下载到本地运行。运行PXE协议需要设置DHCP服务器和TFTP服务器。DHCP服务器用来给PXE client(将要安装系统的主机)分配一个IP地址。PXE Client 通过 TFTP 协议到 TFTP Server 上下载所需的文件(PXEclient的ROM中，已经存在了TFTP Client)。
 
-**关于KickStart**
+**关于KickStart**  
 KickStart是RedHat提供的一种无人值守安装系统的方式。KickStart的工作原理是通过记录安装过程中所需人工干预填写的各种参数，然后生成一个名为ks.cfg的文件；其后，只要提供给引导程序此ks文件位置，引导程序便能够完成后续的安装
 
-**关于cobbler**
+## 关于cobbler  
+### 关于cobbler  
+#### 关于cobbler  
+##### 关于cobbler
 相比早期的tftp+dhcp+kickstart方式，cobbler配置简单，可以管理多系统的安装，而且可以通过指定客户端mac地址的方式来确保只有指定的某些服务器可以从dhcp服务器获取IP，这样不会干扰网络中正常的dhcp服务器
 我们由一批DELL服务器上架的流程来看cobbler所处的地位
 
