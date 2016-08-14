@@ -40,8 +40,9 @@ shell扩展有以下几种，并按以下顺序处理
 
 以上扩展中，只有brace expansion，word splitting，filename expansion 三种扩展可以改变token个数，其它扩展只是把一个token改为另一个token，唯一例外的token是`$@`，`${name[@]}`  
 
-## 花括号扩展(brace expansion)  
+### 花括号扩展(brace expansion)  
 花括号扩展是首先被执行的扩展，格式有两种，字符串输出，或序列输出  
+
 **字符串输出**  
  
 	prestring{str1,str2,...}poststring
