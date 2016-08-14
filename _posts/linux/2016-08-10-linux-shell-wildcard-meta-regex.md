@@ -10,16 +10,15 @@ tags:
 format: quote
 ---
 
-><small>我们在命令行下键入一条命令，shell内部会对此命令字符串进行一系列处理，然后才真正开始执行此命令，这些处理称作shell扩展(Expansions)   
+><small>对于一条shell命令，shell内部会对此命令字符串进行一系列处理，然后才真正开始执行此命令，这些处理称作shell扩展(Expansions)   
 本文基于centos7.2，bash版本4.2</small>
 
 ##  shell扩展    
 每当我们在shell下键入一条命令，并按下`Enter`，shell扩展(Expansions)会对我们键入的命令字符串进行一系列处理，然后才执行此命令。shell扩展是shell内建的处理程序，它发生在命令执行之前，因此与我们键入的命令无关   
 
-shell把整条命令按功能分割为多个独立单元，每个独立单元作为整体对待，叫做一个word，也成为token。比如`cat /etc/passwd | grep "root"`中有五个token，分别是`cat`、`/etc/passwd`、`|`、`grep`、`"root"`  
+shell把整条命令按功能分割为多个独立单元，每个独立单元作为整体对待，叫做一个word，也称为token。比如`cat /etc/passwd | grep "root"`中有五个token，分别是`cat`、`/etc/passwd`、`|`、`grep`、`"root"`  
 
-我们在命令行键入一条命令，经过shell扩展处理，然后才交给具体的命令去执行，下面我们用一条简单例子演示一下    
-
+我们在命令行键入一条命令，经过shell扩展处理，然后才交给具体的命令去执行，下面我们用一条简单例子演示一下   
 ``` shell
 ls *.sh
 1.sh  test.sh  b.sh
@@ -40,7 +39,7 @@ shell扩展有以下几种，并按以下顺序处理
 以上扩展中，只有brace expansion，word splitting，filename expansion 三种扩展可以改变token个数，其它扩展只是把一个token改为另一个token，唯一例外的token是`$@`，`${name[@]}`  
 
 ## brace expansion 花括号扩展  
-花括号扩展格式有两种，第一种格式    
+花括号扩展是首先被执行的扩展，格式有两种，第一种格式    
 	prestring{str1,str2,...}poststring
 这种形式会从左至右输出花括号中的所有字符串`str1，str2，...strn`。prestring，poststring是可以添加到花括号中每个str上面的字符串，prestring被添加在每个str的前面，poststring被添加在每个str的后面，如下
 	echo Front-{A,B,C}-Back
