@@ -2,11 +2,11 @@
 title: shell中的扩展(Expansions)
 author: opengers
 layout: post
-permalink: /linux/linux-shell-Expansions/
+permalink: /linux/linux-shell-brace-parameter-command-pathname-expansion/
 categories: linux
 tags:
   - shell
-  - Expansions
+  - expansions
 format: quote
 ---
 
@@ -130,11 +130,9 @@ $a $b $c $d $e $f $g $h $i $j $k $l $m $n $o $p $q $r $s $t $u $v $w $x $y $z
 #快速创建多个目录
 mkdir /usr/local/src/bash/{old,new,dist,bugs}
 
-#目录嵌套
-
 #生成2个宽度的数字序列
-echo {01..99}
-01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99
+echo {01..20}
+01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
 
 #生成倒序的英文字母
 echo {z..a}
@@ -144,7 +142,7 @@ z y x w v u t s r q p o n m l k j i h g f e d c b a
 echo {A{1,2},B{3,4}}
 A1 A2 B3 B4
 
-[root@lijtools-161 tmp]# echo {2007..2009}-0{a,b}
+echo {2007..2009}-0{a,b}
 2007-0a 2007-0b 2008-0a 2008-0b 2009-0a 2009-0b
 ```
 
