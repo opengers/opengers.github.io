@@ -16,7 +16,7 @@ format: quote
 ###  shell扩展介绍  
 每当我们在shell下键入一条命令，并按下`Enter`，shell扩展(Expansions)会对我们键入的命令字符串进行一系列处理，然后才执行此命令。shell扩展是shell内建的处理程序，它发生在命令执行之前，因此与我们键入的命令无关   
 
-shell把整条命令按功能分割为多个独立单元，每个独立单元作为整体对待，叫做一个word，也称为token。比如`cat /etc/passwd | grep "root"`中有五个token，分别是`cat`、`/etc/passwd`、`|`、`grep`、`"root"`  
+shell把整条命令按功能分割为多个独立单元，每个独立单元作为整体对待，叫做一个word，也称为token。比如`cat /etc/passwd | grep "root"`中有五个token，分别是`cat`、`/etc/passwd`、`|`、`grep`、`"root"` ，本文使用token这一名称
 
 我们在命令行键入一条命令，经过shell扩展处理，然后才交给具体的命令去执行，下面我们用一条简单例子演示一下  
  
@@ -146,7 +146,34 @@ echo {2007..2009}-0{a,b}
 2007-0a 2007-0b 2008-0a 2008-0b 2009-0a 2009-0b
 ```
 
-### 波浪号扩展(Tilde Expansion)
+### 波浪号扩展(Tilde Expansion)  
+波浪号扩展我们最熟悉的用法就是`cd ~`，切换回当前用户家目录，下面来看看它是怎么发生的  
+
+首先我们需要知道什么样的字符串会被波浪号扩展(Tilde Expansion)处理，若一个token(word)以波浪号`~`开始，并且这个`~`没有带引号，那么从这个`~`开始直到一个不带引号的斜杠`/`之间的字符串才会被波浪号扩展(Tilde Expansion)处理，这个字符串被称作`tilde-prefix`，我们标记为`~string`，处理依据如下
+
+* string字符串中带有引号，不会进行扩展
+* string不为空，并且string这个用户不名存在，不会进行扩展
+* string不为空，并且string这个用户名存在，`~`替换为此用户名家目录
+* string为空，`~`被替换为`#HOME`这个变量指定的用户的家目录
+* string为空，`$HOME`这个变量也为空，`~`被替换为当前运行此shell的用户的家目录
+
+`~`用法很简单，若上面不理解，敲几遍命令就明白了
+
+	#存在admin这个用户，当前以root身份运行
+	#当string为空
+	echo ~
+	/root
+	#当string为admin
+	echo ~admin
+	/home/admin
+	#当string为adminaa，用户不存在，不扩展
+	echo ~adminaa
+	~adminaa
+	#string为admin'abc'，有引号，不处理
+	echo ~'admin'
+	~admin
+	echo ~admin'abc'
+	~adminabc
 
 
 
