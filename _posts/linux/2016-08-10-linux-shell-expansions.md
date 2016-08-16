@@ -157,31 +157,23 @@ echo {2007..2009}-0{a,b}
 * string为空，`~`被替换为`#HOME`这个变量指定的用户的家目录
 * string为空，`$HOME`这个变量也为空，`~`被替换为当前运行此shell的用户的家目录
 
-`~`用法很简单，若上面不理解，敲几遍命令就明白了
+`~`用法很简单，上面文字表述无感的话，敲几遍命令就明白了
 
-	#存在admin这个用户，当前以root身份运行
-	#当string为空
-	echo ~
-	/root
-	#当string为admin
-	echo ~admin
-	/home/admin
-	#当string为adminaa，用户不存在，不扩展
-	echo ~adminaa
-	~adminaa
-	#string为admin'abc'，有引号，不处理
-	echo ~'admin'
-	~admin
-	echo ~admin'abc'
-	~adminabc
-
-
-
-
-
-
-
-
-
-
+``` shell
+#测试环境：系统存在admin这个用户，当前以root身份运行
+#当string为空
+echo ~
+/root
+#当string为admin
+echo ~admin
+/home/admin
+#当string为adminaa，用户不存在，不扩展
+echo ~adminaa
+~adminaa
+#string为admin'abc'，有引号，不处理
+echo ~'admin'
+~admin
+echo ~admin'abc'
+~adminabc
+```
 
