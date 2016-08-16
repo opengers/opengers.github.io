@@ -25,7 +25,7 @@ ls *.sh
 1.sh  test.sh  b.sh
 ```
 
-键入的命令是`ls *.sh`，作用是列出当前目录下所有以`.sh`结尾的文件。shell扩展会把`*.sh`变为当前目录下所有以`.sh`结尾的文件名组成的字符串`1.sh  test.sh  b.sh`，然后才交给具体的命令`ls`去执行。shell扩展是shell内部处理程序，因此`ls`看不到`*.sh`，它看到的是shell扩展后的字符串`1.sh  test.sh  b.sh`
+键入的命令是`ls *.sh`，作用是列出当前目录下所有以`.sh`结尾的文件。shell扩展会把`*.sh`展开为当前目录下所有以`.sh`结尾的文件名组成的字符串`1.sh  test.sh  b.sh`，然后才交给具体的命令`ls`去执行。shell扩展是shell内部处理程序，因此`ls`看不到`*.sh`，它看到的是shell展开后的字符串`1.sh  test.sh  b.sh`
 
 shell扩展有以下几种，并按以下顺序处理，当然如果没找到匹配的扩展格式，那就不处理  
 
@@ -153,9 +153,11 @@ echo {2007..2009}-0{a,b}
 
 * string字符串中带有引号，不会进行扩展
 * string不为空，并且string这个用户不名存在，不会进行扩展
-* string不为空，并且string这个用户名存在，`~`替换为此用户名家目录
-* string为空，`~`被替换为`#HOME`这个变量指定的用户的家目录
-* string为空，`$HOME`这个变量也为空，`~`被替换为当前运行此shell的用户的家目录
+* string不为空，并且string这个用户名存在，`tilde-prefix`替换为此用户名家目录
+* string为空，`tilde-prefix`被替换为`#HOME`这个变量指定的用户的家目录
+* string为空，`$HOME`这个变量也为空，`tilde-prefix`被替换为当前运行此shell的用户的家目录
+* string为+otherstrs，`tilde-prefix`被环境变量`PWD`替换
+* string为-otherstrs，`tilde-prefix`被环境变量`OLDPWD`替换
 
 `~`用法很简单，上面文字表述无感的话，敲几遍命令就明白了
 
@@ -175,5 +177,20 @@ echo ~'admin'
 ~admin
 echo ~admin'abc'
 ~adminabc
+
+#~-，~+的用法
+cd /etc/ssh
+echo ~+
+/etc/ssh
+echo ~+/softs
+/etc/ssh/softs
+#~-显示的是上个目录
+cd /root/
+echo ~-
+/etc/ssh
 ```
+
+波浪号扩展很少用到，特别是`~+, ~-`的形式，最常用的也就是个`~`，这里只是记录下这种扩展
+
+### 参数和变量扩展(parameter and variable expansion)  
 
