@@ -83,7 +83,7 @@ x w v u t s r q p
 
 shell仅仅是把花括号中的字符串以逗号`,`分隔，然后从左至右输出各个字符串，并不会对字符串做任何语法解释处理  
   
-为了避免与后续的参数扩展(parameter)冲突，花括号扩展中字符串`${`会被认为是非法使用   
+花括号扩展中字符串`${`是不允许的，这是为了避免与后续的参数扩展(parameter)冲突，但是你可以使用转义符解决`\$`，稍后有说明  
 	
 ``` shell
 a=test
@@ -92,6 +92,8 @@ echo $a{1..10}
 #错误提示
 echo ${1..10}
 -bash: ${1..10}: bad substitution
+echo \${1..10}
+1 2 3 4 5 6 7 8 9 10
 #下面这个才正确
 echo ${a}{1..10}
 test1 test2 test3 test4 test5 test6 test7 test8 test9 test10
@@ -192,5 +194,5 @@ echo ~-
 
 波浪号扩展很少用到，特别是`~+, ~-`的形式，最常用的也就是个`~`，这里只是记录下这种扩展
 
-### 参数和变量扩展(parameter and variable expansion)  
+### 参数和变量扩展(parameter and variable expansion)   
 
