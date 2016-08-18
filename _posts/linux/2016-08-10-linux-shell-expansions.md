@@ -13,7 +13,7 @@ format: quote
 ><small>对于一条shell命令，shell内部会对此命令字符串进行一系列处理，然后才真正开始执行此命令，这些处理称作shell扩展(Expansions)   
 本文基于centos7.2，bash版本4.2</small>
 
-###  shell扩展介绍  
+## shell扩展介绍  
 每当我们在shell下键入一条命令，并按下`Enter`，shell扩展(Expansions)会对我们键入的命令字符串进行一系列处理，然后才执行此命令。shell扩展是shell内建的处理程序，它发生在命令执行之前，因此与我们键入的命令无关   
 
 shell把整条命令按功能分割为多个独立单元，每个独立单元作为整体对待，叫做一个word，也称为token。比如`cat /etc/passwd | grep "root"`中有五个token，分别是`cat`、`/etc/passwd`、`|`、`grep`、`"root"` ，本文使用token这一名称
@@ -40,7 +40,7 @@ shell扩展有以下几种，并按以下顺序处理，当然如果没找到匹
 
 以上扩展中，只有brace expansion，word splitting，filename expansion 三种扩展可以改变token个数，其它扩展只是把一个token改为另一个token，唯一例外的token是`$@`，`${name[@]}`  
 
-### 花括号扩展(brace expansion)  
+## 花括号扩展(brace expansion)  
 花括号扩展是首先被执行的扩展，格式有两种，字符串输出，或序列输出  
 
 **字符串输出**  
@@ -92,8 +92,7 @@ echo $a{1..10}
 #错误提示
 echo ${1..10}
 -bash: ${1..10}: bad substitution
-echo \${1..10}
-1 2 3 4 5 6 7 8 9 10
+
 #下面这个才正确
 echo ${a}{1..10}
 test1 test2 test3 test4 test5 test6 test7 test8 test9 test10
@@ -148,7 +147,7 @@ echo {2007..2009}-0{a,b}
 2007-0a 2007-0b 2008-0a 2008-0b 2009-0a 2009-0b
 ```
 
-### 波浪号扩展(Tilde Expansion)  
+## 波浪号扩展(Tilde Expansion)  
 波浪号扩展我们最熟悉的用法就是`cd ~`，切换回当前用户家目录，下面来看看它是怎么发生的  
 
 首先我们需要知道什么样的字符串会被波浪号扩展(Tilde Expansion)处理，若一个token(word)以波浪号`~`开始，并且这个`~`没有带引号，那么从这个`~`开始直到一个不带引号的斜杠`/`之间的字符串才会被波浪号扩展(Tilde Expansion)处理，这个字符串被称作`tilde-prefix`，我们标记为`~string`，处理依据如下
@@ -194,5 +193,5 @@ echo ~-
 
 波浪号扩展很少用到，特别是`~+, ~-`的形式，最常用的也就是个`~`，这里只是记录下这种扩展
 
-### 参数和变量扩展(parameter and variable expansion)   
+## 参数和变量扩展(parameter and variable expansion)   
 
