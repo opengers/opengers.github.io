@@ -194,7 +194,7 @@ echo ~-
 波浪号扩展很少用到，特别是`~+, ~-`的形式，最常用的也就是个`~`，这里只是记录下这种扩展
 
 ## 参数扩展(parameter expansion)   
-参数扩展的基本格式是`${parameter}`，*扩展的结果是`parameter`被替换为相应的值*。`$`是前导符，`parameter`是一个可以存储值的参数，其有多种形式，下面会细说。字符对`{、}`不是必须的，它可以明确表示这是一个参数扩展，并且明确扩展范围。  
+参数扩展的基本格式是`${parameter}`，*扩展的结果是`${parameter}`被替换为相应的值*。`$`是前导符，`parameter`是一个可以存储值的参数，其有多种形式，下面会细说。字符对`{、}`不是必须的，它可以明确表示这是一个参数扩展，并且明确扩展范围。  
 
 像`$var`这种变量形式只是参数扩展的一种形式，这里的参数`parameter`是一个变量`var`，参数扩展相对比较复杂，下面分几部分谈   
 
@@ -224,12 +224,49 @@ rootlog is here
 ### 参数parameter的形式    
 这部分我们讨论`parameter`有哪几种形式。其形式可以是变量名(例如`LANG、PWD、USER`)，数字(例如`1、2、...、n`)，特殊字符(例如`?、*、@`)，数组引用(例如`{num[1]}`)。具体可以查看[bash手册](https://www.gnu.org/software/bash/manual/bash.html#Shell-Parameters)
 
-**变量**     
-这种形式就是我们每天都会用到的变量，`parameter`是一个变量，扩展的结果是`${parameter}`被`parameter`的值替换。`parameter`根据shell中变量名命名规则命名，可能需要使用花括号`{}`明确变量名范围。同时，如果你真的是想在屏幕输出`${LANG}`这几个字符，可以使用转义符`\${LANG}`  
+**变量名**     
+变量我们很熟悉，此时`parameter`是一个变量，扩展的结果是`${parameter}`被替换为`parameter`的值。   
 
-可能你还见过`${LANG:-strings}`或`${parameter/pattern/string}`这种用法，它可以让你在显示变量值之前对变量进行替换或修改，我们稍后会说
+可以对`parameter`进行赋值，或修改其值，`parameter`根据shell中变量名命名规则命名，可能需要使用花括号`{}`明确变量名范围。同时，如果你真的是想在屏幕输出`${LANG}`这几个字符，可以使用转义符，像这样`echo \${LANG}`     
 
-**数字**  
+可能你还见过`${LANG:-strings}`或`${parameter/pattern/string}`这种用法，它可以让你在显示变量值之前对变量进行替换或修改，我们稍后会说  
 
-To be continue…
+**数字**   
+此时`parameter`为数字，称作位置参数，扩展的结果是`$n`被替换为命令行传入的第n个参数  
+
+在脚本中，可以使用`$n`引用从命令行传入的第n个参数，不能使用赋值语句对其赋值，内建命令`set、shift`用于对位置参数进行控制，具体可以通过内建命令的man手册`man set`，定位到set命令处查看。当脚本中有函数(functions)时，在函数内部，`$n`表示传递给此函数的第n个参数    
+
+``` shell
+cat main.sh
+#!/usr/bin/env bash
+
+#定义函数function_a
+function_a() {
+#函数内部，$1,$2表示传递给此函数的第n个参数
+echo "function_a:$1"
+echo "function_a:$2"	
+}
+
+echo "main:$1"
+echo "main:$2"
+#传递给函数两个参数fa fb
+function_a fa fb
+echo "main:$3"
+
+#命令行传递给脚本的是ma mb mc三个参数
+sh main.sh ma mb mc
+main:ma
+main:mb
+function_a:fa
+function_a:fb
+main:mc
+```
+
+**特殊字符**  
+`parameter`为特殊字符，只能被引用，不能赋值，可以不需要`{}`   
+`$*` 展开所有的位置参数，默认用空格分割
+`$`
+to be continue...
+
+
 
