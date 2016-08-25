@@ -219,6 +219,9 @@ font-family: 'Capita', Georgia, serif;
 
 
 .mbtablestyle {
-    border-spacing: 4;
-    border:2px solid black;
+        border-spacing: 0;
+
+   > table, td, th {
+        border: 1px solid black;
+        }
 }
