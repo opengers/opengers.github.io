@@ -7,7 +7,6 @@ categories: linux
 tags:
   - shell
   - expansions
-format: quote
 ---
 
 ><small>对于一条shell命令，shell内部会对此命令字符串进行一系列处理，然后才真正开始执行此命令，这些处理称作shell扩展(Expansions)   
