@@ -9,11 +9,16 @@ url: "http://www.isjian.com" # the base hostname & protocol for your site
 github_username:  opengers
 
 # Build settings
-markdown: kramdown
+#markdown: kramdown
 
-kramdown:
-  input:         GFM
-  auto_ids:      true
+
+markdown: redcarpet
+redcarpet:
+    extensions: ["tables"]
+
+#kramdown:
+#  input:         GFM
+#  auto_ids:      true
 
 # Other options
 # permalink: blog/:year/:month/:title/

@@ -310,7 +310,7 @@ LANG
 
 to be continue...
 
-| Table Header  | Second Header | 
-| ------------- | -------------  |
-| Table Cell    | Cell 2  |
-| Cell 3        | Cell 4   |
+| Command | Description |
+| --- | --- |
+| git status | List all new or modified files |
+| git diff | Show file differences that haven't been staged |
