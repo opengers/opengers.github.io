@@ -219,23 +219,11 @@ font-family: 'Capita', Georgia, serif;
 
 
 .mbtablestyle {
-        border-collapse: collapse;
+    border-collapse: collapse;
+    border-spacing: 4;
+    border:2px solid #ff0000;
 
    > table, td, th {
         border: 1px solid black;
         }
-}
-
-table{
-    border-collapse: collapse;
-    border-spacing: 0;
-    border:2px solid #ff0000;
-}
-
-th{
-    border:2px solid #000000;
-}
-
-td{
-    border:1px solid #000000;
 }
