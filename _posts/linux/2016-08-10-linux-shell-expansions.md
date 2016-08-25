@@ -310,6 +310,7 @@ LANG
 
 to be continue...
 
-| t1 | t2    
-| a1 | a2    
-| a11 | a22    
+Table Header  | Second Header  
+------------- | -------------  
+Table Cell    | Cell 2  
+Cell 3        | Cell 4   
