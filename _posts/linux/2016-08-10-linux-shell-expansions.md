@@ -311,4 +311,7 @@ LANG
 
 to be continue...
 
-
+#test
+|| t1 || t2
+| a1 | a2
+| a11 | a22
