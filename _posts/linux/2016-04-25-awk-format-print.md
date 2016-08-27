@@ -27,7 +27,7 @@ awk可以读取后接的文件，也可以读取来自前一命令的标准输�
  
 **语法**  
 
-一个典型的awk语法如下：
+再具体来看，一个典型的awk语法如下：
 
 ``` shell    
 awk '{ 
@@ -38,9 +38,11 @@ awk '{
 }'
 ```
 
-其中`BEGIN`为处理文本前的操作,一般用于改变`FS,OFS,RS,ORS`等，BEGIN部分完成之后，awk读取第一行输入，并将第一行的数据填入`$0,$1,$2,..,$n,NR,NF`等变量，然后进入正式处理阶段，待所有行处理完毕之后，进入END部分，END一般用于总结,打印报表等。正式处理是一个内建的循环,每一次循环读取一行数据，每一行的处理分为多模式,多动作,即`pattern{...}`部分可以有多个，当模式部分`pattern`没有时，也即不需要匹配条件，后面的动作`{...}`会在每一行都执行  
+其中`BEGIN`为处理文本前的操作,一般用于改变`FS,OFS,RS,ORS`等，BEGIN部分完成之后，awk读取第一行输入，并将第一行的数据填入`$0,$1,$2,..,$n,NR,NF`等变量，然后进入正式处理阶段，待所有行处理完毕之后，进入END部分，END一般用于总结,打印报表等。  
+
+正式处理是一个内建的循环,每一次循环读取一行数据，每一行的处理分为多模式(`pattern`),多动作(`{...}`),即`pattern{...}`部分可以有多个，`pattern`可以使用正则匹配`/RE/`,算术运算符`><...`,逻辑运算符`&&,||`等,当`pattern`没有时，也即不需要匹配条件，后面的动作`{...}`会在每一行都执行  
  
- ``` shell
+``` shell
 awk '/AL/ {printf $1; print $2}' emp.txt
 awk '/AL/{print $1} {print $2}' emp.txt
 ```
@@ -66,6 +68,8 @@ ORS | 输出的记录分隔符，默认为换行符
 FILENAME | 当前输入文件的名字  
 {:.mbtablestyle}  
 
+例子如下  
+
 ``` shell
 #FS变量改变字段分隔符
 awk  'BEGIN{FS=":"} {print $1,$3,$NF}' /etc/passwd
@@ -73,17 +77,40 @@ awk  'BEGIN{FS=":"} {print $1,$3,$NF}' /etc/passwd
 awk -F '[;:]' '{print $1,$3,$6}' OFS="\t\t" /etc/passwd   
 ```
 
-pattern部分的写法有:  
+**比较运算符**   
 
+awk可用比较运算符：`!=, >, <, >=, <=`     
+`&&`多个条件且, `||`多个条件或     
+
+``` shell
+awk ' $3>0 {print $0}' netstat.txt
+awk '$3==0 && $6=="LISTEN" || NR==1 {printf "%-20s %-20s %-20s %s\n",$3,$4,$5,$6}' netstat.txt       
+```
+
+**awk正则**   
+
+* AWK使用的RE为扩展正则表达式    
+* 定位行: 1: NR==行号 2: 用RE: /^Disk/    
+* 字符串匹配：~匹配 !~不匹配    
 * `/reg/`在整行范围内匹配reg，匹配到就执行后续动作  
 * `! /reg/`整行没匹配到reg，才执行后续动作  
 * `$1 ~ /reg/`只在第一字段匹配reg  
-* `$1 !~ /reg/`不匹配  
+* `$1 !~ /reg/`第一字段不匹配  
 * `NR>=2`从第二行开始处理  
 
-pattern部分和随后的if, for部分，能用到的符号如下
+``` shell
+awk -F: '$1 ~ /root|admin/{print}' /etc/passwd
+awk -F: '/^root/{print}' /etc/passwd   
+ip a | awk '/ inet / && !/127.0.0.1/{gsub(/\/.*/,"",$2);print $2}'   
+```
 
-
+``` shell
+virsh dominfo centos | \
+awk '
+        /^CPU\(s\)/ {print $2}
+        /^Used memory/ {print $3/1024/1024"G"}
+' | xargs
+```
 
 **if,for语句**  
 
@@ -100,26 +127,40 @@ if判断写法:
     if($1 ~ /reg/ && $2 ~ /reg2/){action} #多个条件用”&&”,”||”表示
     if($1 ~ /reg/ || NR >= 5){action}
 
-if,for混合写法:
-
-``` shell 
-{ for(i=1;i<=NF;i++)if(…) printf “test”; else if(…) printf “test2”; else printf “test3”; print "not_for" } 
-#print “not_for”部分是并列与for循环结构的另一个action，在for循环之外，只会打印一次
-{ for(i=1;i<=NF;i++){if(…) printf “test”; else if(…) printf “test2”; else printf “test3”；print “in_for“}; print "not_in_for" }
-{ for(i=1;i<=NF;i++){if {s1;s2;} else if {s3;s4;} else {s5;s6;}; print "test"} }  #else if前不加分号 
-{ for(i=1;i<=NF;i++)printf "for_add"; if(…);else if(…); else } #if并不在for循环体内
+``` shell
+awk '{ 
+    for(i=1;i<=NF;i++) {
+        if($1 ~ /reg1/) printf "reg1"
+        else if($1 ~ /reg2/) printf "reg2"
+        else printf "reg3"
+        print "in_for"
+    }
+    print "not_in_for"
+}' filename
 ```
+
+如上，是一个if，for混合写法，`print "in_for"`在for循环内，每处理一行都会打印`NF`次，`print "not_in_for"`只会在for循环结束后打印一次    
 
 for循环的作用范围:  
 	
 * 其后紧跟的if; else if; else语句  	
 * 其后紧跟的{}中的多个动作  	
-* 其后紧跟的一个第一个普通动作  
+* 其后紧跟的一个第一个普通动作，例如`print $1` 
 
 if语句的作用范围:
  
 * if后紧跟的第一个动作  
 * if后紧跟的{}中的多个动作  
+
+``` shell
+ps aux | grep "qemu-kvm " | grep -v 'grep' | \
+awk '{
+        for(i=1;i<=NF;i++) {
+                if($i == "-name"){ print $(i+1);break }
+        }
+}'
+#过滤出qemu-kvm进程，循环每一个记录的每一行
+```
 
 **awk技巧**
 
