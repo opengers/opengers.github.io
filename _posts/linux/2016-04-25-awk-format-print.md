@@ -53,7 +53,7 @@ awk '/AL/{print $1} {print $2}' emp.txt
 **awk内建变量**  
 
 变量 | 用法  
-:-- | :-- 
+:--: | :--:  
 $0 | 当前记录（这个变量中存放着整个行的内容）   
 $1~$n | 当前记录的第n个字段，字段间由FS分隔   
 FS | 输入字段分隔符 默认是空格或\t  
@@ -64,10 +64,12 @@ RS | 输入的记录分隔符， 默认为换行符
 OFS | 输出字段分隔符， 默认也是空格   
 ORS | 输出的记录分隔符，默认为换行符   
 FILENAME | 当前输入文件的名字  
-{:.mbtablestyle}
+{:.mbtablestyle}  
 
 ``` shell
-awk  'BEGIN{FS=":"} {print $1,$3,$NF}' /etc/passwd  
+#FS变量改变字段分隔符
+awk  'BEGIN{FS=":"} {print $1,$3,$NF}' /etc/passwd
+#OFS使输出字段以tab键隔开
 awk -F '[;:]' '{print $1,$3,$6}' OFS="\t\t" /etc/passwd   
 ```
 
