@@ -1,5 +1,5 @@
 ---
-title: 使用awk格式化输出文本
+title: awk文本处理实战
 author: opengers
 layout: post
 permalink: /linux/awk-format-print/
