@@ -295,7 +295,7 @@ awk有字符函数，数学函数等
 内建函数中，我们说两个很有用的函数substr，sub  
 
 **substr( String, M, [ N ] )**    
-返回从M到N位置之前的字符串，M，N为字符串string从1开始的索引位置    
+返回从M到N位置之间的字符串，M，N为字符串string从1开始的索引位置    
 String 参数指定要处理的字符串，例如字符串"welcome to linux",或者第n个字段`$n`     
 若N参数省略，则取从M位置开始到string结尾的字符串    
 
