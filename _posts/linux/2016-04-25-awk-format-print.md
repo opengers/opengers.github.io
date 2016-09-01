@@ -128,7 +128,7 @@ awk '
 virsh dominfo centos | awk '/^CPU\(s\)/ {printf $2" "} /^Used memory/ {print $3/1024/1024"G"}'
 ```
 
-### awk技巧  
+## awk技巧  
 
 * AWK使用的RE为ERE   
 * 如果在BEGIN中设置了OFS, 只有$0有改动OFS才能生效  
