@@ -14,7 +14,7 @@ format: quote
 ><small>注意本文并不是一篇awk入门文章，而是偏重实例讲解  
 awk借鉴了c语法，因此awk在许多地方还保留有c语言的痕迹，比如printf语句；for，if的语法结构等</small>
 
-### awk语法    
+## awk语法    
 最简单地说，AWK是一种用于处理文本的编程语言工具，处理模式是只要在输入数据中有模式匹配，就执行一系列指令。awk命令格式为：
 
 ``` shell 
@@ -53,7 +53,7 @@ awk '/AL/{print $1} {print $2}' emp.txt
 
 `BEGIN`,`END`部分不是必须出现，可以没有，也可以有任意多个顺序执行  
 
-### awk内建变量   
+## awk内建变量   
 
 变量 | 用法  
 :--: | :--:  
@@ -78,20 +78,19 @@ awk  'BEGIN{FS=":"} {print $1,$3,$NF}' /etc/passwd
 awk -F '[;:]' '{print $1,$3,$6}' OFS="\t" /etc/passwd   
 ```
 
-### 比较运算符   
+## awk运算符和正则匹配   
 
-awk可用比较运算符：`!=, >, <, >=, <=`     
-`&&`多个条件且, `||`多个条件或     
+算数运算符    
 
-``` shell
-#输出第三字段大于0的行
-netstat -ntpl | awk ' $3>0 {print $0}'
-netstat -ntpl | awk '$3==0 && $6=="LISTEN" || NR==1 {printf "%-20s %-20s %-20s %s\n",$3,$4,$5,$6}'
-```
+*awk可用算术运算符：`!=, >, <, >=, <=` 
 
-### awk正则    
+逻辑运算符   
+     
+*`&&`多个条件且, `||`多个条件或       
 
-* AWK使用的RE为扩展正则表达式    
+正则匹配   
+
+* AWK使用的RE为扩展正则表达式，匹配格式为`/reg/`  
 * 定位行: 1: NR==行号 2: 用RE: /^Disk/    
 * 字符串匹配：~匹配 !~不匹配    
 * `/reg/`在整行范围内匹配reg，匹配到就执行后续动作  
@@ -99,15 +98,23 @@ netstat -ntpl | awk '$3==0 && $6=="LISTEN" || NR==1 {printf "%-20s %-20s %-20s %
 * `$1 ~ /reg/`只在第一字段匹配reg  
 * `$1 !~ /reg/`第一字段不匹配  
 * `NR>=2`从第二行开始处理  
-* awk正则可以和比较运算符结合使用，以便处理更复杂的匹配  
+
+awk正则可以和比较运算符结合使用，以便处理更复杂的匹配    
 
 ``` shell
+#输出第三字段大于0的行
+netstat -ntpl | awk ' $3>0 {print $0}'
+netstat -ntpl | awk '$3==0 && $6=="LISTEN" || NR==1 {printf "%-20s %-20s %-20s %s\n",$3,$4,$5,$6}'
+```  
+
+``` shell
+#正则匹配例子
 awk -F: '$1 ~ /root|admin/{print}' /etc/passwd
 awk -F: '/^root/{print}' /etc/passwd
 ip a | awk '/ inet / && !/127.0.0.1/{gsub(/\/.*/,"",$2);print $2}' 
 ```
 
-下面是显示一个kvm虚拟机cpu，内存信息    
+下面是用virsh命令显示一个kvm虚拟机cpu，内存信息    
 
 ``` shell
 virsh dominfo centos | \
@@ -115,12 +122,40 @@ awk '
         /^CPU\(s\)/ {print $2}
         /^Used memory/ {print $3/1024/1024"G"}
 ' | xargs
+
 #上面需要使用xargs使cpu，内存 显示到一行
 #这种使用printf函数，也可以做到一行显示
 virsh dominfo centos | awk '/^CPU\(s\)/ {printf $2" "} /^Used memory/ {print $3/1024/1024"G"}'
 ```
 
-### if,for语句  
+### awk技巧  
+
+* AWK使用的RE为ERE   
+* 如果在BEGIN中设置了OFS, 只有$0有改动OFS才能生效  
+* `printf`与`print`的区别: `printf`不自动打印换行符, `print`则自动打印    
+* gsub的返回值并不是替换后的字符串,而是返回替换的次数  
+* 字符串常量一定在用" "包围起来,否则当作变量使用, 如`$1=="ipaddress"`  
+* AWK 的 for 循环为`C-Style`,即为`for()`,区别于shell中的`for i in ...`  
+* AWK中可以使用多个分隔符,要封装在方括号里,用' '包围,以防shell对它们进行解释,如`awk -F '[ :/t]'`,使用空格,冒号,tab作为分隔符  
+* next语句:从输入文件中取得下一个输入行,在AWK命令表顶部重新执行命令,一般用于跳过一些特殊的行  
+* awk 匹配多个条件:`awk '/kobe/ && /james/'`,这会匹配同时有kobe和james的行  
+* FS的默认值是`[ /t/n]+`, OFS的默认值为空格,RS,ORS的默认值都是换行  
+* exit语句:终止AWK程序,但不跳过END语句  
+* `{s1;s2;s3;...}`中多个语句用分号隔开`if; else if; else`  
+* `print`后不带任何参数时，相当于`print $0`，将会打印整行记录   
+
+awk可以与shell交互，看几个例子    
+
+``` shell
+#使用内建system函数执行shell命令
+awk 'BEGIN{system("df -h")}'
+awk 'BEGIN{print "hostname"|"sh"}'
+awk -v var=${LANG} '{print var}'
+#重命名文件
+ls | awk '/.*\.log$/{print "mv "$0,"A_"$0}' | sh
+```
+
+## if,for语句   
 
 在任何时候`{}`内都可以跟多个并列动作(使用“;”分隔)，下面的`{action1}`和`{action1；action2；...}`都表示{}体内有多个动作，两种表示没有任何区别，写第二种仅仅是为了直观的表示可以有多个动作  
 for循环写法:
@@ -170,24 +205,8 @@ awk '{
 }'
 #break作用是匹配到后，就不在循环剩余字段
 ```
-
-### awk技巧  
-
-* AWK使用的RE为ERE   
-* 如果在BEGIN中设置了OFS, 只有$0有改动OFS才能生效  
-* `printf`与`print`的区别: `printf`不自动打印换行符, `print`则自动打印    
-* gsub的返回值并不是替换后的字符串,而是返回替换的次数  
-* 字符串常量一定在用" "包围起来,否则当作变量使用, 如`$1=="ipaddress"`  
-* AWK 的 for 循环为`C-Style`,即为`for()`,区别于shell中的`for i in ...`  
-* AWK中可以使用多个分隔符,要封装在方括号里,用' '包围,以防shell对它们进行解释,如`awk -F '[ :/t]'`,使用空格,冒号,tab作为分隔符  
-* next语句:从输入文件中取得下一个输入行,在AWK命令表顶部重新执行命令,一般用于跳过一些特殊的行  
-* awk 匹配多个条件:`awk '/kobe/ && /james/'`,这会匹配同时有kobe和james的行  
-* FS的默认值是`[ /t/n]+`, OFS的默认值为空格,RS,ORS的默认值都是换行  
-* exit语句:终止AWK程序,但不跳过END语句  
-* `{s1;s2;s3;...}`中多个语句用分号隔开`if; else if; else`  
-* `print`后不带任何参数时，相当于`print $0`，将会打印整行记录   
-  
-### awk字符函数   
+ 
+## awk字符函数   
 awk有字符函数，数学函数等   
 
 <table style="width: 464px;" border="0" bgcolor="#666666" cellpadding="4" cellspacing="1" class="mceItemTable" >
@@ -271,7 +290,7 @@ awk有字符函数，数学函数等
 ##### 以上函数转自:[linux awk 内置函数详细介绍(实例)](http://www.cnblogs.com/chengmo/archive/2010/10/08/1845913.html)
 
 
-### sub和substr函数  
+## sub和substr函数  
 
 内建函数中，我们说两个很有用的函数substr，sub  
 
@@ -322,7 +341,7 @@ string参数指定要处理的字符串，默认为`$0`，即当前行
 #`sub(/0.0.0.0:/,"",$4)` 作用是删除第4字段的`0.0.0.0:`部分
 ```
 
-### awk 实例
+## awk 实例
 
 **awk内置函数用法**  
 
