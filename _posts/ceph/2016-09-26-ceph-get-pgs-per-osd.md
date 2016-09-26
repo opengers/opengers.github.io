@@ -69,7 +69,7 @@ osd.15:176
 上面两个都是ceph提供的命令，我们知道`ceph pg dump`可以输出集群中所有的pg详细信息，我们可以从这个输出中过滤出各个osd上的pg数，从而可以验证上面两个命令的正确性  
 
 ``` shell
-for i in `ceph osd ls`;do echo -n "osd.$i:";ceph pg dump 2>/dev/null | egrep '^[0-9]*\.[0-9a-z]*\s' | awk '{print $15}' | egrep "^\[$i,|,$i,|,$i\]$" | wc -l;done
+for i in `ceph osd ls`;do echo -n "osd.$i:";ceph pg dump 2>/dev/null | egrep '^[0-9]+\.[0-9a-f]+\s' | awk '{print $15}' | egrep "^\[$i,|,$i,|,$i\]$" | wc -l;done
 osd.0:207
 osd.1:215
 osd.2:151
