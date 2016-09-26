@@ -7,7 +7,6 @@ categories: ceph
 format: quote
 ---
 
-
 <ul class="listing">
 {% for post in site.categories.ceph %}
   {% capture y %}{{post.date | date:"%Y"}}{% endcapture %}

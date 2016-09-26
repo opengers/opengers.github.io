@@ -1,13 +1,13 @@
 ---
-title: "编译制作Linux kernel 3.18 rpm包(升级centos6.x虚拟机内核)"
+title: "从ceph集群中获取每个osd上的pg数量"
 author: opengers
 layout: post
-permalink: /linux/ceph-get-pgs-per-osd/
-categories: linux
+permalink: /ceph/ceph-get-pgs-per-osd/
+categories: ceph
 tags:
-  - kernel
-  - compile
-  - rpm
+  - ceph
+  - pg
+  - crush
 format: quote
 ---
 
