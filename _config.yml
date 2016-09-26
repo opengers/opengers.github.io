@@ -1,6 +1,6 @@
 # Site settings
 title: opengers
-email: zijian1012@gmail.com
+email: zijian1012#gmail.com
 description: > # this means to ignore newlines until "baseurl:"
   kvm,python,docker,devops
 baseurl: "" # the subpath of your site, e.g. /blog/
