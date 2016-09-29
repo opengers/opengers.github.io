@@ -49,25 +49,25 @@ ceph pg ls | grep -v '^pg_stat' | wc -l
 1612
 ```
 
-上面输出也可以验证集群中pg数量确实有`1612`个，所有的pg都肯定存在于某个`pool`上，我们来计算下所有`pool`上的pg总数  
+上面输出也可以验证集群中pg数量确实有`1612`个，我们这样考虑，所有的pg都肯定存在于某个`pool`上，因此计算所有`pool`上的pg数之和也可以得到总pg数  
+  
 ``` shell
 #ceph pg ls-by-pool poolname 可以查看存在于poolname上的所有pg详细信息
 for i in `ceph osd pool ls`;do ceph pg ls-by-pool $i | grep -v '^pg_stat' | wc -l;done | awk '{a+=$1} END{print a}'
 1612
 ```
 
-根据pool计算结果也是`1612`，还可以这样考虑，所有的pg最终都是要放在某个osd上的，因此我们可以根据osd计算集群中pg总数   
-
-`ceph osd df`可以查看集群中每个osd的使用信息，以及各个osd上的pg数     
+根据pool计算结果也是`1612`，还可以这样考虑，所有的pg最终都是要放在某个osd上的，因此我们也可以根据osd计算集群中pg总数       
 
 ``` shell
+#ceph osd df 可以查看集群中每个osd的使用信息，以及各个osd上的pg数 
 ceph osd df tree | grep 'osd\.'
  2  0.50000  1.00000  1116G  65551M  1052G  5.73 0.74 281             osd.2  
 13  0.09999  1.00000  1116G  12679M  1104G  1.11 0.14  50             osd.13 
 14  0.09999  1.00000  1116G  13505M  1103G  1.18 0.15  46             osd.14
 ...
 
-#用awk计算倒数第二个字段之和（pg数）
+#用awk计算倒数第二个字段之和，系统总pg数
 ceph osd df tree | grep 'osd\.' | awk '{a+=$(NF-1)} END{print a}'
 3812
 ```
