@@ -1,5 +1,5 @@
 ---
-title: "从ceph集群中获取每个osd上的pg数量"
+title: "计算ceph集群中每个osd上的pg数"
 author: opengers
 layout: post
 permalink: /ceph/ceph-get-pgs-per-osd/
@@ -11,7 +11,7 @@ tags:
 format: quote
 ---
 
-可以有多种方法获取ceph集群中每个osd上的pg数量，测试使用版本如下
+可以有多种方法获取ceph集群中每个osd上的pg数量，测试环境如下  
 
 ``` shell
 uname -a
@@ -41,11 +41,10 @@ osd.12:144
 osd.6:146
 ```
 
-## 使用ls-by-osd命令   
- 
-`ceph pg ls-by-osd osd.id` 根据osd输出pg信息  
+## 使用ls-by-osd命令     
 
 ``` shell
+#ceph pg ls-by-osd osd.id 根据osd输出pg信息
 for i in `ceph osd ls`;do echo -n "osd.$i:";ceph pg ls-by-osd $i | grep -v '^pg_stat' | wc -l;done
 osd.0:207
 osd.1:215
@@ -66,7 +65,7 @@ osd.15:176
 
 ## 从pg dump输出中过滤    
 
-上面两个都是ceph提供的命令，我们知道`ceph pg dump`可以输出集群中所有的pg详细信息，我们可以从这个输出中过滤出各个osd上的pg数，从而可以验证上面两个命令的正确性  
+上面两个都是ceph提供的命令，我们知道`ceph pg dump`可以输出集群中所有pg详细信息，从这些信息中可以很容易过滤出各个osd上的pg数，也是对上面命令的验证    
 
 ``` shell
 for i in `ceph osd ls`;do echo -n "osd.$i:";ceph pg dump 2>/dev/null | egrep '^[0-9]+\.[0-9a-f]+\s' | awk '{print $15}' | egrep "^\[$i,|,$i,|,$i\]$" | wc -l;done
@@ -87,4 +86,4 @@ osd.14:24
 osd.15:176
 ```
 
-上面三种方法输出结果一致，只要一种即可，但多种方法使我们可以更好的理解ceph中pg在osd上的分布    
+上面三种方法输出结果一致，只要一种即可，但多种方法使我们可以更好的理解ceph中pg在osd上的分布，如果你的集群使用默认的`crush`，每个`osd crush weight`值一样，那么可以从输出看到各个osd上的pg数量近似相等  
