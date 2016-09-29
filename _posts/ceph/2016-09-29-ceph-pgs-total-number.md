@@ -108,7 +108,7 @@ ceph osd dump |grep pool | awk '{a+=$6 * $14} END{print a}'
 
 根本原因在于ceph集群中副本数(replicated size)的存在，从monitor角度来看系统中确确实实有`1612`个名称互不相同的pg，比如上面提到的`1.fc`。像`ceph pg ls`，`ceph pg dump`这些输出都可以列出所有这些pg信息，并显示其副本数。但是到了osd这一层，每个pg都复制了`replicated size`份，然后存入`osd`，从`osd`角度来计算自然也包括复制的pg。像`1.fc`这个pg，osd看到的是2个一模一样的`1.fc`，只是存在于不同的osd上，但是在monitor看，只能算一个pg，只是有多个拷贝而已   
 
-集群中每个pg经过`crush`算法被映射到多个`osd`上去，`ceph pg ls`列出了所有pg的映射信息    
+集群中每个pg经过`crush`算法被映射到多个`osd`上去，`ceph pg ls`列出了所有pg到osd的映射信息     
 
    
 
