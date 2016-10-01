@@ -13,80 +13,137 @@ tags:
 ceph版本 ceph version 10.2.2   
 测试服务器为kvm虚拟机</small>
 
-ceph的部署过程在官网有[详细记录](http://docs.ceph.com/docs/master/start/quick-ceph-deploy/)，[这里](http://docs.ceph.org.cn/start/quick-start-preflight/)也有翻译的中文文档，本篇文章是记录下自己的部署过程，服务器使用kvm虚拟机，只测试功能，分配如下  
+ceph的部署过程在官网有[详细记录](http://docs.ceph.com/docs/master/start/quick-ceph-deploy/)，[这里](http://docs.ceph.org.cn/start/quick-start-preflight/)也有翻译的中文文档  
+
+## 硬件
+
+ceph为廉价普通硬件而设计，在其上可以构建PB级的数据集群，其数据高可靠性主要依靠软件层良好的算法来保障。因为是廉价硬件，因此在一个大型集群中，硬件故障会很频繁发生，对于一个设计良好的ceph集群，这并不会对集群造成数据丢失    
+
+本篇文章是记录下自己的部署过程，服务器使用kvm虚拟机，只测试功能，服务器分配如下  
 
 节点 | 服务 | cluster network | public network
 :--: | :--: | :--: | :--:
-node1 | \t\tosd.{1,2,3,4},mon.node1  |  eth1:172.31.6.174/24  | 192.168.6.174/22
-node2 | osd.{5,6,7,8},mon.node2  |  eth1:172.31.6.175/24  | 192.168.6.175/22
-node3 | osd.{9,10,11,12},mon.node3  | eth1:172.31.6.176/24 | 192.168.6.176/22
-{:.mbtablestyle}      
+node1(admin-node) | osd.{1,2,3,4},mon.node1  |  eth1:172.31.6.174/24  | eth0:192.168.6.174/22
+node2 | osd.{5,6,7,8},mon.node2  |  eth1:172.31.6.175/24  | eth0:192.168.6.175/22
+node3 | osd.{9,10,11,12},mon.node3  | eth1:172.31.6.176/24 | eth0:192.168.6.176/22
+{:.mbtablestyle}     
 
-1.硬件
+集群共有12个`osd`进程，3个`monitor`进程。管理节点用作执行ceph-deploy命令，可以使用node1节点充当   
 
-ceph为廉价普通硬件而设计，在其上可以构建PB级的数据集群，其数据高可靠性主要依靠软件层良好的算法来保障。因为是廉价硬件，因此在一个大型集群中，硬件故障会很频繁发生，对于一个设计良好的ceph集群，这并不会对集群造成任何影响
+cluster network 是处理osd间的数据复制，数据重平衡，osd进程心跳检测的网络，其不对外提供服务，只在各个osd节点间通信，本文使用eth1网卡作为cluster network，三个节点网卡eth1桥接到同一个网桥br1上    
 
-Ceph 元数据服务器对 CPU 敏感，它会动态地重分布它们的负载，所以你的元数据服务器应该有足够的处理能力
-Ceph 的 OSD 运行着 RADOS 服务、用 CRUSH 计算数据存放位置、复制数据、维护它自己的集群运行图副本，因此 OSD 需要一定的处理能力（如双核 CPU ）
-监视器只简单地维护着集群运行图的副本，因此对 CPU 不敏感；但必须考虑机器以后是否还会运行 Ceph 监视器以外的 CPU 密集型任务
+## 环境预检  
 
-元数据服务器和监视器必须可以尽快地提供它们的数据，所以他们应该有足够的内存，至少每进程 1GB
-OSD 的日常运行不需要那么多内存（如每进程 500MB ）差不多了；然而在恢复期间它们占用内存比较大（如每进程每 TB 数据需要约 1GB 内存）。通常内存越多越好
-btrfs 尚未稳定到可以用于生产环境的程度，但它可以同时记日志并写入数据，而 xfs 和 ext4 却不能。
+部署ceph sotrage cluster之前，需要进行环境准备，这些步骤应当设置于集群所有节点    
+ 
+**ntp同步**  
 
-单个驱动器容量越大，其对应的 OSD 所需内存就越大，特别是在重均衡、回填、恢复期间。根据经验， 1TB 的存储空间大约需要 1GB 内存。
+各osd节点间需要设置时间同步，节点时钟偏差过大会引起pg异常  
 
-Ceph 最佳实践指示，你应该分别在单独的硬盘运行操作系统、 OSD 数据和 OSD 日志。
+**hostname设置**  
 
-你可以在同一主机上运行多个 OSD ，但要确保 OSD 硬盘总吞吐量不超过为客户端提供读写服务所需的网络带宽；还要考虑集群在每台主机上所存储的数据占总体的百分比，如果一台主机所占百分比太大而它挂了，就可能导致诸如超过 full ratio 的问题，此问题会使 Ceph 中止运作以防数据丢失。
+Cluster Map中会使用主机hostname作为名称表示，因此hostname需要好好规划  
 
-OSD 数量较多（如 20 个以上）的主机会派生出大量线程，尤其是在恢复和重均衡期间。很多 Linux 内核默认的最大线程数较小（如 32k 个），如果您遇到了这类问题，可以把 kernel.pid_max 值调高些。理论最大值是 4194303 。例如把下列这行加入 /etc/sysctl.conf 文件
-kernel.pid_max = 4194303
+**hosts添加**  
 
-2.架构
-admin-node：ceph-deploy部署节点
-node1，node2，node3  存储集群，3 mon
+每个节点都添加集群所有节点的hosts，`ceph.conf`配置文件中会使用到，如下是`node1`节点的hosts  
 
-3.预检 - node
-ntp同步
-hostname设置
-hosts添加
-ceph源(手动设置ceph源，ceph-deploy使用的源连接慢)
-admin-node密钥登录各个node(ceph-deploy部署)
+``` shell
+cat /etc/hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+#::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+172.31.6.174 node1
+172.31.6.175 node2
+172.31.6.176 node3
+```
 
-4.依赖包 - node
-yum install -y yum-utils snappy leveldb gdiskpython-argparse gperftools-libs ntpdate
-#repo优先级
+**配置ceph源**  
+
+不要指望使用[ceph官方源](http://download.ceph.com/rpm-jewel/el7/)，这里需要使用国内第三方源，比如163的ceph源   
+
+``` shell
+[ceph]
+name=Ceph packages
+baseurl=http://mirrors.163.com/ceph/rpm-jewel/el7/x86_64/
+enabled=1
+gpgcheck=1
+priority=2
+type=rpm-md
+gpgkey=http://mirrors.163.com/ceph/keys/release.asc
+
+[ceph-noarch]
+name=Ceph noarch packages
+baseurl=http://mirrors.163.com/ceph/rpm-jewel/el7/noarch/
+enabled=1
+gpgcheck=1
+priority=2
+type=rpm-md
+gpgkey=http://mirrors.163.com/ceph/keys/release.asc
+
+[ceph-source]
+name=Ceph source packages
+baseurl=http://mirrors.163.com/ceph/rpm-jewel/el7/SRPMS/
+enabled=0
+gpgcheck=1
+priority=2
+type=rpm-md
+gpgkey=http://mirrors.163.com/ceph/keys/release.asc
+```
+
+注意这里`priority`可以设置yum源的优先级，如果你其它源中也有ceph软件包，需要保证这里的`ceph.repo`的优先级`priority`比其它的高(值越小越高)，为此需要安装下面这个软件包，用以支持yum源的优先级  
+
+``` shell
 yum -y install yum-plugin-priorities
-从 Infernalis 版起，用户名 “ceph” 保留给了 Ceph 守护进程。如果 Ceph 节点上已经有了 “ceph” 用户，升级前必须先删掉这个用户
+``` 
 
-5.安装ceph-deploy工具 - admin-node
+下面这些依赖包也需要在每个节点都安装   
+
+``` shell
+yum install -y yum-utils snappy leveldb gdiskpython-argparse gperftools-libs ntpdate
+```
+
+## 内核调整  
+
+可以调整下内核最大允许线程数  
+
+``` shell  
+kernel.pid_max = 4194303
+```
+
+## 安装ceph-deploy工具    
+
+`ceph-deploy`是ceph官方提供的部署工具，它通过ssh远程登录其它各个节点上执行命令完成部署过程，我们可以随意选择一台服务器安装此工具，为方便，这里我们选择`node1`节点安装`ceph-deploy`   
+
+我们把`node1`节点上的`/data/ceph/deploy`目录作为`ceph-deploy`部署目录，其部署过程中生成的配置文件，日志都位于此目录下，因此部署应当始终在此目录下进行  
+
+``` shell
 yum install ceph-deploy
+```
+
 管理节点必须能够通过 SSH 无密码地访问各 Ceph 节点。如果 ceph-deploy 以某个普通用户登录，那么这个用户必须有无密码使用 sudo 的权限。
 
-6.安装ceph软件包 - node
+## 安装ceph软件包 - node  
+
 首先规划osd磁盘，以及journal盘位置
 ceph-deploy install --no-adjust-repos node1 node2 node3
 
-#######
 ceph-deploy uninstall {hostname [hostname] ...}
 ceph-deploy purge {hostname [hostname] ...}
 
-7.清除数据
+## 清除数据   
 如果只想清除 /var/lib/ceph 下的数据、并保留 Ceph 安装包
 ceph-deploy purgedata {hostname} [{hostname} ...]
 
 要清理掉 /var/lib/ceph 下的所有数据、并卸载 Ceph 软件包，用 purge 命令
 ceph-deploy purge {hostname} [{hostname} ...]
 
-#清除磁盘 zap
+## 清除磁盘 zap  
 ceph-deploy disk list {node-name [node-name]...}
 ceph-deploy disk zap {osd-server-name}:{disk-name}
 
-8.创建ceph集群 - node
+## 创建ceph集群 - node  
 ceph-deploy new --cluster-network 172.31.6.0/24 --public-network 192.168.4.0/22 node1 node2 node3
 
-#######
 这会创建一个ceph.conf配置文件和一个监视器密钥环
 ceph.conf至少包括
 fsid
@@ -99,7 +156,7 @@ ceph-deploy --cluster {cluster-name} new {host [host], ...}
 
 Ceph Monitors 之间默认使用 6789 端口通信， OSD 之间默认用 6800:7300 这个范围内的端口通信
 
-9.添加mons
+## 添加mons 
 ceph-deploy mon create node1 node2 node3
 
 ##########
