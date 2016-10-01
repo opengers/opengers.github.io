@@ -16,8 +16,8 @@ ceph版本 ceph version 10.2.2
 ceph的部署过程在官网有[详细记录](http://docs.ceph.com/docs/master/start/quick-ceph-deploy/)，[这里](http://docs.ceph.org.cn/start/quick-start-preflight/)也有翻译的中文文档，本篇文章是记录下自己的部署过程，服务器使用kvm虚拟机，只测试功能，分配如下  
 
 节点 | 服务 | cluster network | public network
-:--: | :-- :| :--: | :--:
-node1 | osd.{1,2,3,4},mon.node1  |  eth1:172.31.6.174/24  | 192.168.6.174/22
+:--: | :--: | :--: | :--:
+node1 | \t\tosd.{1,2,3,4},mon.node1  |  eth1:172.31.6.174/24  | 192.168.6.174/22
 node2 | osd.{5,6,7,8},mon.node2  |  eth1:172.31.6.175/24  | 192.168.6.175/22
 node3 | osd.{9,10,11,12},mon.node3  | eth1:172.31.6.176/24 | 192.168.6.176/22
 {:.mbtablestyle}      
