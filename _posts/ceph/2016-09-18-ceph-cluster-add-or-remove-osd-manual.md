@@ -133,31 +133,35 @@ ceph auth get-or-create client.bootstrap-osd -o /var/lib/ceph/bootstrap-osd/ceph
 chmod 600 /var/lib/ceph/bootstrap-osd/ceph.keyring
 chown ceph:ceph /var/lib/ceph/bootstrap-osd/ceph.keyring
 
-#添加此新节点node5到crush map(本节点新建第一个osd时才需要)
-ceph osd crush add-bucket sata-node5 host
-#移动到root:staa,rack:stat-rack01下面
-ceph osd crush move sata-node5 root=sata rack=sata-rack01
+#添加此新节点node4到crush map(本节点新建第一个osd时才需要)
+ceph osd crush add-bucket node4 host
+#移动到root:default,rack:rack01下面
+ceph osd crush move node4 root=default rack=rack01
 
 #添加此osd.16到CRUSH map，才能接收数据
-ceph osd crush add osd.16 0.01900 root=sata rack=sata-rack01 host=sata-node5
+ceph osd crush add osd.16 1.00 root=default rack=rack01 host=node4
 
 #osd添加完成，目前处于down状态，启动osd.16之后，变为up且in
 systemctl start ceph-osd@16
 ```
 
 ## 手动移除osd  
-osd正常运行是up 且 in
-ceph osd out {osd-num}
-out之后，ceph开始重新平衡，拷贝此osd上数据到其它osd，状态变为up且out
 
-systemctl stop ceph-osd@{osd-num}
-stop osd进程之后，状态变为down
+osd正常运行是up 且 in状态   
 
+``` shell
+#out之后，ceph开始重新平衡，拷贝此osd上数据到其它osd，此osd状态变为up且out
+ceph osd out 10
+
+#stop osd进程之后，状态变为down 且 out
+systemctl stop ceph-osd@10
+
+#删除 CRUSH 图的对应 OSD 条目，它就不再接收数据了
 ceph osd crush remove osd.10
-删除 CRUSH 图的对应 OSD 条目，它就不再接收数据了
 
+#移除osd认证key
 ceph auth del osd.10
-移除osd认证key
 
+#从osd中删除osd 10，ceph osd tree中移除
 ceph osd rm 10
-删除osd 10，ceph osd tree中移除 
+```
