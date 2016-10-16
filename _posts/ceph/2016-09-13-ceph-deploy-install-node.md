@@ -14,9 +14,7 @@ ceph版本 ceph version 10.2.2
 测试服务器为kvm虚拟机</small>
  
 * TOC
-{:toc}
-
-----  
+{:toc}  
 
 ceph的部署过程在官网有[详细记录](http://docs.ceph.com/docs/master/start/quick-ceph-deploy/)，[ceph中国社区](http://docs.ceph.org.cn/start/quick-start-preflight/)也有翻译的中文文档  
 
