@@ -21,36 +21,11 @@ ceph为廉价普通硬件而设计，在其上可以构建PB级的数据集群�
 
 本篇文章是记录下自己的部署过程，服务器使用kvm虚拟机，只测试功能，服务器分配如下    
 
-<table>
-<thead>
-<tr>
-<th align="left">节点</th>
-<th>服务</th>
-<th>cluster network</th>
-<th align="right">public network</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td align="left">node1(admin-node)</td>
-<td>osd.{1,2,3,4},mon.node1</td>
-<td>eth1:172.31.6.174/24</td>
-<td align="right">eth0:192.168.6.174/22</td>
-</tr>
-<tr>
-<td align="left">node2</td>
-<td>osd.{5,6,7,8},mon.node2</td>
-<td>eth1:172.31.6.175/24</td>
-<td align="right">eth0:192.168.6.175/22</td>
-</tr>
-<tr>
-<td align="left">node3</td>
-<td>osd.{9,10,11,12},mon.node3</td>
-<td>eth1:172.31.6.176/24</td>
-<td align="right">eth0:192.168.6.176/22</td>
-</tr>
-</tbody>
-</table>    
+节点 | 服务 | cluster network | public network
+:--: | :--: | :--: | :--:
+node1(admin-node) | osd.{1,2,3,4},mon.node1  |  eth1:172.31.6.174/24  | eth0:192.168.6.174/22
+node2 | osd.{5,6,7,8},mon.node2  |  eth1:172.31.6.175/24  | eth0:192.168.6.175/22
+node3 | osd.{9,10,11,12},mon.node3  | eth1:172.31.6.176/24 | eth0:192.168.6.176/22
 
 每个节点使用4块磁盘部署4个`osd`，集群共有12个`osd`进程，3个`monitor`进程。管理节点用作执行ceph-deploy命令，可以使用node1节点充当      
 
