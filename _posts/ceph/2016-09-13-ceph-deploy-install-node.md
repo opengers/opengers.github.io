@@ -36,13 +36,13 @@ node3 | osd.{9,10,11,12},mon.node3  | eth1:172.31.6.176/24 | eth0:192.168.6.176/
 
 ----
 
-每个节点使用4块磁盘部署4个`osd`，集群共有12个`osd`进程，3个`monitor`进程。管理节点用作执行ceph-deploy命令，可以使用node1节点充当      
+每个节点都有五块磁盘，前4块磁盘部署4个`osd`，第5块磁盘建立四个相等大小分区作为四个osd盘的日志分区。这样，集群共有12个`osd`进程，3个`monitor`进程。管理节点用作执行`ceph-deploy`命令，可以使用node1节点充当       
 
 cluster network 是处理osd间的数据复制，数据重平衡，osd进程心跳检测的网络，其不对外提供服务，只在各个osd节点间通信，本文使用eth1网卡作为cluster network，三个节点网卡eth1桥接到同一个网桥br1上     
 
 ## 环境预检  
 
-部署ceph sotrage cluster之前，需要进行环境准备，这些步骤应当设置于集群所有节点    
+部署集群之前，需要进行环境准备，这些步骤应当设置于集群所有节点    
  
 **ntp同步**  
 
@@ -112,7 +112,7 @@ yum install -y yum-utils snappy leveldb gdiskpython-argparse gperftools-libs ntp
 
 **内核调整**  
 
-可以调整下内核最大允许线程数  
+`osd`进程可以产生大量线程，如有需要，可以调整下内核最大允许线程数  
 
 ``` shell  
 kernel.pid_max = 4194303
@@ -122,7 +122,7 @@ kernel.pid_max = 4194303
 
 `ceph-deploy`是ceph官方提供的部署工具，它通过ssh远程登录其它各个节点上执行命令完成部署过程，我们可以随意选择一台服务器安装此工具，为方便，这里我们选择`node1`节点安装`ceph-deploy`   
 
-我们把`node1`节点上的`/data/ceph/deploy`目录作为`ceph-deploy`部署目录，其部署过程中生成的配置文件，日志都位于此目录下，因此下面部署应当始终在此目录下进行  
+我们把`node1`节点上的`/data/ceph/deploy`目录作为`ceph-deploy`部署目录，其部署过程中生成的配置文件，key密钥，日志等都位于此目录下，因此下面部署应当始终在此目录下进行  
 
 ``` shell
 yum install ceph-deploy
