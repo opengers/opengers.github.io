@@ -219,19 +219,19 @@ activate 命令会让 OSD 进入 up 且 in 状态，此命令所用路径和 pre
 
 ## ceph-deploy使用  
   
-1. 允许一主机以管理员权限执行 Ceph 命令  
+- 允许一主机以管理员权限执行 Ceph 命令  
 
 ``` shell
 ceph-deploy admin {host-name [host-name]...}
 ```
 
-2. 把改过的配置文件分发给集群内各主机   
+- 把改过的配置文件分发给集群内各主机   
 
 ``` shell  
 ceph-deploy --overwrite-conf config push node{1..3}
 ```
 
-3. ceph-deploy执行后的清除  
+- ceph-deploy执行后的清除  
 
 ``` shell
 #卸载指定节点上的ceph软件包  
@@ -245,7 +245,7 @@ ceph-deploy purgedata {hostname} [{hostname} ...]
 ceph-deploy purge {hostname} [{hostname} ...]
 ```
 
-4. 清除磁盘操作   
+- 清除磁盘操作   
 
 ``` shell
 #查看某节点上所有磁盘
@@ -255,7 +255,7 @@ ceph-deploy disk list {node-name [node-name]...}
 ceph-deploy disk zap node1:/dev/vdb
 ```
 
-5. monitor操作  
+- monitor操作  
 
 ``` shell
 #从某个节点上移除Ceph MON进程
