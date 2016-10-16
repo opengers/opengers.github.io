@@ -31,6 +31,14 @@ node3 | osd.{9,10,11,12},mon.node3  | eth1:172.31.6.176/24 | eth0:192.168.6.176/
 
 ----
 
+
+| First Header  | Second Header |
+| ------------- | ------------- |
+| Content Cell  | Content Cell  |
+| Content Cell  | Content Cell  |
+
+
+
 每个节点使用4块磁盘部署4个`osd`，集群共有12个`osd`进程，3个`monitor`进程。管理节点用作执行ceph-deploy命令，可以使用node1节点充当      
 
 cluster network 是处理osd间的数据复制，数据重平衡，osd进程心跳检测的网络，其不对外提供服务，只在各个osd节点间通信，本文使用eth1网卡作为cluster network，三个节点网卡eth1桥接到同一个网桥br1上     
