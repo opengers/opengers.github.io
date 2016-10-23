@@ -57,7 +57,7 @@ virsh vol-list vms
  virt-1               vms/virt-1
 ```
 
-使用`virt-install`安装虚拟机时，命令如下       
+使用`virt-install`安装虚拟机系统，命令如下       
 
 ``` shell
 virt-install \
@@ -90,4 +90,4 @@ Domain installation does not appear to have been successful.
 
 google了一下，这里也有讨论[virt-install copies part of a pool's definition into a domain's disk definition - should it copy more or less?](https://www.redhat.com/archives/virt-tools-list/2016-January/msg00006.html)    
 
-在ceph开启`cephx`认证的情况下，当前版本的`virt-install`无法把libvirt pool中的认证内容`<auth ... </auth>`传递给生成的虚拟机xml文件，导致虚拟机无法访问rbd磁盘   
+问题在于，在ceph开启`cephx`认证的情况下，当前版本的`virt-install`无法把libvirt pool中的认证内容`<auth ... </auth>`传递给生成的虚拟机xml文件，导致虚拟机无法访问rbd磁盘   
