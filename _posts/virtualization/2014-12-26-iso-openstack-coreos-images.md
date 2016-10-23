@@ -1,7 +1,14 @@
 ---
-layout: article
 title: "基于ISO制作openstack使用的coreOS镜像"
+author: opengers
+layout: post
+permalink: /virtualization/create-coreOS-image-use-iso/
 categories: virtualization
+tags:
+  - virtualization
+  - kvm
+  - libvirt
+format: quote
 ---
 
 ><small>本篇文章是使用ISO镜像手动制作openstack云平台使用的qcow2镜像文件，关于coreOS的介绍，可以看[CoreOS 实战：CoreOS 及管理工具介绍](http://www.infoq.com/cn/articles/what-is-coreos)</small>
@@ -169,7 +176,7 @@ systemctl enable cloudinit.service
 #执行enable之后，cloudinit.service这个服务就会开机启动，从而我们的脚本cloud-init.sh就可以执行  
 ``` 
 
-[本文链接](http://www.isjian.com)
+[本文链接](http://www.isjian.com/virtualization/2014/12/26/create-coreOS-image-use-iso)
 
 
 

@@ -11,138 +11,101 @@ tags:
 format: quote
 ---
 
-1. 关于kvm，qemu的介绍，可以参考这篇文章：[kvm libvirt qemu实践系列(一)](http://blog.isjian.com/2015/06/kvm-libvirt-qemu-1/)
+>关于kvm，qemu的介绍，可以参考这篇文章：[kvm libvirt qemu实践系列(一)](http://blog.isjian.com/2015/06/kvm-libvirt-qemu-1/)  
 
 
-## 2 测试物理环境
+## 测试物理环境
 
-
-
-
-#### 1 系统版本
-
+#### 系统版本   
 
 Red Hat Enterprise Linux Server release 6.5 (Santiago)
 
+#### libvirt && QEMU rpm版本   
 
-#### 2 libvirt && QEMU rpm版本
+``` shell
+[root@controller2 scripts]# rpm -qa | egrep "(qemu|libvirt)"
+qemu-img-0.12.1.2-2.415.el6.3ceph.x86_64
+qemu-kvm-tools-0.12.1.2-2.415.el6.3ceph.x86_64
+libvirt-python-0.10.2-29.el6.x86_64
+gpxe-roms-qemu-0.9.7-6.10.el6.noarch
+libvirt-0.10.2-29.el6.x86_64
+qemu-kvm-0.12.1.2-2.415.el6.3ceph.x86_64
+libvirt-client-0.10.2-29.el6.x86_64
+```
 
+#### 关于QEMU版本  
 
-<!-- more -->
+rhel6上qemu默认版本为0.12，它不支持开机状态的`blockcommit`，目前最新版本2.1.2可以支持，这部分可以参考qemu官网的changelog   
 
-    
-    [root@controller2 scripts]# rpm -qa | egrep "(qemu|libvirt)"
-    qemu-img-0.12.1.2-2.415.el6.3ceph.x86_64
-    qemu-kvm-tools-0.12.1.2-2.415.el6.3ceph.x86_64
-    libvirt-python-0.10.2-29.el6.x86_64
-    gpxe-roms-qemu-0.9.7-6.10.el6.noarch
-    libvirt-0.10.2-29.el6.x86_64
-    qemu-kvm-0.12.1.2-2.415.el6.3ceph.x86_64
-    libvirt-client-0.10.2-29.el6.x86_64
+支持开机状态的快照合并     
 
+qemu 1.3版本[changelog](http://wiki.qemu.org/ChangeLog/1.3)   
+>A new block job is supported: live block commit (also known as "snapshot deletion") moves data from an image to another in the backing file chain. With the current implementation of QEMU 1.3, the "source" image may not be the active one.</blockquote>
 
+支持当前avtive快照的合并   
 
+qemu 2.0版本[changelog](http://wiki.qemu.org/ChangeLog/2.0)
 
-#### 3 关于QEMU版本
+>Live snapshot merge (...-commit) can be used to merge the active layer of an image into one of the snapshots</blockquote>
 
+## 什么是虚拟机快照链(snapshot chains)
 
-rhel6上qemu默认版本为0.12，它不支持开机状态的blockcommit，目前最新版本2.1.2可以支持，这部分可以参考qemu官网的changelog
+虚拟机快照保存了虚拟机在某个指定时间点的状态（包括操作系统和所有的程序),利用快照,我们可以恢复虚拟机到某个以前的状态,比如测试软件的时候经常需要回滚系统   
 
-支持开机状态的快照合并
+快照链就是多个快照组成的关系链,这些快照按照创建时间排列成链,像下面这样,本文章要解释的就是怎么创建这条链,链中快照的相互关系,缩短链,以及如何利用这条链回滚我们的虚拟机到某个状态   
 
-
-<blockquote>#qemu 1.3版本[changelog](http://wiki.qemu.org/ChangeLog/1.3):
-
-A new block job is supported: live block commit (also known as "snapshot deletion") moves data from an image to another in the backing file chain. With the current implementation of QEMU 1.3, the "source" image may not be the active one.</blockquote>
-
-
-支持当前avtive快照的合并
-
-
-<blockquote>#qemu 2.0版本[changelog](http://wiki.qemu.org/ChangeLog/2.0)
-
-Live snapshot merge (...-commit) can be used to merge the active layer of an image into one of the snapshots</blockquote>
-
-
-
-
-## 3.什么是虚拟机快照链(snapshot chains)
-
-
-虚拟机快照保存了虚拟机在某个指定时间点的状态（包括操作系统和所有的程序),利用快照,我们可以恢复虚拟机到某个以前的状态,比如测试软件的时候经常需要回滚系统
-
-快照链就是多个快照组成的关系链,这些快照按照创建时间排列成链,像下面这样,本文章要解释的就是怎么创建这条链,链中快照的相互关系,缩短链,以及如何利用这条链回滚我们的虚拟机到某个状态
-
+``` shell
 base-image<--guest1<--snap1<--snap2<--snap3<--snap4<--当前(active)
+```
 
-如上,base-image是制作好的一个qcow2格式的磁盘镜像文件,它包含有完整的OS以及引导程序,现在以这个base-image为模板创建多个虚拟机,简单点方法,每创建一个虚拟机我们就把这个镜像完整复制一份,但这种做法效率底下,满足不了生产需要,这是就用到了qcow2镜像的特性copy-on-write
+如上,base-image是制作好的一个qcow2格式的磁盘镜像文件,它包含有完整的OS以及引导程序,现在以这个base-image为模板创建多个虚拟机,简单点方法,每创建一个虚拟机我们就把这个镜像完整复制一份,但这种做法效率底下,满足不了生产需要,这是就用到了qcow2镜像的特性copy-on-write  
 
-qcow2(qemu copy-on-write)格式镜像支持快照,具有创建一个base-image,以及在base-image(backing file)基础上创建多个copy-on-write overlays镜像的能力,
+qcow2(qemu copy-on-write)格式镜像支持快照,具有创建一个base-image,以及在base-image(backing file)基础上创建多个copy-on-write overlays镜像的能力   
 
-解释下backing file和overlay, 上面那条链中,我们为base-image创建一个guest1,那么此时base-image就是guest1的backing file,guest1就是base-image的overlay,同理,为guest1虚拟机创建了一个快照snap1,此时guest1就是snap1的backing file,snap1是guest1的overlay,backing files和overlays十分有用,可以快速的创建瘦装备实例,特别是在开发测试过程中可以快速回滚到之前某个状态
+解释下`backing file`和`overlay`上面那条链中,我们为base-image创建一个guest1,那么此时base-image就是guest1的backing file,guest1就是base-image的overlay,同理,为guest1虚拟机创建了一个快照snap1,此时guest1就是snap1的backing file,snap1是guest1的overlay,backing files和overlays十分有用,可以快速的创建瘦装备实例,特别是在开发测试过程中可以快速回滚到之前某个状态
 
-如下,我们有一个centosbase的原始镜像(包含完整OS和引导程序),现在用它作为模板创建多个虚拟机,每个虚拟机都可以创建多个快照组成快照链,当然不能直接为centosbase创建快照
+如下,我们有一个centosbase的原始镜像(包含完整OS和引导程序),现在用它作为模板创建多个虚拟机,每个虚拟机都可以创建多个快照组成快照链,当然不能直接为centosbase创建快照  
 
+[![1](http://blog.isjian.com/wp-content/uploads/2015/07/1.png)](http://blog.isjian.com/wp-content/uploads/2015/07/1.png)   
 
+以CentOS系统来说,我们制作了一个qcow2格式的虚拟机镜像,想要以它作为模板来创建多个虚拟机实例,有两种方法创建实例    
+1. 每新建一个实例,把centosbase模板复制一份,创建速度慢
+1. 使用copy-on-write技术(qcow2格式的特性),创建基于模板的实例,创建速度很快,可以查看磁盘文件大小比较一下
 
+上图中centos1,centos2,centos3等是基于centosbase模板创建的虚拟机(guest),接下来做的测试需要用到,centos1_sn1,centos1_sn2,centos1_sn3等是实例centos1的快照链    
 
+我们可以只用一个backing files创建多个虚拟机实例(overlays),然后可以对每个虚拟机实例做多个快照   
 
-
-
-
-[![1](http://blog.isjian.com/wp-content/uploads/2015/07/1.png)](http://blog.isjian.com/wp-content/uploads/2015/07/1.png)
-
-
-
-
-
-
+注意:backing files总是只读的文件,换言之,一旦新快照被创建,他的后端文件就不能更改(快照依赖于后端这种状态),参考后面的blockcommit了解更多   
 
 
-以CentOS系统来说,我们制作了一个qcow2格式的虚拟机镜像,想要以它作为模板来创建多个虚拟机实例,有两种方法创建实例
-A.每新建一个实例,把centosbase模板复制一份,创建速度慢
-B.使用copy-on-write技术(qcow2格式的特性),创建基于模板的实例,创建速度很快,可以查看磁盘文件大小比较一下
-
-上图中centos1,centos2,centos3等是基于centosbase模板创建的虚拟机(guest),接下来做的测试需要用到,centos1_sn1,centos1_sn2,centos1_sn3等是实例centos1的快照链
-
-我们可以只用一个backing files创建多个虚拟机实例(overlays),然后可以对每个虚拟机实例做多个快照
-
-注意:backing files总是只读的文件,换言之,一旦新快照被创建,他的后端文件就不能更改(快照依赖于后端这种状态),参考后面的blockcommit了解更多
-
-
-## 4.为虚拟机创建瘦装备实例(domain)
-
+## 为虚拟机创建瘦装备实例(domain)
 
 domain是指libvirt创建的虚拟机
 
 qemu-img是QEMU的磁盘管理工具,qemu编译之后,默认会提供这个工具,如下关系链
 
-    
+``` shell
                    /----- <- [centos1.qcow2] <- [centos1_A.qcow2] <- [centos1_B.qcow2]
     [(centosbase)]|                
                    \----- <- [centos2.qcow2] <- [centos2_A.qcow2] <- [centos2_B.qcow2]
+```
 
+使用模板镜像centosbase(backing file)创建两个虚拟机(基于centosbase),20G不是必须的参数   
 
-
-    
-    #使用模板镜像centosbase(backing file)创建两个虚拟机(基于centosbase),20G不是必须的参数
-    qemu-img create -b centosbase.qcow2 -f qcow2 centos1.qcow2 20G
-    qemu-img create -b centosbase.qcow2 -f qcow2 centos2.qcow2 20G
-
+``` shell
+qemu-img create -b centosbase.qcow2 -f qcow2 centos1.qcow2 20G
+qemu-img create -b centosbase.qcow2 -f qcow2 centos2.qcow2 20G
+```
 
 现在创建出来的centos1和centos2都可以用来启动一个虚拟机,因为他们依赖于backing file,所以这两个磁盘只有几百个字节大小,只有新的文件才会被写入此磁盘
 
-    
-    #查看镜像信息,包括虚拟磁盘大小,实际占用空间,backing file
-    qemu-img info centos1.qcow2
+``` sehll
+#查看镜像信息,包括虚拟磁盘大小,实际占用空间,backing file
+qemu-img info centos1.qcow2
+```  
 
-
-
-
-## 5.内置快照介绍（Internal Snapshots）
-
-
-
+## 内置快照介绍（Internal Snapshots） 
 
 #### 5.1 内置磁盘快照
 

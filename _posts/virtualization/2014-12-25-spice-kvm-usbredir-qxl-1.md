@@ -205,4 +205,4 @@ chkconfig spice-vdagentd on
 
 ![image2014-12-25 20-31-28](/images/virtualization/spice-kvm-usbredir-qxl-1/image2014-12-25-20-31-28.png)
 
-选择Sound的Model(windows虚拟机是ac97)
+选择Sound的Model(windows虚拟机是ac97)  

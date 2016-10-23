@@ -15,7 +15,7 @@ format: quote
 - 在线调整配置应该保证虚拟机重启之后依然生效，即调整的同时需要更改xml文件
 - centos6.x平台下，cpu core数只能在线增加，不能在线减小
 
-### 查看虚拟机信息
+### 查看虚拟机信息   
 
 ``` shell
     shell>  virsh dumpxml cos_v1 | head -n 10
