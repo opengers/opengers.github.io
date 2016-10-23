@@ -18,9 +18,9 @@ centos6.x, 7.x平台下，cpu core数只能在线增加，不能在线减小
 ## 查看虚拟机信息  
 
 文中使用虚拟机domain为"cos"  
-虚拟机在线调整配置并不是无限制的调整，而是有相应限制，比如对于cpu，内存这些调整，是根据此虚拟机xml文件中的配置参数有一个调整的上限，而对于添加网卡，磁盘这些的限制，则是看kvm程序最大能够模拟多少个pci设备给虚拟机  
+虚拟机在线调整配置并不是无限制的调整，而是有相应限制，比如对于cpu，内存这些调整，是根据此虚拟机xml文件中的配置参数有一个调整的上限，而对于添加网卡，磁盘这些的限制，则是看kvm程序最大能够模拟多少个pci设备给虚拟机   
 
-可以使用下面的方法预分配cpu，内存的上限值
+可以使用下面的方法预分配cpu，内存的上限值，只是预分配，虚拟机无法使用  
 
 	virsh dumpxml cos | less	
 
@@ -28,15 +28,16 @@ centos6.x, 7.x平台下，cpu core数只能在线增加，不能在线减小
 <memory unit='KiB'>4194304</memory>
 <currentMemory unit='KiB'>2097152</currentMemory>
 ```  
-上面可以看到，虚拟机预分配的内存上限值为4G,目前使用2G，因此下文内存最大可以调整4G，否则需要关闭虚拟机，调整该最大预分配值
+上面可以看到，虚拟机预分配的内存上限值为4G,目前使用2G，因此下文内存最大可以调整到4G，否则需要关闭虚拟机，调整该最大预分配值    
 
 ``` html
 <vcpu placement='static' current='2'>8</vcpu>
 ```
 这里看到虚拟机预分配cpu核数上限为8,目前使用2个core，因此下文cpu在线增加最多到8个core  
 
-要使在线添加硬件重启后依然生效，需要在命令上加"–config"，"--live或"--persistent"参数，具体使用`virsh setmem --help`查看    
-以下操作虚拟机处于运行状态
+要使在线添加硬件重启后依然生效，需要在命令上加"–config"，"--live或"--persistent"参数，具体使用`virsh attach-disk --help`查看      
+
+以下操作虚拟机处于运行状态  
 
 ## 内存调整
 
@@ -48,12 +49,14 @@ centos6.x, 7.x平台下，cpu core数只能在线增加，不能在线减小
 
 	virsh setmem cos 4G
 
-调整的同时更改xml文件，永久调整  
+上面只是临时调整，并未更改xml文件，虚拟机关机后就失效了，调整的同时还需更改xml文件，做到永久调整   
 
-	virsh setmem cos 2G --config --live
-	#--config: 设置的同时更改虚拟机xml文件，这样就可以保证虚拟机重启后仍然生效
-	#–live: 在线调整
-	#其它添加硬件的命令同样可以使用上面两个参数
+``` shell
+virsh setmem cos 2G --config --live
+#--config: 设置的同时更改虚拟机xml文件，这样就可以保证虚拟机重启后仍然生效
+#–live: 在线调整
+#其它添加硬件的命令同样可以使用上面两个参数
+```
 
 永久减小为2G
 
@@ -171,9 +174,11 @@ cat eth2-nic.xml
 
 * 永久生效
 
-	virsh attach-device cos eth2-nic.xml --persistent
+``` shell
+virsh attach-device cos eth2-nic.xml --persistent
+```
 
 ## 在线添加光盘  
-在线添加光盘命令比较简单，直接使用下面命令即可，注意`vdd`应当没有被使用
+在线添加光盘命令比较简单，直接使用下面命令即可，注意`vdd`应当没有被使用   
 
 	virsh attach-disk cos /data_lij/iso/CentOS-6.4-x86_64-bin-DVD1.iso vdd 
