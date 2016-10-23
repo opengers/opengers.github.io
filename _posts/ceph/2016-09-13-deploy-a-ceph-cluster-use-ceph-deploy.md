@@ -273,4 +273,4 @@ ceph-deploy mon destroy {host-name [host-name]...}
 
 ## 关于udev   
 
-可以看到，`ceph-deploy`部署过程中并没有把osd数据盘的挂载信息写入`/etc/fstab`，但是重启节点后，osd数据盘也会自动挂载，这是因为其利用了linux内核提供的`udev`策略，可以查看`/lib/udev/rules.d/95-ceph-osd.rules`得到挂载信息，当然也可以google下`udev`策略的编写  
+可以看到，`ceph-deploy`部署过程中并没有把osd数据盘的挂载信息写入`/etc/fstab`，但是重启节点后，osd数据盘也会自动挂载，这是因为其利用了linux内核提供的`udev`策略，可以查看`/lib/udev/rules.d/95-ceph-osd.rules`得到挂载信息(centos7)，当然也可以google下`udev`策略的编写  
