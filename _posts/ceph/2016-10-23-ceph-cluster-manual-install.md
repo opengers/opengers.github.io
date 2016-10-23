@@ -21,7 +21,7 @@ ceph版本 ceph version 10.2.3
 
 官方已经有了`ceph-deploy`这个部署工具，它可以方便地部署以及扩展一个ceph集群，参考我之前写的文章[使用ceph-deploy工具部署ceph集群](http://www.isjian.com/ceph/deploy-a-ceph-cluster-use-ceph-deploy/)，虽然如此，一步步手动安装一个ceph集群还是很有必要的，一方面手动安装可以更了解ceph配置过程，便于后期维护排错，另一方面可以为那些使用Chef,juiu,Puppet,...等工具编写部署脚本的开发者提供参考，本文是自己手动安装的步骤，这里记录一下   
 
-## 环境预检    
+# 环境预检    
 
 本文依然使用三台服务器(m1,m2,m3)部署ceph集群，其中三个mon进程(mon.m1,mon.m2,mon.m3)，12个osd进程(osd.0 ~ osd.11)，节点分配如下  
 
@@ -48,9 +48,9 @@ yum install ceph
 #安装过程会创建空的/etc/ceph文件夹
 ```
 
-## monitor节点安装  
+# monitor节点安装  
 
-### monitor节点作用  
+## monitor节点作用  
 
 部署ceph第一步就是要把集群的Moitors运行起来，Monitors能够控制集群的多项行为，比如每个pool的副本数，每个OSD上的pg数，OSD进程间心跳间隔，是否启用认证(cephx)，...等，这些配置项都有默认值，我们可以根据需要调整优化     
 
