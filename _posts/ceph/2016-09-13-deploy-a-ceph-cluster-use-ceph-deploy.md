@@ -140,6 +140,7 @@ mkdir -p /data/ceph/deploy
 首先安装ceph软件包到三个节点上。上面我们已经配置好ceph源，因此这里使用`--no-adjust-repos`参数忽略设置ceph源   
 
 ``` shell
+#ceph-deploy --username root install --no-adjust-repos node1 node2 node3
 ceph-deploy install --no-adjust-repos node1 node2 node3
 ```
 
@@ -148,13 +149,27 @@ ceph-deploy install --no-adjust-repos node1 node2 node3
 ``` shell
 ceph-deploy new --cluster-network 172.31.6.0/24 --public-network 192.168.4.0/22 node1 node2 node3
 
-#上步会创建一个ceph.conf配置文件和一个监视器密钥环到各个节点的/etc/ceph/目录，ceph.conf中至少包括`fsid`，`mon_initial_members`，`mon_host`三个参数  
+#上步会创建一个ceph.conf配置文件和一个监视器密钥环到各个节点的/etc/ceph/目录，ceph.conf中会有`fsid`，`mon_initial_members`，`mon_host`三个参数  
 
 #默认ceph使用集群名ceph，可以使用下面命令创建一个指定的ceph集群名称
 #ceph-deploy --cluster {cluster-name} new {host [host], ...}
 ```
 
-`Ceph Monitors`之间默认使用`6789`端口通信， OSD之间默认用`6800:7300` 范围内的端口通信，多个集群应当保证端口不冲突  
+`Ceph Monitors`之间默认使用`6789`端口通信， OSD之间默认用`6800:7300` 范围内的端口通信，多个集群应当保证端口不冲突    
+
+#### 配置文件   
+
+修改`ceph-deploy`目录`/data/ceph/deploy`下的`ceph.conf`    
+
+``` shell
+#/data/ceph/deploy/ceph.conf添加如下参数  
+osd_journal_size = 7168
+osd_pool_default_size = 2
+
+osd_pool_default_pg_num = 512
+osd_pool_default_pgp_num = 512
+rbd_default_features = 3
+```
 
 #### 添加mons   
 
@@ -177,7 +192,7 @@ ceph-deploy mon create node1 node2 node3
 为节点准备认证key  
 
 ``` shell
-ceph-deploy gatherkeys node1
+ceph-deploy gatherkeys node1 node2 node3
 
 #若有需要，可以删除管理主机上、本地目录中的密钥。可用下列命令：
 #ceph-deploy forgetkeys
@@ -187,24 +202,13 @@ ceph-deploy gatherkeys node1
 
 创建集群，安装ceph包，收集密钥之后，就可以创建osd了    
 
-#### 配置文件  
-
-修改`ceph-deploy`目录`/data/ceph/deploy`下的`ceph.conf`    
-
-``` shell
-#/data/ceph/deploy/ceph.conf添加如下参数  
-osd_journal_size = 7168
-osd_pool_default_size = 2
-
-osd_pool_default_pg_num = 512
-osd_pool_default_pgp_num = 512
-rbd_default_features = 3
-```
 
 #### 准备osd  
 
 ``` shell
 ceph-deploy osd prepare node1:vdb:/dev/vdf node1:vdc:/dev/vdf node1:vdd:/dev/vdf node1:vde:/dev/vdf node2:vdb:/dev/vdf node2:vdc:/dev/vdf node2:vdd:/dev/vdf node2:vde:/dev/vdf node3:vdb:/dev/vdf node3:vdc:/dev/vdf node3:vdd:/dev/vdf node3:vde:/dev/vdf
+#可以prepare多个osd
+#node1:vdb:/dev/vdf 意思是在node1上创建一个osd，使用磁盘vdb作为数据盘，osd journal分区从vdf磁盘上划分
 ```
 
 每个节点上四个osd磁盘`vd{b,c,d,e}`，使用同一个日志盘`/dev/vdf`，`prepare`过程中ceph会自动在`/dev/vdf`上创建4个日志分区供4个osd使用，日志分区的大小由上步骤`osd_journal_size = 7168`(7G)指定，你应当修改这个值   
@@ -226,6 +230,7 @@ activate 命令会让 OSD 进入 up 且 in 状态，此命令所用路径和 pre
 
 ``` shell
 ceph-deploy admin {host-name [host-name]...}
+#拷贝ceph.conf和client.admin.keyring到远程主机上
 ```
 
 - 把改过的配置文件分发给集群内各主机   
@@ -265,3 +270,5 @@ ceph-deploy disk zap node1:/dev/vdb
 ceph-deploy mon destroy {host-name [host-name]...}
 #ceph集群至少需要一个mon进程，但一个mon进程无法保证高可靠性。确保你删除一个监视器后，集群仍能正常工作。
 ```
+
+可以看到，`ceph-deploy`部署过程中并没有把osd数据盘的挂载信息写入`/etc/fstab`，但是重启节点后，osd数据盘也会自动挂载，这是因为其利用了linux内核提供的`udev`策略，可以查看`/lib/udev/rules.d/95-ceph-osd.rules`得到挂载信息，当然也可以google下`udev`策略的编写  
