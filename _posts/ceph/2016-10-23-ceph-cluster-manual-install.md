@@ -65,7 +65,7 @@ yum install ceph
 
 下面我们在`m1`节点上操作，三个节点都需要操作的会特别说明  
 
-#### 创建ceph.conf文件  
+## 创建ceph.conf文件  
 
 `ceph.conf`文件需要手动创建，最少需要设置下面三项参数   
 
@@ -80,7 +80,7 @@ mon_host = 192.168.6.177,192.168.6.178,192.168.6.179
 #这里指定三个monitor节点的ip，monitor对外，因此ip使用public network
 ```
 
-#### 创建用户及key文件    
+## 创建用户及key文件    
 
 创建monitor key用于多个monitor间通信，保存在/tmp/ceph.mon.keyring   
 
@@ -95,7 +95,7 @@ mon_host = 192.168.6.177,192.168.6.178,192.168.6.179
 
 	ceph-authtool /tmp/ceph.mon.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
 
-#### 创建monitor map   
+## 创建monitor map   
 
 上面说过，monitor map需要`fsid`，`cluster name`，和hostname及其ip地址，monitor map定义了集群fsid，monitor的ip及端口   
 
@@ -110,7 +110,7 @@ monmaptool --create --add m1 192.168.6.177 --add m2 192.168.6.178 --add m3 192.1
 monmaptool --print /tmp/monmap
 ```
 
-#### 初始化monitor目录    
+## 初始化monitor目录    
 
 上面的操作，比如创建用户，key文件，monitor map等都是集群共用的，因此只创建一次就可以了，但是每个节点上的monitor目录名不一样，需要单独创建     
 
@@ -148,7 +148,7 @@ m3> sudo -u ceph ceph-mon --mkfs -i m3 --monmap /tmp/monmap --keyring /tmp/ceph.
 #-i m1 中的m1位monitor name
 ```
 
-#### 获取monmap及key   
+## 获取monmap及key   
 
 初始化完成后，/tmp/monmap，/tmp/ceph.mon.keyring文件可以删除，删除之后还可以使用命令获取  
 
@@ -161,7 +161,7 @@ monmaptool --print monmap
 ceph auth get mon.
 ```
 
-#### 更新ceph.conf文件   
+## 更新ceph.conf文件   
 
 我们可以随时更新/etc/ceph/ceph.conf文件，添加一些参数       
 
@@ -191,7 +191,7 @@ rbd_default_features = 3
 osd_crush_update_on_start = false
 ```
 
-#### 启动ceph-mon进程   
+## 启动ceph-mon进程   
 
 三个节点上都要启动mon进程，下面以m1上启动ceph-mon@m1进程为例   
 
@@ -208,11 +208,11 @@ systemctl start ceph-mon@m1
 
 monitors运行之后，集群已经有了一个默认的CRUSH map，这个map中没有任何映射，因为还没添加osd，可以使用`ceph -s`查看集群状态，可以看到当前集群处于error状态，有0个osd存在  
 
-## 安装osd节点  
+# 安装osd节点  
 
 一个节点上四个osd，每个osd使用一块硬盘，你也可以使用一个分区充当osd数据盘，下面我们以在m1节点上安装第一个osd(osd.0)为例说明安装过程，其它osd类似   
 
-#### 添加osd
+## 添加osd
 
 添加一个新osd，`id`可以省略，ceph会自动使用最小可用整数，第一个osd从0开始   
 
@@ -222,7 +222,7 @@ ceph osd create
 0
 ```
 
-#### 初始化osd目录  
+## 初始化osd目录  
 
 创建osd.0目录，目录名格式`{cluster-name}-{osd-number}` 
 
@@ -249,7 +249,7 @@ ceph-osd -i 0 --mkfs --mkkey
 
 初始化后，默认使用普通文件/var/lib/ceph/osd/ceph-0/journal作为osd.0的journal，若只是测试环境，可以不用更改journal分区，跳过更改journal分区这一步骤   
 
-#### 更改journal分区  
+## 更改journal分区  
 
 我们可以更改journal分区为ssd分区加速性能，这里使用SSD磁盘`/dev/vdf1`分区作为journal  
 
@@ -274,14 +274,14 @@ ceph-osd --mkjournal -i 0
 chown ceph:ceph /var/lib/ceph/osd/ceph-0/journal
 ```
 
-#### 注册osd.0
+## 注册osd.0
 
 ``` shell
 ceph auth add osd.0 osd 'allow *' mon 'allow profile osd' -i /var/lib/ceph/osd/ceph-0/keyring
 #ceph auth list 中出现osd.0
 ```
 
-#### 加入crush map 
+## 加入crush map 
 
 这是m1上新创建的第一个osd，CRUSH map中还没有m1节点，因此首先要把m1节点加入CRUSH map，同理，m2/m3节点也需要加入CRUSH map
 
@@ -309,7 +309,7 @@ ceph osd crush add osd.0 0.01900 root=default host=m1
 
 此时osd.0状态是`down`且`in`，`down`是因为我们还没有启动osd.0进程  
 
-#### 启动ceph-osd进程   
+## 启动ceph-osd进程   
 
 需要向systemctl传递osd的id号以启动指定的osd进程，如下，我们准备启动osd.0进程 
 
