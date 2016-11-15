@@ -12,51 +12,57 @@ tags:
 ><small>系统centos7.2    
 ceph版本 ceph version 10.2.2</small>
 
-测试环境安装了一个ceph集群，准备使用rbd块设备作为虚拟机系统盘安装系统，步骤如下  
+测试环境安装了一个ceph集群，准备使用rbd块设备作为虚拟机系统盘安装系统，步骤如下    
 
-# 使用virt-install安装虚拟机  
+# 使用virt-install安装虚拟机    
 
-在Host上配置一个secret key，详细过程参考ceph官方文档[USING LIBVIRT WITH CEPH RBD](http://docs.ceph.com/docs/master/rbd/libvirt/)  
+首先需要在ceph中为创建一个用户，用于libvirtd程序访问ceph，这里创建`libvirt`这个用户，过程省略  
+
+在Host上配置一个secret key关联`libvirt`用户，详细过程参考ceph官方文档[USING LIBVIRT WITH CEPH RBD](http://docs.ceph.com/docs/master/rbd/libvirt/)   
 
 ``` shell
 virsh secret-list
  UUID                                  Usage
 --------------------------------------------------------------------------------
  e63e4b32-280e-4b00-982a-9d3xxxxxxx  ceph client.libvirt secret
+ 
+#可以使用virsh secret-get-value e63e4b32-280e-4b00-982a-9d3xxxxxxx 得到libvirt用户认证密钥  
 ```
 
-创建一个新的libvirt pool   
+libvirt支持创建存储池，我们这里创建一个存储池`libvirtpool`，连接ceph中的pool `vms`     
 
 ``` shell
-virsh pool-dumpxml vms
+virsh pool-dumpxml libvirtpool
 <pool type='rbd'>
-  <name>vms</name>
+  <name>libvirtpool</name>     #libvirt pool 名称
   <uuid>1ceacccc-97b4-44f4-a7f4-xxxxxxxx</uuid>
   <capacity unit='bytes'>25180075769856</capacity>
   <allocation unit='bytes'>1067251105920</allocation>
   <available unit='bytes'>24416501055488</available>
   <source>
-    <host name='172.16.1.10' port='6789'/>
+    <host name='172.16.1.10' port='6789'/>  #ceph monitor信息
     <host name='172.16.1.11' port='6789'/>
     <host name='172.16.1.12' port='6789'/>
-    <name>vms</name>
-    <auth type='ceph' username='libvirt'>
-      <secret uuid='e63e4b32-280e-4b00-982a-9d3xxxxxxx'/>
+    <name>vms</name>     #这里的name为ceph中的某个pool
+    <auth type='ceph' username='libvirt'>     #创建的ceph认证用户libvirt
+      <secret uuid='e63e4b32-280e-4b00-982a-9d3xxxxxxx'/>   #此uuid关联到libvirt的密钥 
     </auth>
   </source>
 </pool>
 ```
 
-使用`virsh vol-create-as`创建了一个20G的磁盘作为虚拟机系统盘     
+上面创建了存储池`libvirtpool`，现在我们在池中创建一个20G的卷(vol)作为虚拟机系统盘，为后面的`virt-install`命令使用           
 
 ``` shell
-virsh vol-create-as vms virt-1 --capacity 20G --format raw
+virsh vol-create-as libvirtpool virt-1 --capacity 20G --format raw
 Vol virt-1 created
+#在ceph集群中创建一个rbd磁盘virt-1，位于vms池中
 
-virsh vol-list vms
+#查看libvirtpool中所有卷
+virsh vol-list libvirtpool
  Name                 Path                                    
 ------------------------------------------------------------------------------                             
- virt-1               vms/virt-1
+ virt-1               libvirtpool/virt-1
 ```
 
 使用`virt-install`安装虚拟机系统，命令如下       
@@ -69,8 +75,7 @@ virt-install \
 --vcpus 1 \
 --os-type linux \
 --location http://serverip/centos7.2-x86_64 \
---disk vol=vms/virt-1 \
-#使用上一步创建的卷virt-1pool
+--disk vol=libvirtpool/virt-1 \
 --accelerate \
 --clock offset=localtime \
 --network bridge=br0,model=virtio \
@@ -79,20 +84,21 @@ virt-install \
 --vnc \
 --vnclisten=0.0.0.0 \
 --wait 0
+#注意--disk中使用的卷为libvirtpool/virt-1
 ```
 
 安装并不成功，报错信息如下    
 
 ``` shell
-ERROR    internal error: process exited while connecting to monitor: 2016-10-23T11:43:30.639659Z qemu-kvm: -drive file=rbd:vms/virt-1:auth_supported=none:mon_host=172.16.1.10\:6789,if=none,id=drive-ide0-0-0,format=raw: error connecting
-2016-10-23T11:43:30.640078Z qemu-kvm: -drive file=rbd:vms/virt-1:auth_supported=none:mon_host=172.16.1.10\:6789,if=none,id=drive-ide0-0-0,format=raw: could not open disk image rbd:vms/virt-1:auth_supported=none:mon_host=172.16.1.10\:6789: Could not open 'rbd:vms/virt-1:auth_supported=none:mon_host=172.16.1.10\:6789': Operation not supported
+ERROR    internal error: process exited while connecting to monitor: 2016-10-23T11:43:30.639659Z qemu-kvm: -drive file=rbd:libvirtpool/virt-1:auth_supported=none:mon_host=172.16.1.10\:6789,if=none,id=drive-ide0-0-0,format=raw: error connecting
+2016-10-23T11:43:30.640078Z qemu-kvm: -drive file=rbd:libvirtpool/virt-1:auth_supported=none:mon_host=172.16.1.10\:6789,if=none,id=drive-ide0-0-0,format=raw: could not open disk image rbd:libvirtpool/virt-1:auth_supported=none:mon_host=172.16.1.10\:6789: Could not open 'rbd:libvirtpool/virt-1:auth_supported=none:mon_host=172.16.1.10\:6789': Operation not supported
 
 Domain installation does not appear to have been successful.
 ```
 
-google了一下，这里也有讨论[virt-install copies part of a pool's definition into a domain's disk definition - should it copy more or less?](https://www.redhat.com/archives/virt-tools-list/2016-January/msg00006.html)，问题在于在ceph开启`cephx`认证的情况下，当前版本的`virt-install`无法把libvirt pool中的认证内容`<auth ... </auth>`传递给生成的虚拟机xml文件，导致虚拟机无法访问rbd磁盘    
+google了一下，这里也有讨论[virt-install copies part of a pool's definition into a domain's disk definition - should it copy more or less?](https://www.redhat.com/archives/virt-tools-list/2016-January/msg00006.html)，问题在于在ceph开启`cephx`认证的情况下，当前版本的`virt-install`无法把libvirt pool中的认证内容`<auth ... </auth>`传递给生成的虚拟机xml文件，导致虚拟机无法访问rbd磁盘     
 
-我们先来输出虚拟机xml文件看看，并不真正安装系统。要输出生成的xml文件，只需要添加`--print-xml`参数，它告诉`virt-install`根据我们传递的配置参数输出最终的xml文件    
+我们先来输出虚拟机xml文件看看，并不真正安装。要输出xml文件，只需要添加`--print-xml`参数，它告诉`virt-install`根据我们传递的配置参数输出最终的xml文件    
 
 ``` shell
 virt-install \
@@ -109,7 +115,7 @@ virt-install \
     <emulator>/usr/libexec/qemu-kvm</emulator>
     <disk type='network' device='disk'>
       <driver name='qemu' cache='none' io='native'/>
-      <source protocol='rbd' name='vms/new-20672'>
+      <source protocol='rbd' name='vms/virt-1'>
         <host name='172.16.200.104' port='6789'/>
       </source>
       <target dev='vda' bus='virtio'/>
@@ -137,9 +143,8 @@ ceph_monitors = '''
         <host name='172.16.200.105' port='6789'/>
         <host name='172.16.200.106' port='6789'/>
 '''
-class Guest(XMLBuilder):
 
-#更改_build_xml函数如下
+#更改_build_xml函数
 #此函数中start_xml变量表示首次安装虚拟机所使用的xml内容，其中包含用于安装系统的引导参数，只使用一次  
 #final_xml变量表示虚拟机安装后所使用的xml文件
     def _build_xml(self, is_initial):
@@ -149,7 +154,7 @@ class Guest(XMLBuilder):
         start_xml = self._get_install_xml(install=True, disk_boot=disk_boot)
         final_xml = self._get_install_xml(install=False)
 
-#添加部分------------start
+#添加------------start
         rgx_qemu = re.compile('(<driver name="qemu"[^>]*?>)')
         rgx_auth = re.compile('(?<=<source protocol="rbd" name=")([^>]*?">).*?(?= *?</source>)',re.S)
 
@@ -158,7 +163,7 @@ class Guest(XMLBuilder):
 
         final_xml = rgx_qemu.sub('\\1' + auth_secret,final_xml)
         final_xml = rgx_auth.sub('\\1' + ceph_monitors,final_xml)
-#添加部分------------end
+#添加------------end
 
         logging.debug("Generated %s XML: %s",
                       log_label,
@@ -180,7 +185,7 @@ class Guest(XMLBuilder):
       <auth username='libvirt'>
         <secret type='ceph' uuid='e63e4b32-280e-4b00-982a-9d3xxxxxxx'/>
       </auth>
-      <source protocol='rbd' name='vms/new-20672'>
+      <source protocol='rbd' name='vms/virt-1'>
         <host name='172.16.200.104' port='6789'/>
         <host name='172.16.200.105' port='6789'/>
         <host name='172.16.200.106' port='6789'/>
