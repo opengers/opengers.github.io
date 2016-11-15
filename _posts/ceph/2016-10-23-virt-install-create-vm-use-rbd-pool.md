@@ -14,7 +14,7 @@ ceph版本 ceph version 10.2.2</small>
 
 测试环境安装了一个ceph集群，准备使用rbd块设备作为虚拟机系统盘安装系统，步骤如下  
 
-在Host上配置好了secret key  
+在Host上配置一个secret key，详细过程参考ceph官方文档[USING LIBVIRT WITH CEPH RBD](http://docs.ceph.com/docs/master/rbd/libvirt/)  
 
 ``` shell
 virsh secret-list
@@ -90,4 +90,75 @@ Domain installation does not appear to have been successful.
 
 google了一下，这里也有讨论[virt-install copies part of a pool's definition into a domain's disk definition - should it copy more or less?](https://www.redhat.com/archives/virt-tools-list/2016-January/msg00006.html)    
 
-问题在于，在ceph开启`cephx`认证的情况下，当前版本的`virt-install`无法把libvirt pool中的认证内容`<auth ... </auth>`传递给生成的虚拟机xml文件，导致虚拟机无法访问rbd磁盘   
+问题在于，在ceph开启`cephx`认证的情况下，当前版本的`virt-install`无法把libvirt pool中的认证内容`<auth ... </auth>`传递给生成的虚拟机xml文件，导致虚拟机无法访问rbd磁盘，但可以修改`virt-install`生成虚拟机xml文件部分代码，强制传递缺失的认证内容进去  
+
+`virt-install`有一个`--debug`参数可以输出更详细信息，生成xml文件的代码位于`/usr/share/virt-manager/virtinst/guest.py`，我们需要修改此文件    
+
+``` shell
+#vim /usr/share/virt-manager/virtinst/guest.py
+
+#首先需要定义两个变量，传递ceph认证内容, 下面的uuid即为上面virsh secret-list 的输出
+auth_secret = '''
+      <auth username='libvirt'>
+        <secret type='ceph' uuid='e63e4b32-280e-4b00-982a-9d3xxxxxxx'/>
+      </auth>
+'''
+ceph_monitors = '''
+        <host name='172.16.200.104' port='6789'/>
+        <host name='172.16.200.105' port='6789'/>
+        <host name='172.16.200.106' port='6789'/>
+'''
+class Guest(XMLBuilder):
+
+#更改_build_xml函数如下
+#此函数中start_xml变量表示首次安装虚拟机所使用的xml内容，其中包含用于安装系统的引导参数，只使用一次  
+#final_xml变量表示虚拟机安装后所使用的xml文件
+    def _build_xml(self, is_initial):
+        log_label = is_initial and "install" or "continue"
+        disk_boot = not is_initial
+
+        start_xml = self._get_install_xml(install=True, disk_boot=disk_boot)
+        final_xml = self._get_install_xml(install=False)
+
+#添加部分------------start
+        rgx_qemu = re.compile('(<driver name="qemu"[^>]*?>)')
+        rgx_auth = re.compile('(?<=<source protocol="rbd" name=")([^>]*?">).*?(?= *?</source>)',re.S)
+
+        start_xml = rgx_qemu.sub('\\1' + auth_secret,start_xml)
+        start_xml = rgx_auth.sub('\\1' + ceph_monitors,start_xml)
+
+        final_xml = rgx_qemu.sub('\\1' + auth_secret,final_xml)
+        final_xml = rgx_auth.sub('\\1' + ceph_monitors,final_xml)
+#添加部分------------end
+
+        logging.debug("Generated %s XML: %s",
+                      log_label,
+                      (start_xml and ("\n" + start_xml) or "None required"))
+        logging.debug("Generated boot XML: \n%s", final_xml)
+        
+        return start_xml, final_xml
+#上面添加部分作用是修改start_xml,final_xml这两个变量，在其中加入ceph认证部分的内容(上面定义的两个变量)
+```
+
+传递认证后的xml文件示例如下   
+
+``` shell
+...
+  <devices>
+    <emulator>/usr/libexec/qemu-kvm</emulator>
+    <disk type='network' device='disk'>
+      <driver name='qemu' cache='none' io='native'/>
+      <auth username='libvirt'>
+        <secret type='ceph' uuid='e63e4b32-280e-4b00-982a-9d3xxxxxxx'/>
+      </auth>
+      <source protocol='rbd' name='vms/new-20672'>
+        <host name='172.16.200.104' port='6789'/>
+        <host name='172.16.200.105' port='6789'/>
+        <host name='172.16.200.106' port='6789'/>
+      </source>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+...
+```
+
+如上，修改之后，再次运行安装命令，即可正常安装虚拟机   
