@@ -14,6 +14,8 @@ ceph版本 ceph version 10.2.2</small>
 
 测试环境安装了一个ceph集群，准备使用rbd块设备作为虚拟机系统盘安装系统，步骤如下  
 
+# 使用virt-install安装虚拟机  
+
 在Host上配置一个secret key，详细过程参考ceph官方文档[USING LIBVIRT WITH CEPH RBD](http://docs.ceph.com/docs/master/rbd/libvirt/)  
 
 ``` shell
@@ -88,11 +90,38 @@ ERROR    internal error: process exited while connecting to monitor: 2016-10-23T
 Domain installation does not appear to have been successful.
 ```
 
-google了一下，这里也有讨论[virt-install copies part of a pool's definition into a domain's disk definition - should it copy more or less?](https://www.redhat.com/archives/virt-tools-list/2016-January/msg00006.html)    
+google了一下，这里也有讨论[virt-install copies part of a pool's definition into a domain's disk definition - should it copy more or less?](https://www.redhat.com/archives/virt-tools-list/2016-January/msg00006.html)，问题在于在ceph开启`cephx`认证的情况下，当前版本的`virt-install`无法把libvirt pool中的认证内容`<auth ... </auth>`传递给生成的虚拟机xml文件，导致虚拟机无法访问rbd磁盘    
 
-问题在于，在ceph开启`cephx`认证的情况下，当前版本的`virt-install`无法把libvirt pool中的认证内容`<auth ... </auth>`传递给生成的虚拟机xml文件，导致虚拟机无法访问rbd磁盘，但可以修改`virt-install`生成虚拟机xml文件部分代码，强制传递缺失的认证内容进去  
+我们先来输出虚拟机xml文件看看，并不真正安装系统。要输出生成的xml文件，只需要添加`--print-xml`参数，它告诉`virt-install`根据我们传递的配置参数输出最终的xml文件    
 
-`virt-install`有一个`--debug`参数可以输出更详细信息，生成xml文件的代码位于`/usr/share/virt-manager/virtinst/guest.py`，我们需要修改此文件    
+``` shell
+virt-install \
+--print-xml \
+--force \
+...
+```
+
+输出xml如下    
+
+``` shell
+...
+  <devices>
+    <emulator>/usr/libexec/qemu-kvm</emulator>
+    <disk type='network' device='disk'>
+      <driver name='qemu' cache='none' io='native'/>
+      <source protocol='rbd' name='vms/new-20672'>
+        <host name='172.16.200.104' port='6789'/>
+      </source>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+...
+```   
+
+可以看到，输出的xml文件中丢失了`cephx`认证部分的内容，没了认证，当然无法访问rbd磁盘，既然是缺失认证，那自然就想到可以修改`virt-install`程序中生成虚拟机xml文件部分代码，强制传递缺失的认证内容进去    
+
+# 添加cephx认证部分   
+
+`virt-install`有一个`--debug`参数可以帮我们快速定位问题，通过调试，可以发现生成xml文件的代码位于`/usr/share/virt-manager/virtinst/guest.py`，我们需要修改此文件    
 
 ``` shell
 #vim /usr/share/virt-manager/virtinst/guest.py
@@ -140,7 +169,7 @@ class Guest(XMLBuilder):
 #上面添加部分作用是修改start_xml,final_xml这两个变量，在其中加入ceph认证部分的内容(上面定义的两个变量)
 ```
 
-传递认证后的xml文件示例如下   
+传递认证后的xml文件示例如下     
 
 ``` shell
 ...
