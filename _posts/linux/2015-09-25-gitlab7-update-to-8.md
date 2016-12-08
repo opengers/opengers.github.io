@@ -311,4 +311,5 @@ cp config.yml.example config.yml
     sudo -u git -H bundle exec rake gitlab:check RAILS_ENV=production
 
 参考：  
+
 ><small>https://gitlab.com/gitlab-org/gitlab-ce/blob/master/doc/update/7.14-to-8.0.md</small>
