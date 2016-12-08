@@ -16,33 +16,28 @@ format: quote
 [spice在kvm虚拟机中的应用(一)](http://www.isjian.com/virtualization/spice-kvm-usbredir-qxl-1/)   
 [spice在kvm虚拟化中的应用(二)](http://www.isjian.com/virtualization/spice-kvm-usbredir-qxl-2/)</small>   
 
-## spice的USB重定向  
+# spice的USB重定向  
 
-#### 介绍  
+### 介绍  
 
 使用usb重定向,在client上插入的U盘会被重定向到虚拟机中. 其有两种实现方式,自动重定向(所有插入client中的U盘都被重定向),或者手动选择需要重定向的U盘  
 
-USB重定向需要为虚拟机添加USB2 EHCI驱动,以及若干个Spice channels,Spice channels的个数决定了客户端一次可以有多少个USB设备被重定向到guest, 更多参考：
-
+USB重定向需要为虚拟机添加USB2 EHCI驱动,以及若干个Spice channels,Spice channels的个数决定了客户端一次可以有多少个USB设备被重定向到guest, 更多参考：  
 [USB redirection](http://people.freedesktop.org/~teuf/spice-doc/html/ch02s06.html)  
 [UsbRedir](http://www.spice-space.org/page/UsbRedir)  
 [Features/UsbNetworkRedirection](http://fedoraproject.org/wiki/Features/UsbNetworkRedirection)  
 
-#### 服务器上安装软件
+### 服务器上安装软件  
 
+``` shell
+[root@controller2 vhosts]# rpm -qa | grep usb
+usbredir-0.5.1-1.el6.x86_64
+libusb-0.1.12-23.el6.x86_64
+usbutils-003-4.el6.x86_64
+libusb1-1.0.9-0.6.rc1.el6.x86_64
+```
 
-
-    
-    [root@controller2 vhosts]# rpm -qa | grep usb
-    usbredir-0.5.1-1.el6.x86_64
-    libusb-0.1.12-23.el6.x86_64
-    usbutils-003-4.el6.x86_64
-    libusb1-1.0.9-0.6.rc1.el6.x86_64
-
-
-
-
-#### 1.3 虚拟机xml文件中添加USB redirection驱动
+### 虚拟机xml文件中添加USB redirection驱动
 
 
 
