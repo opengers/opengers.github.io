@@ -18,28 +18,28 @@ spice应用在桌面云中,主要是连接windows桌面,其支持的USB映射可
 - [spice在kvm虚拟机中的应用(一)](http://www.isjian.com/virtualization/spice-kvm-usbredir-qxl-1/)   
 - [spice在kvm虚拟化中的应用(三)](http://www.isjian.com/virtualization/spice-kvm-usbredir-qxl-3/)</small>  
 
-### 系统环境
+# 系统环境
 
-##### 测试环境  
+### 测试环境  
 centos6.4最小化安装(centos6.x桌面版也适用)  
 使用yum源为163源加EPEL源
 
-##### spice客户端介绍  
+### spice客户端介绍  
 在windows平台下的spice客户端为`remote-viewer`,其二进制版本客户端不支持usb映射，因此若需要添加usb映射功能,只能使用源码自己编译，对于非开发人员来说,其编译相当复杂，如下windows平台下的spice客户端`usb device selection`功能无法使用
 
 ![spice-2-1](/images/virtualization/spice-kvm-usbredir-qxl-2/spice-qxl-2.png)
 
 centos6.x平台下可以使用yum安装virt-viewer，但其也不支持usb转发，但我们可以使用源码编译一个支持usb映射的客户端
 
-### spice依赖组件的安装
+# spice依赖组件的安装
 
-##### 安装开发环境
+### 安装开发环境
 
 ``` shell
     yum groupinstall "Development tools"
 ```
 
-##### 下载组件以及spice源码包
+### 下载组件以及spice源码包
 
 ``` shell
 #usbredir支持usb映射组件
@@ -50,7 +50,7 @@ wget http://www.spice-space.org/download/gtk/spice-gtk-0.28.tar.bz2
 wget http://virt-manager.org/download/sources/virt-viewer/virt-viewer-2.0.tar.gz
 ```
 
-##### 编译安装usbredir
+### 编译安装usbredir
 
 ``` shell
 yum install libusb*
@@ -59,7 +59,7 @@ yum install libusb*
 make && make install
 ```
 
-##### 编译安装spice-gtk
+### 编译安装spice-gtk
 
 ``` shell
 #### 4.1 依赖包    
@@ -80,7 +80,7 @@ yum install *gudev*
 make && make install
 ```
 
-### spice客户端的安装
+# spice客户端的安装
 
 ``` shell
 #依赖
@@ -92,7 +92,7 @@ yum install spice-gtk*
 make && make install
 ```
 
-##### spice客户端字体无法显示解决
+### spice客户端字体无法显示解决
 
 由于测试机使用的是最小化安装,所以会造成spice客户端图形界面下字体无法显示,如果你使用centos桌面版编译安装这个客户端,就不会存在这个问题,解决办法是安装下面软件包
 

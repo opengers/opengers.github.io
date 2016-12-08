@@ -10,68 +10,26 @@ tags:
 format: quote
 ---
 
+# gitlab8.0更新说明
 
+GitLab 8.0 现在完全集成了持续集成工具 (GitLab CI) ，此外还完全重写了 UI，节省了至少 50% 的磁盘空间。更快的合并，内置持续集成（CI）到 GitLab 本身，提高了界面和导航，以及“通过电子邮件回复”功能，它可以使用户通过移动设备就能够对某个问题上迅速发表评论，或者合并请求。   
+- GitLab 8.0 主要改进：
+- 更好的 HTTP 支持
+- 邮件快速回复
+- Gmail 快速打开
+- 改善文件上传功能
+- 改进 Mattermost
+- Web hooks 的 SSL 认证   
 
-## 1.gitlab8.0更新说明
+以上摘自[gitlab-8-0](http://www.oschina.net/news/66441/gitlab-8-0), 更新请查看gitlab官网https://github.com/gitlabhq/gitlabhq/blob/master/CHANGELOG
 
+# gitlab7.9环境
 
-GitLab 8.0 现在完全集成了持续集成工具 (GitLab CI) ，此外还完全重写了 UI，节省了至少 50% 的磁盘空间。更快的合并，内置持续集成（CI）到 GitLab 本身，提高了界面和导航，以及“通过电子邮件回复”功能，它可以使用户通过移动设备就能够对某个问题上迅速发表评论，或者合并请求。
+## gitlab7.9安装说明  
 
-<!-- more -->
+系统为centos6.7，gitlab7.9为源码安装，默认位置为/home/git/gitlab，我安装位置：/usr/local/git/gitlab，因此请注意你的gitlab安装位置是否使用默认，相应更改其配置  
 
-GitLab 8.0 主要改进：
-更好的 HTTP 支持
-邮件快速回复
-Gmail 快速打开
-改善文件上传功能
-改进 Mattermost
-Web hooks 的 SSL 认证
-
-以上摘自http://www.oschina.net/news/66441/gitlab-8-0
-
-更多更新请查看gitlab官网https://github.com/gitlabhq/gitlabhq/blob/master/CHANGELOG
-
-
-## 2.gitlab7.9环境
-
-
-
-
-#### 2.1 gitlab7.9安装说明
-
-
-
-
-系统为centos6.7，gitlab7.9为源码安装，默认位置为/home/git/gitlab，我安装位置：/usr/local/git/gitlab，因此请注意你的gitlab安装位置是否使用默认，相应更改下面的配置
-
-
-
-
-[![Image](http://blog.isjian.com/wp-content/uploads/2015/09/Image.png)](http://blog.isjian.com/wp-content/uploads/2015/09/Image.png)
-
-
-
-
-![](file:///C:/Users/lij/AppData/Local/Temp/enhtmlclip/Image.png)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#### 2.2 升级准备
-
-
+## 升级准备
 
 
 由于gitlab使用git用户管理，因此我们应当以git身份执行相关配置，升级前请检查gitlab运行正常

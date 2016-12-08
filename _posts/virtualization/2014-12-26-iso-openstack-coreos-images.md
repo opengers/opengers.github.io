@@ -13,7 +13,7 @@ format: quote
 
 ><small>本篇文章是使用ISO镜像手动制作openstack云平台使用的qcow2镜像文件，关于coreOS的介绍，可以看[CoreOS 实战：CoreOS 及管理工具介绍](http://www.infoq.com/cn/articles/what-is-coreos)</small>
 
-### 下载coreOS镜像（444.5.0版本）  
+## 下载coreOS镜像（444.5.0版本）  
 ``` shell
 #可能需要FQ
 #coreOS安装文件（coreos-install脚本会从官网自动下载，这里手动下载，可以节省时间）
@@ -24,20 +24,20 @@ wget http://stable.release.core-os.net/amd64-usr/444.5.0/coreos_production_image
 wget http://stable.release.core-os.net/amd64-usr/444.5.0/coreos_production_iso_image.iso
 ```
 
-### 创建虚拟磁盘  
+## 创建虚拟磁盘  
 ``` shell
 qemu-img create -f qcow2 coreOS_v1.qcow2 20G
 #qcow2格式, 20G大小
 ```
 
-### 使用virt-install工具启动ISO镜像（从光盘引导系统）  
+## 使用virt-install工具启动ISO镜像（从光盘引导系统）  
 ``` shell
 virt-install -n core -r 1024 -c /data_lij/coreOS/coreos_production_iso_image.iso --disk path=/data/coreOS/coreos_test.qcow2,device=disk,bus=virtio,size=5,format=qcow2 --vnc --vncport=5900 --vnclisten=0.0.0.0 -v
 #-c 使用上面下载的iso
 #vnc 5900端口
 ```
 
-### 设置cloud-config  
+## 设置cloud-config  
 cloud-config介绍  
 ><small>CoreOS allows you to declaratively customize various OS-level items, such as network configuration, user accounts, and systemd units. This document describes the full list of items we can configure. The coreos-cloudinit program uses these files as it configures the OS after startup or during runtime.  
 Your cloud-config is processed during each boot. Invalid cloud-config won't be processed but will be logged in the journal. You can validate your cloud-config with the [CoreOS validator](https://coreos.com/validate) or by running coreos-cloudinit -validate</small>
@@ -52,7 +52,7 @@ ssh_authorized_keys:
 #cloud_config使用yaml语法
 ```
 
-### 安装coreOS到虚拟磁盘  
+## 安装coreOS到虚拟磁盘  
 客户端使用vnc viewer工具连接虚拟机，当前运行的系统是我们下载的ISO镜像`coreos_production_iso_image.iso`，不同于centos可以直接安装系统到磁盘，对于coreOS，我们需要使用这个ISO提供的安装工具`coreos-install`去安装coreOS到磁盘  
 <small><font color="red" >最好使用第6步中的本地下载方法</font></small>
 
@@ -64,7 +64,7 @@ coreos-install -d /dev/vda -C stable -V 444.5.0 -c cloud-config.yaml
 #-c：指定一个启动后可以执行的cloud-config配置文件，用于注入密钥
 ```
 
-### 使用本地安装文件  
+## 使用本地安装文件  
 执行上一步的安装命令后，coreos-install会自动调用下面命令下载所需安装文件，并自动安装
 
 ``` shell
@@ -96,7 +96,7 @@ python -m SimpleHTTPServer 80
 coreos-install -d /dev/vda -C stable -V 444.5.0 -c cloud-config.yaml
 ```
 
-### 开机启动脚本cloud-init
+## 开机启动脚本cloud-init
 安装完成之后，为了使其可以从openstack获取主机名，密钥等，需要添加一个开机启动脚本  
 
 ``` shell
@@ -145,10 +145,10 @@ if [ "$STATUS_CODE" -eq "200" ]; then
 fi
 ```
 
-### 设置开机启动  
+## 设置开机启动  
 coreOS使用systemd管理启动项，关于systemd的介绍[systemd](http://www.ibm.com/developerworks/cn/linux/1407_liuming_init3/index.html)
 
-##### 新建一个开机启动配置文件cloudinit.service
+## 新建一个开机启动配置文件cloudinit.service
 
 ``` shell
 cd /etc/systemd/system
@@ -169,7 +169,7 @@ ExecStart=/usr/bin/bash /etc/cloud-init.sh          #执行的脚本文件cloud-
 WantedBy=multi-user.target
 ```
 
-##### 加入systemd管理(设置开机启动)
+## 加入systemd管理(设置开机启动)
 
 ``` shell
 systemctl enable cloudinit.service
