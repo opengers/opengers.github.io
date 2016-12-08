@@ -18,7 +18,7 @@ format: quote
 
 # spice的USB重定向  
 
-#### 介绍  
+## 介绍  
 
 使用usb重定向,在client上插入的U盘会被重定向到虚拟机中. 其有两种实现方式,自动重定向(所有插入client中的U盘都被重定向),或者手动选择需要重定向的U盘  
 
@@ -27,7 +27,7 @@ USB重定向需要为虚拟机添加USB2 EHCI驱动,以及若干个Spice channel
 [UsbRedir](http://www.spice-space.org/page/UsbRedir)  
 [Features/UsbNetworkRedirection](http://fedoraproject.org/wiki/Features/UsbNetworkRedirection)  
 
-#### 服务器上安装软件  
+## 服务器上安装软件  
 
 ``` shell
 [root@controller2 vhosts]# rpm -qa | grep usb
