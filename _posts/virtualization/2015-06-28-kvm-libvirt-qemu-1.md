@@ -15,12 +15,12 @@ format: quote
 - 本篇文章介绍kvm，qemu，libvirt概念，以及在centos6.x平台下使用rpm包，源码两种方式搭建kvm虚拟化环境   
 - 文中VMM为虚拟机管理程序，即hypervisor，guest为由KVM创建的虚拟机，Host为宿主机，即安装虚机的物理机，vcpu即为虚拟机的cpu，vmemory即为虚拟机内存  
 
-### KVM简介
+# KVM简介
 KVM是由Quramnet 开发，08年被RedHat收购，目前KVM由RedHat工程师开发维护，准确来说，KVM(Kernel-based Virtual Machine)只是一个linux内核模块，包括核心虚拟化模块kvm.ko，以及针对特定CPU的模块kvm-intel.ko或者kvm-amd.ko，其实现需要宿主机CPU支持硬件虚拟化，在x86平台下，CPU硬件虚拟化技术有Intel的VT-x，AMD的 AMD-V
 
 目前，由于kvm良好发展，其能够运行在x86, ARM (Cortex A15, AArch64), MIPS32等平台下，因为vcpu是由Host硬件模拟，x86平台下Host上安装的kvm能够虚拟出一颗x86架构的vcpu，却无法虚拟出arm,Powerpc等其它架构的vcpu，同样arm平台下安装的kvm只能够虚拟出arm架构的vcpu.   
 
-##### kvm模块
+### kvm模块
 ``` shell
 #查看宿主机CPU是否在硬件上支持虚拟化扩展特性
 cat /proc/cpuinfo | grep -E "(vmx|svm)"
@@ -47,7 +47,7 @@ modprobe kvm-intel
 
 - 单靠内核中的kvm模块并不能启动一台虚拟机，其只能模拟vcpu,vmemory, 像io设备的模拟还需要借助用户空间程序qemu
 
-### KVM 与 qemu
+# KVM 与 qemu
 前面说过，KVM只是一个内核模块，它可以模拟虚拟机的CPU，但虚拟机的I/O设备是通过qemu这个用户空间程序来模拟的  
 qemu本身就是一套完整的开源的全虚拟化解决方案，它有两种使用方式
 
@@ -61,7 +61,7 @@ KVM  centos6.x yum源中，提供了一个qemu-kvm包，版本为0.12，也就�
 
 当启动虚拟机时，需要指定虚拟机的CPU，内存大小，使用的虚拟磁盘，网络使用NAT还是桥接方式，有几张网卡，磁盘等，这些复杂的配置参数需要有其它程序管理，所以Libvirt就登场了  
 
-### Libvirt 与 KVM
+# Libvirt 与 KVM
 centos6.x下使用yum安装的qemu-kvm(qemu分支版本)，查看帮助
 
 ``` shell
@@ -76,7 +76,7 @@ qemu     10556     1  0 12:27 ?        00:02:15 /usr/libexec/qemu-kvm -name inst
 #如上是一个虚拟机进程，运行命令为qemu-kvm，后面为虚拟机配置参数，这么多配置参数当然不方便虚拟机的创建和管理，因此实际操作中，我们需要一个工具能够管理这些参数
 ```
 
-##### libvirt
+### libvirt
 libvirt是为了更方便地管理各种Hypervisor而设计的一套虚拟化库，libvirt作为中间适配层，让底层Hypervisor对上层用户空间的管理工具(virsh，virt-manager)做到完全透明，因为libvirt屏蔽了底层各种Hypervisor的细节，为上层管理工具提供了一个统一的、较稳定的接口（API） 更多参考这个[libvirt简介](http://smilejay.com/2013/03/libvirt-introduction/)  
 libvirt项目最初是为Xen设计的一套API，但是目前对KVM等其他Hypervisor的支持也非常的好。libvirt支持多种Hypervisor，既支持包括KVM、QEMU、Xen、VMware、VirtualBox等在内的平台虚拟化方案，又支持OpenVZ、LXC等Linux容器虚拟化系统，还支持用户态Linux（UML）的虚拟化。
 
@@ -86,7 +86,7 @@ libvirt是目前使用最为广泛的对KVM虚拟机进行管理的工具和应�
 
 和手动使用qemu-kvm命令启动虚拟机不同，Libvirt使用xml文件来定义虚拟机的配置细节，就像上面提到的配置虚拟机CPU，内存大小，网络，磁盘这些都可以在xml文件中定义，然后使用这些定义启动虚拟机，所谓更改虚拟机配置，其实就是更改这个虚拟机的xml文件参数（更改某些参数需要重启虚拟机才会生效）
 
-### rpm包安装kvm
+# rpm包安装kvm
 centos6.x下yum 安装的kvm程序为`qemu-kvm`，版本为0.12，其为qemu的分支版本
 
 ``` shell
@@ -102,7 +102,7 @@ yum install libguestfs libguestfs-tools-c libguestfs-tools libguestfs-devel -y
 安装完成之后，主程序是：`/usr/libexec/qemu-kvm`，如果手工编译qemu，则是`qemu-system-x86_64`这个，我们就是使用它来启动一台虚拟机
 
 
-### 源码安装
+# 源码安装
 centos6.5系统，Linux 内核2.6.32-573下，若要搭建kvm运行环境，需要下面几步
 
 - 加载内核模块kvm,kvm_intel  
@@ -113,7 +113,7 @@ centos6.5系统，Linux 内核2.6.32-573下，若要搭建kvm运行环境，需�
 
 - 编译安装libguestfs，查看和修改虚拟机文件系统，此工具可选安装  
 
-##### 编译安装qemu
+### 编译安装qemu
 
 ``` shell
 #内核模块kvm，kvm_intel 可以在随后启动虚拟机时加载
@@ -144,7 +144,7 @@ ln -s /usr/local/qemu/bin/qemu-system-x86_64 /usr/bin/qemu-kvm
 ln -s /usr/local/qemu/bin/qemu-img /usr/bin/qemu-img
 ```
 
-##### 编译libvirt
+### 编译libvirt
 若要在宿主机上通过libvirt进行虚机的创建和管理，则需要启动libvirtd进程，libvirtd是一个运行在宿主机上的守护进程，它负责接收libvirt客户端管理工具(virsh，virt-manager,...)发送给它的虚拟机创建、管理指令；libvirt的客户端工具virsh可以连接到本地或者远程宿主机节点上libvirtd进程，以便能够管理本地或远程节点上的虚拟机，默认情况下，我们在本地宿主机上直接执行`virsh list`等命令即可，不需要指明连接参数，若要连接到远程宿主机上，则需要指明连接参数，具体可查看[这篇文章](http://www.chenyudong.com/archives/libvirt-connect-to-libvirtd-with-tcp-qemu.html) 
 
 ``` shell
@@ -186,7 +186,7 @@ sed -r -i "s/^LIBVIRTD_CONFIG.*/LIBVIRTD_CONFIG=\/usr\/local\/libvirt\/etc\/libv
 chkconfig libvirtd on
 ```
 
-##### 编译安装libguestfs
+### 编译安装libguestfs
 ``` shell
 #依赖包
 yum -y install xz-devel redhat-rpm-config ocaml-runtime gdbm-devel patch gdb rpm-build ocaml ocaml-findlib e2fsprogs-devel glibc-static gperf genisoimage flex-devel flex bison bison-devel pcre-devel augeas-devel augeas

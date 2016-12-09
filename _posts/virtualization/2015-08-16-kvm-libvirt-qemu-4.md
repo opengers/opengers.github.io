@@ -15,7 +15,7 @@ format: quote
 - 在线调整配置应该保证虚拟机重启之后依然生效，即调整的同时需要更改xml文件
 - centos6.x平台下，cpu core数只能在线增加，不能在线减小
 
-### 查看虚拟机信息   
+# 查看虚拟机信息   
 
 ``` shell
     shell>  virsh dumpxml cos_v1 | head -n 10
@@ -41,9 +41,9 @@ format: quote
 #为虚拟机分配最多8个core,目前使用2个core，因此下文cpu在线增加最多到8个core
 ```
 
-### 内存，cpu调整
+# 内存，cpu调整
 
-##### 在线调整虚拟机内存
+### 在线调整虚拟机内存
 
 ``` shell
 #调整为4G
@@ -59,7 +59,7 @@ virsh setmem cos_v1 2G --config --live
 ```
 能够在线调整的最大内存不能超过为虚拟机分配的最大内存（上面xml文件中设置`<memory unit='KiB'>4194304</memory>`最大为4G）调整范围`1G-4G`
 
-##### 在线调整虚拟机CPU(只能增大，不能减小)
+### 在线调整虚拟机CPU(只能增大，不能减小)
 
 ``` shell
 virsh setvcpus cos_v1 4
@@ -68,9 +68,9 @@ virsh setvcpus cos_v1 8
 同样，能够动态调整的最大VCPU个数也不能超过为虚拟机设置的最大VCPU数量
 
 
-### 在线添加,移除硬盘
+# 在线添加,移除硬盘
 
-##### 添加qcow2格式硬盘
+### 添加qcow2格式硬盘
 
 ``` shell
 #创建qcow2格式的新磁盘,大小为40G
@@ -80,14 +80,14 @@ virsh attach-disk cos_v1 /data/vhosts/test/cos_v1-add1.disk vdb --cache none --s
 #--config 参数同时更新虚拟机xml文件，确保重启后依然生效
 ```
 
-##### 添加raw格式硬盘
+### 添加raw格式硬盘
 ``` shell
 #创建raw格式的新磁盘,大小为40G
 qemu-img create -f raw /data/vhosts/test/cos_v1-add2.disk 40G
 virsh attach-disk lnmptest-107 /data/vhosts/test/cos_v1-add2.disk vdc --cache none --subdriver raw --config --persistent
 ```
 
-##### 在线移除硬盘
+### 在线移除硬盘
 
 ``` shell
 #可以查看虚拟机所有磁盘
@@ -95,9 +95,9 @@ virsh domblklist cos_v1
 virsh detach-disk cos_v1 vdb
 ```
 
-### 网卡，CD-ROM添加
+# 网卡，CD-ROM添加
 
-##### 在线添加网卡
+### 在线添加网卡
 
 ``` shell
 virsh attach-interface --domain cos_v1 --type network --source default --model virtio --config
@@ -105,7 +105,7 @@ virsh attach-interface --domain cos_v1 --type network --source default --model v
 virsh domiflist cos_v1
 ```
 
-##### 在线添加光盘
+### 在线添加光盘
 
 ``` shell
 virsh attach-disk centosbase /data_lij/iso/CentOS-6.4-x86_64-bin-DVD1.iso vdd

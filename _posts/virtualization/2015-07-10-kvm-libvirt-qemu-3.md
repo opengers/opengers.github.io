@@ -17,7 +17,7 @@ format: quote
   [kvm libvirt qemu实践系列(二)](http://www.isjian.com/virtualization/kvm-libvirt-qemu-2/)
 - 测试环境为centos6.5，kvm程序来自rpm包  
 
-### 关于backing file
+# 关于backing file
 
 `backing file`可以作为虚拟机的模板镜像，用来快速创建虚拟机。qcow2磁盘格式支持`backing file`，即可以给qcow2格式的磁盘指定一个`backing file`，qcow2磁盘还有一个特性是copy-on-write，即写入时复制，下面说明这两个特性
 
@@ -46,17 +46,17 @@ qemu-img create -b /data/images/centos65x64.qcow2 -f qcow2 openstack1-3.disk 20G
 qemu-img create -b /data/images/centos65x64.qcow2 -f qcow2 openstack1-4.disk 20G
 ```
 
-### 虚拟机xml文件
+# 虚拟机xml文件
 
 下面步骤来具体解释虚拟机xml文件是如何控制虚拟机运行的，假设你已经有了一个`backin file`是`centos65x64.qcow2`，可以参考[这一篇文章](http://www.isjian.com/virtualization/kvm-libvirt-qemu-2/)来运行一个虚拟机
 
-##### 创建虚拟磁盘
+### 创建虚拟磁盘
 
 ``` shell
 qemu-img create -b /data/images/centos65x64.qcow2 -f qcow2 kvm-1.disk 40G
 ```
 
-##### 一个具体的xml文件
+### 一个具体的xml文件
 
 下面是一个标准的xml文件，其配置了虚拟机系统运行所必须的硬件环境，注意修改`<disk>...</disk>`，此标签指定了虚拟机所使用的磁盘
 
@@ -125,7 +125,7 @@ qemu-img create -b /data/images/centos65x64.qcow2 -f qcow2 kvm-1.disk 40G
 </domain>
 ```
 
-##### 启动虚拟机
+### 启动虚拟机
 
 ``` shell
 virsh define kvm-1.xml
@@ -140,14 +140,14 @@ virsh define kvm-1.xml
  virsh start kvm-1
 ```
 
-##### 更改虚拟机配置
+### 更改虚拟机配置
 
 ``` shell
 virsh edit kvm-1
 #修改的是虚拟机xml文件，修改之后，需要关闭，再启动虚拟机才会生效，注意：重启不能生效
 ```
 
-##### virsh其它命令
+# virsh其它命令
 下面是管理虚拟机常用命令，你可以使用`virsh help`查看所有virsh提供的命令
 <font color="red">virsh管理的对象是domain，即用virsh list看到的虚拟机Name，不是磁盘，因此virsh命令后跟的操作对象一定是某个domain，如下</font>
 
@@ -168,7 +168,7 @@ virsh domblklist kvm-1
 virsh domiflist kvm-1
 ```
 
-### xml文件解析
+# xml文件解析
 
 - 如果虚拟机已经存在，要修改虚拟配置，首先使用`vish list`查看要修改哪台虚拟机，然后使用`virsh edit domain` 编辑虚拟机xml文件，编辑完成退出时，libvirt会自动检测xml文件，如果xml文件有语法错误，则会提示修改
 
@@ -258,7 +258,7 @@ virsh domiflist kvm-1
 </domain>
 ```
 
-### 常用xml配置模块
+# 常用xml配置模块
 
 - 使用CDROM
 
@@ -386,14 +386,14 @@ virsh domiflist kvm-1
 </os>
 ```
 
-### 创建虚拟机快照
+# 创建虚拟机快照
 
 kvm创建快照有多种方法，最简单的是使用qemu-img命令，这种方式创建的快照内置于虚拟磁盘内，是同一个文件，因此如果创建过多快照，虚拟磁盘会变得很大，迁移不方便
 关于虚拟机创建快照详细信息，参考[kvm libvirt qemu实践系列(五)-虚拟机快照链](http://www.isjian.com/2015/07/kvm-libvirt-qemu-5/) 
 
 创建快照，恢复快照前最好关闭虚拟机，下面为test-1这台虚拟机创建快照
 
-###### 先查看下磁盘信息
+### 先查看下磁盘信息
 
 ``` shell
 
@@ -406,7 +406,7 @@ cluster_size: 65536
 backing file: /data/images/centos65x64.qcow2
 ```
 
-##### 创建快照
+### 创建快照
 
 ``` shell
 qemu-img snapshot -c test-1-snap1 test-1.disk 
@@ -425,7 +425,7 @@ ID        TAG                 VM SIZE                DATE       VM CLOCK
 1         test-1-snap1              0 2015-07-10 11:50:37   00:00:00.000
 ```
 
-##### 快照恢复
+### 快照恢复
 
 ``` shell
 #恢复虚拟机到快照test-1-snap1状态

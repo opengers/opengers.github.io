@@ -15,7 +15,7 @@ format: quote
 - 本文章测试服务器为centos6.6，Intel-VT虚拟化，使用ssh远程连接（已开启ssh图形转发，文中使用virt-manager工具会需要这个）
 - 在下列文章中，默认使用libvirt作为虚拟机创建，管理工具，但文中也会提及如何不通过libvirt，直接使用qemu-kvm(或qemu-system-x86-64)命令创建虚拟机  
 
-### 为了能够创建虚拟机，我们需要设置步骤：
+# 为了能够创建虚拟机，我们需要设置步骤：
 
 - 宿主机安装kvm相关软件  
 - 创建一个虚拟磁盘，用于安装虚拟机系统  
@@ -61,9 +61,9 @@ kvm 468666 1 kvm_intel
 qemu      2723     1  9 16:11 ?        00:24:39 /usr/libexec/qemu-kvm -name centos -S -M rhel6.6.0 -enable-kvm -m 1024 -realtime mlock=off -smp 1,sockets=1,cores=1,threads=1 -uuid 45b2d2ff-0150-0d17-2a66-5ecfa182db8f -nodefconfig -nodefaults -chardev socket,id=charmonitor,path=/var/lib/libvirt/qemu/centos.monitor,server,nowait -mon chardev=charmonitor,id=monitor,mode=control -rtc base=utc -no-reboot -no-shutdown -device ich9-usb-ehci1,id=usb,bus=pci.0,addr...
 ```
 
-### 创建虚拟机磁盘
+# 创建虚拟机磁盘
 
-##### raw 和 qcow2 
+### raw 和 qcow2 
 首先我们需要一个虚拟磁盘，这个虚拟磁盘就相当于物理机的硬盘，它用于安装虚拟机操作系统，虚拟磁盘有多种不同的格式，常见的格式有raw,qcow2,vmdk,vdi等，raw格式是最常见的，随便创建一个文件，或者使用dd生成一个文件，都是raw格式  
 qcow2 镜像格式是qemu模拟器支持的一种磁盘镜像。它也是可以用一个文件的形式来表示一块固定大小的块设备磁盘。与普通的 raw 格式的镜像相比，有以下特性
 
@@ -99,7 +99,7 @@ cluster_size: 65536
 关于写入时复制技术(copy-on-write)，请参考：http://www.cnblogs.com/chenglei/archive/2009/08/06/1540175.html  
 <font color="red">qcow2格式特点，以及copy-on-write技术是理解kvm虚拟机创建，以及虚拟机快照链的关键，所以请尽量理解它</font>
 
-##### 创建qcow2格式磁盘
+### 创建qcow2格式磁盘
 
 下面我们使用qemu-img工具创建一个qcow2格式的磁盘
 
@@ -118,7 +118,7 @@ Formatting 'kvm-1.disk', fmt=qcow2 size=21474836480 encryption=off cluster_size=
 -rw-r--r-- 1 root root 193K Jul 8 00:07 kvm-1.disk
 ```
 
-### 安装虚拟机系统
+# 安装虚拟机系统
 
 安装系统，有多种方法，但是基本的原理是一样的，一个虚拟磁盘，还需要一个ISO安装文件，然后设置虚拟机从光盘启动，安装系统到虚拟磁盘上  
  
@@ -139,7 +139,7 @@ yum install guestfish virt-install virt-viewer
 #guestfish 是一套虚拟机磁盘管理工具
 ```
 
-##### 使用virt-install安装  
+### 使用virt-install安装  
 virt-install参数说明
 
 ``` shell
@@ -178,7 +178,7 @@ virt-install 在宿主机上开启了590X端口，此端口映射到虚拟机con
 vnc连接之后，就是ISO安装系统，本文不会对具体的安装步骤做过多讲解
 
 
-##### 使用qemu-kvm命令行安装  
+### 使用qemu-kvm命令行安装  
 我们可以不通过libvirt提供的工具`virt-install`安装，而是直接使用qemu-kvm工具安装,查看qemu-kvm帮助文档
 
 ``` shell
@@ -203,7 +203,7 @@ qemu-kvm程序有太多参数，但实际中我们只需要很少的参数就能
 通过`qemu-kvm`创建的虚拟机并没有使用libvirt，而是直接使用`qemu-kvm`命令运行虚拟机，一旦终端断开连接，或者Ctrl+C结束命令，虚拟机也就关机了
 
 
-##### 使用virt-manager图形界面安装  
+### 使用virt-manager图形界面安装  
 如果你安装了virt-manager，那么可以使用virt-manager这个图形工具安装kvm，这个工具运行需要ssh图形转发支持，如下
 
 ![qemu-2-2](/images/virtualization/kvm-libvirt-qemu-2/22.png)
@@ -231,7 +231,7 @@ virt-manager提供了图形化的界面操作，但其后台调用命令与第�
 
 ![qemu-2-7](/images/virtualization/kvm-libvirt-qemu-2/77.png)
 
-### virsh基本命令
+# virsh基本命令
 
 安装完系统之后，可以使用virsh管理虚拟机，要查看virsh所有命令：可以使用`virsh --help`
 
