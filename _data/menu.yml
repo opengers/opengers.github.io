@@ -10,8 +10,8 @@
 - title: "Python"
   href: "/python/"
 
-- title: "自动化运维"
-  href: "/devops/"
+- title: "OpenStack"
+  href: "/openstack/"
 
 - title: "ceph"
   href: "/ceph/"

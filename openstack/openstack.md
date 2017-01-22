@@ -1,14 +1,14 @@
 ---
-title: Posts List - devops
+title: Posts List - openstack
 author: opengers
 layout: page
-permalink: /devops/
-categories: devops
+permalink: /openstack/
+categories: openstack
 format: quote
 ---
 
 <ul class="listing">
-{% for post in site.categories.devops %}
+{% for post in site.categories.openstack %}
   {% capture y %}{{post.date | date:"%Y"}}{% endcapture %}
   {% if year != y %}
     {% assign year = y %}
