@@ -118,7 +118,7 @@ OpenFlow中的流表(Tables)定义了交换机端口之间数据包的交换规�
 
 **Neutron实现的OpenFLow控制器**    
 
-OpenStack Neutron中使用OpenFlow控制器来管理OVS，在每一个运行`neutron-openvswitch-agent`的计算节点上，Neutron默认都建立了一个本地控制器`Controller "tcp:127.0.0.1:6633"`，该节点上的所有Bridge `br-int/br-tun/br-ext`等都连接到此Controller上，相关配置参考`/etc/neutron/plugins/ml2/openvswitch_agent.ini`中`[OVS]`      
+OpenStack Neutron中实现了一个OpenFlow控制器，来管理OVS和其上的VMs，在每一个运行`neutron-openvswitch-agent`的计算节点上，Neutron默认都建立了一个本地控制器`Controller "tcp:127.0.0.1:6633"`，该节点上的所有Bridge `br-int/br-tun/br-ext`等都连接到此Controller上，相关配置参考`/etc/neutron/plugins/ml2/openvswitch_agent.ini`中`[OVS]`      
 
 ``` shell
 cat /etc/neutron/plugins/ml2/openvswitch_agent.ini
@@ -136,7 +136,7 @@ cat /etc/neutron/plugins/ml2/openvswitch_agent.ini
 ...
 ```   
 
-查看网桥`br-tun`上连接的控制器    
+运行`neutron-openvswitch-agent`的计算节点中网桥`br-tun`上连接的控制器       
 
 ``` shell
 ovs-vsctl show
