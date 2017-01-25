@@ -12,13 +12,13 @@ format: quote
 
 ## Open vSwitch介绍     
 
-在过去，数据中心的服务器是直接连接在硬件交换机上，后来VMware实现了服务器虚拟化技术，使虚拟服务器(VMs)能够连接在虚拟交换机上，借助这个虚拟交换机，可以为服务器上运行的VMs或容器提供逻辑以太网接口，这些逻辑接口都连接到虚拟交换机上，有三种比较流行的虚拟交换机: VMware virtual switch, Cisco Nexus 1000V,和OpenvSwitch     
+在过去，数据中心的服务器是直接连在硬件交换机上，后来VMware实现了服务器虚拟化技术，使虚拟服务器(VMs)能够连接在虚拟交换机上，借助这个虚拟交换机，可以为服务器上运行的VMs或容器提供逻辑的虚拟的以太网接口，这些逻辑接口都连接到虚拟交换机上，有三种比较流行的虚拟交换机: VMware virtual switch, Cisco Nexus 1000V,和Openv Switch     
 
-Open vSwitch(OVS)是运行在虚拟化平台上的虚拟交换机，其也提供了对OpenFlow协议的支持。在OVS之前，基于Linux的虚拟化平台比如KVM或Xen上，缺少一个功能丰富的虚拟交换机，因此OVS迅速崛起并开始在Xen中流行起来，并且应用于越来越多的开源项目，比如openstack neutron中的网络解决方案   
+Open vSwitch(OVS)是运行在虚拟化平台上的虚拟交换机，其支持OpenFlow协议，也支持gre/vxlan/IPsec等隧道技术。在OVS之前，基于Linux的虚拟化平台比如KVM或Xen上，缺少一个功能丰富的虚拟交换机，因此OVS迅速崛起并开始在Xen中流行起来，并且应用于越来越多的开源项目，比如openstack neutron中的网络解决方案   
 
-在虚拟交换机的控制器或管理工具方面，一些商业产品都集成有控制器或管理工具，比如Cisco 1000V的Virtual Supervisor Manager(VSM)，VMware的分布式交换机中的vCenter。而OVS需要借助第三方控制器或管理工具进行管理。例如OVS提供了对OpenFlow 协议的支持，我们就可以使用任何支持OpenFlow协议的控制器对OVS进行远程管理控制。OpenStack Neutron中的ML2插件也能够实现对OVS的管理，但这并不意味着必须要有一个控制器对OVS进行管理，在一些简单场景下，可以单纯把OVS作为一个基于MAC地址学习实现转发功能的二层交换机，就像普通物理交换机那样    
+在虚拟交换机的控制器或管理工具方面，一些商业产品都集成有控制器或管理工具，比如Cisco 1000V的`Virtual Supervisor Manager(VSM)`，VMware的分布式交换机中的`vCenter`。而OVS需要借助第三方控制器或管理工具进行管理。例如OVS提供了对OpenFlow 协议的支持，我们就可以使用任何支持OpenFlow协议的控制器对OVS进行远程管理。OpenStack Neutron中的ML2插件也实现了对OVS的管理。但这并不意味着必须要有一个控制器对OVS进行管理，在一些简单场景下，没有控制器，OVS本身就可以作为一个基于MAC地址学习实现转发功能的二层交换机，就像普通物理交换机那样    
 
-在基于Linux系统上，应用最广泛的还是系统自带的虚拟交换机Linux Bridge，它是一个单纯的基于MAC地址学习的二层交换机，简单高效，但同时缺乏一些高级特性，比如VLAN tag,QOS,流表之类，而且在隧道协议支持方面，Linux Bridge只支持vxlan，OVS是gre,vxlan,IPsec都支持，这也决定了OVS更适用于实现SDN技术   
+在基于Linux系统上，应用最广泛的还是系统自带的虚拟交换机Linux Bridge，它是一个单纯的基于MAC地址学习的二层交换机，简单高效，但同时缺乏一些高级特性，比如VLAN tag,QOS,流表之类，而且在隧道协议支持方面，Linux Bridge只支持vxlan，OVS是gre/vxlan/IPsec等，这也决定了OVS更适用于实现SDN技术   
 
 OVS有以下特点   
   
@@ -28,11 +28,11 @@ OVS有以下特点
 - 适用于Xen，KVM，VirtualBox等虚拟化平台   
 - 支持标准的802.1Q VLAN    
 - 支持组播功能   
-- 支持OpenFlow协议   
+- NetFlow, IPFIX, sFlow, SPAN/RSPAN等协议的支持   
 - 内核中基于通配符的流匹配策略    
 - ...    
 
-文章使用环境`centos7，openvswitch 2.5，OpenFlow versions 0x1:0x4`   
+文章使用环境`centos7  openvswitch 2.5  OpenFlow 1.4`   
 
 ## OVS架构    
 
@@ -84,15 +84,59 @@ intree:         Y
 
 **OpenFlow**   
 
-OpenFlow是一种用于管理交换机流表的协议，OpenFlow在OVS中的地位如图中所示，是Controller和ovs-vswitched间通信协议，OpenFlow不仅仅支持虚拟交换机，某些硬件交换机也支持OpenFlow协议        
+OpenFlow是一种用于管理交换机流表的协议，OpenFlow在OVS中的地位可以参考上面架构图，它是Controller和ovs-vswitched间的通信协议。需要注意的是，OpenFlow是一个独立的完整的流表协议，不依赖于OVS，OVS只是提供了对OpenFlow协议的支持，有了支持，我们可以使用支持OpenFlow的控制器来管理OVS中的流表，OpenFlow不仅仅支持虚拟交换机，某些硬件交换机也支持OpenFlow协议        
 
-流(Flow)定义了交换机端口之间数据包的交换规则，当数据包进入OVS后，OVS会将数据包和流表中的流表项进行匹配以决定此数据包是被转发或是DROP。需要注意的是，OpenFlow是一个独立的Flow协议，不依赖于OVS，OVS只是提供了对OpenFlow协议的支持，有了支持，我们才可以使用Flow控制器来管理OVS中的流表。          
+OpenFlow中的流表定义了交换机端口之间数据包的交换规则，支持OpenFlow协议的交换机可以包括一个或者多个流表(Table)，每个流表包括多个流表项(Flow entrys)，每条流表项中的条目包含：数据包头的信息、匹配成功后要执行的指令和统计信息。当数据包进入OVS后，OVS会将数据包和Tables中的流表项进行匹配以决定此数据包是被转发/修改或是DROP。     
 
-流表是基于Flow的交换机进行转发策略控制的核心数据结构，之所以说是基于Flow的交换机是因为，OVS也可以不使用Flow来控制数据包的转发，而仅仅依靠MAC地址学习完成转发，此时上面说的Flow规则也不会被用到，也更不需要连接外部Flow控制器`Controller`，因此OVS可以有两种转发策略     
-- 基于Flow的转发：此时需要外部Controller来接管OVS中的流表，OVS本身不控制转发策略。或者也可以不使用Controller手动配置Flow规则，比如使用ovs-ofctl命令   
-- 基于MAC地址学习的虚拟交换机: 没有Flow规则，OVS仅仅通过学习到的Mac地址来完成 
+![openflow](/images/openstack/openstack-use-openvswitch/openvswitch-openflow-match.png)    
 
-OpenStack Neutron中使用Flow来管理OVS
+流表是基于Flow规则的交换机进行转发策略控制的核心数据结构，之所以说是基于Flow规则的交换机是因为，OVS也可以不使用Flow规则来控制数据包的转发，而仅仅依靠自身的MAC地址学习完成转发，此时不需要连接外部Flow控制器`Controller`，因此，总结一下OVS可以有两种转发策略     
+  
+- 基于Flow规则的转发   
+
+此时需要为OVS设置外部控制器(Controller)。控制器下发流表规则到OVS，OVS按照下发的流表规则完成数据转发。当有新的MAC地址加入，或者MAC地址从一个Port移到另一个Port上时，控制器会更新流表规则以匹配此改变，可见外部控制器决定着OVS中的流表规则   
+
+还有一些其它话题，比如某条流表项中的动作action为`normal`，或者外部控制器由于网络故障无法连接时，这些话题到后面再讨论  
+
+- 基于MAC地址学习的虚拟交换机    
+
+不需要连接外部控制器，依靠MAC地址学习完成转发，比如第一个数据包进入OVS时，由于之前没有任何数据包进入，OVS无法知道数据包目的MAC地址应该从哪个Port发出，此时它就会把数据包转发到除了进入Port之外的所有Port，就像Linux Bridge那样。这种情况下OVS依然可以为Port设置Vlan，但Linux Bridge不支持设置Vlan     
+
+OpenStack Neutron中使用Flow来管理OVS，其为OVS设置了一个控制器Controller，位于本地主机上，本地主机上所有Bridge(`br-int/br-tun/br-ext`)都连接到此Controller上，相关配置参考`/etc/neutron/plugins/ml2/openvswitch_agent.ini`中`[OVS]`   
+
+``` shell
+cat /etc/neutron/plugins/ml2/openvswitch_agent.ini
+[ovs]
+...
+# Address to listen on for OpenFlow connections. Used only for 'native' driver.
+# (IP address value)
+#of_listen_address = 127.0.0.1
+
+# Port to listen on for OpenFlow connections. Used only for 'native' driver.
+# (port value)
+# Minimum value: 0
+# Maximum value: 65535
+#of_listen_port = 6633
+...
+```   
+
+查看网桥`br-tun`上连接的控制器   
+
+``` shell
+ovs-vsctl show
+a9fc1666-0bb4-48a6-8f5c-1c8b92431ef6
+    Manager "ptcp:6640:127.0.0.1"
+        is_connected: true
+    Bridge br-tun
+        Controller "tcp:127.0.0.1:6633"
+            is_connected: true
+        fail_mode: secure
+        Port "vxlan-080058ca"
+            Interface "vxlan-080058ca"
+                type: vxlan
+                options: {df_default="true", in_key=flow, local_ip="8.0.88.204", out_key=flow, remote_ip="8.0.88.202"}
+...
+```  
 
 **几个管理工具的作用及区别**   
 
