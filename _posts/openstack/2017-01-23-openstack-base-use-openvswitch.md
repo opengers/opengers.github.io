@@ -106,7 +106,6 @@ OpenStack Neutron中使用Flow来管理OVS
 - 查看网桥br0上所有端口 `ovs-vsctl list-ports br0`
 - 获取OVS控制器地址 `ovs-vsctl get-controller <bridge>`
 - 删除网桥br0 `ovs-vsctl del-br br0`
-```
 
 `ovsdb-tool`是一个专门管理OVS数据库文件的工具，它不直接与`ovsdb-server`进程通信    
 
