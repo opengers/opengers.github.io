@@ -182,9 +182,9 @@ a9fc1666-0bb4-48a6-8f5c-1c8b92431ef6
 
 `ovs-vsctl`是一个综合的配置管理工具，提供了比`ovsdb-client`更高一级的封装，`ovsdb-client`倾向于从数据库中查询某些信息，而`ovsdb-tool`是维护数据库文件工具    
 
-**Kernel Datapath**   
+**Kernel Datapath**     
 
-这里介绍下OVS内核空间
+这里介绍下OVS内核空间，待续...
 
 文章地址http://www.isjian.com/openstack/openstack-base-use-openvswitch/  
 
