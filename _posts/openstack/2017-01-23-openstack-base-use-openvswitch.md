@@ -192,6 +192,13 @@ a9fc1666-0bb4-48a6-8f5c-1c8b92431ef6
 
 ![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-details.png)  
 
+参考文章   
 
 https://www.sdxcentral.com/cloud/open-source/definitions/what-is-open-vswitch/   
 http://openvswitch.org/features/    
+https://www.ibm.com/developerworks/cn/cloud/library/1401_zhaoyi_openswitch/    
+http://openvswitch.org/slides/OpenStack-131107.pdf    
+http://horms.net/projects/openvswitch/2010-10/openvswitch.en.pdf   
+http://benpfaff.org/papers/ovs.pdf   
+https://networkheresy.com/category/open-vswitch/     
+
