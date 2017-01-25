@@ -186,6 +186,7 @@ a9fc1666-0bb4-48a6-8f5c-1c8b92431ef6
 
 这里介绍下OVS内核空间
 
+文章地址http://www.isjian.com/openstack/openstack-base-use-openvswitch/  
 
 更详细的图   
 
