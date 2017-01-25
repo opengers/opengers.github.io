@@ -175,24 +175,6 @@ a9fc1666-0bb4-48a6-8f5c-1c8b92431ef6
 
 ![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-details.png)  
 
-OVS中的
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 https://www.sdxcentral.com/cloud/open-source/definitions/what-is-open-vswitch/
 http://openvswitch.org/features/
