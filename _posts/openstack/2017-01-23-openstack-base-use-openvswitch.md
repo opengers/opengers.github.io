@@ -32,9 +32,13 @@ OVS支持以下[features](http://openvswitch.org/features/)
 - 支持组播功能       
 - flow-caching engine(datapath模块)    
 
-文章使用环境    
+文章使用环境      
 
-`centos7  openvswitch 2.5  OpenFlow 1.4`   
+``` shell
+centos7
+openvswitch 2.5
+OpenFlow 1.4`
+```  
 
 ## OVS架构    
 
@@ -57,7 +61,7 @@ root     22166 22165  0 Jan17 ?        00:02:32 ovsdb-server /etc/openvswitch/co
 
 **ovs-vswitchd**   
 
-`ovs-vswitchd`是OVS主进程，通过与ovsdb(`ovsdb-server`)交互实现OVS的所有功能特性，像MAC learn,Port bonding,802.1Q VLAN支持,sFlow,连接外部OpenFlow Controller等等。可以查看其进程信息            
+`ovs-vswitchd`是OVS主进程，通过与ovsdb(`ovsdb-server`)交互实现OVS的所有features，像MAC learn,Port bonding,802.1Q VLAN支持,sFlow,连接外部OpenFlow Controller等等。可以查看其进程信息             
 
 ``` shell
 # ps -ef |grep ovs-vs
@@ -90,23 +94,25 @@ Controller指OpenFlow控制器。OpenFlow控制器可以通过OpenFlow协议连�
 
 `ovs-ofctl`是一个监控和管理OpenFlow交换机的命令行工具，它支持任何使用OpenFlow协议的交换机，不仅仅是OVS    
 
+OpenFlow的介绍上说的`OpenFlow协议实现了控制层面和转发层面分离`，控制层面就是指这里的OpenFlow控制器，分离就是说控制器负责控制，OVS负责转发的具体实现，他们是分离的两个软件，但是可以通过OpenFLow远程连接，不需要位于同一台主机上    
+
 OpenFlow中的流表(Tables)定义了交换机端口之间数据包的交换规则，以OVS为例，OVS交换机中可以有一个或者多个流表，每个流表包括多个流表项(Flow entrys)，每条流表项中的条目包含：数据包头的信息、匹配成功后要执行的指令和统计信息。当数据包进入OVS后，OVS会将数据包和Tables中的流表项进行匹配以决定此数据包是被转发/修改或是DROP。     
 
 ![openflow](/images/openstack/openstack-use-openvswitch/openvswitch-openflow-match.png)    
 
 流表是支持OpenFlow的交换机进行转发策略控制的核心数据结构，之所以说是支持OpenFlow的交换机是因为，OVS也可以不使用OpenFlow来控制数据包的转发，而仅仅依靠自身的MAC地址学习完成转发，此时也不需要连接外部Flow控制器`Controller`，上面讨论的都是在OVS使用OpenFlow的情况下，这里总结一下OVS的转发策略方案        
   
-- 基于OpenFlow协议的转发   
+1. 基于OpenFlow协议的转发   
 
 此时OVS需要一个控制器(Controller)来下发流表规则到OVS，OVS按照下发的流表规则完成数据转发。当有新的MAC地址加入(新建VM)，或者MAC地址从一个Port移到另一个Port上时(虚拟机迁移)，控制器会更新流表规则以匹配此改变，可见外部控制器决定着OVS中的流表规则，需要注意的是可以是同一个控制器管理多台计算节点上的OVS       
 
 还有一些其它话题，比如当某条流表项中的执行动作为`normal`时，OpenFlow会把匹配到这条规则的数据包丢给OVS自身处理，这些数据包就不再匹配其它的流表规则。还有当外部控制器由于网络故障无法连接时， 这些情况到后面介绍流表规则时再讨论     
 
-- 单纯基于MAC地址学习        
+1. 单纯基于MAC地址学习        
 
 不需要连接外部控制器，依靠MAC地址学习完成转发，考虑第一个数据包进入OVS的情况，由于之前没有任何数据包进入，也没了控制器的存在，OVS无法知道第一个数据包应该从哪个端口发出，此时只能依靠学习喽，OVS会把数据包转发到除了进入Port之外的所有Port，然后根据应答数据包的进入Port来学习MAC地址对应的Port，就像Linux Bridge那样。这种情况下OVS依然可以为Port设置Vlan tag，但Linux Bridge不支持设置Vlan        
 
-- 使用手动建立的流表规则      
+1. 使用手动建立的流表规则      
 
 前面不是提到`ovs-ofctl`工具可以通过OpenFlow协议去连接OVS，创建、修改或删除OVS中的流表项，那我们就自己建立一些流表项，处理数据包，测试或学习OpenFlow协议时可以这么干       
 
