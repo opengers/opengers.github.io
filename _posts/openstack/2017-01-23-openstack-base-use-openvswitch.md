@@ -20,7 +20,7 @@ Open vSwitch(OVS)是运行在虚拟化平台上的虚拟交换机，其支持Ope
 
 在基于Linux内核的系统上，应用最广泛的还是系统自带的虚拟交换机`Linux Bridge`，它是一个单纯的基于MAC地址学习的二层交换机，简单高效，但同时缺乏一些高级特性，比如OpenFlow,VLAN tag,QOS,ACL,Flow等，而且在隧道协议支持上，Linux Bridge只支持vxlan，OVS是gre/vxlan/IPsec等，这也决定了OVS更适用于实现SDN技术     
 
-OVS有以下[features](http://openvswitch.org/features/)         
+OVS支持以下[features](http://openvswitch.org/features/)         
 
 - 支持NetFlow, IPFIX, sFlow, SPAN/RSPAN等流量监控协议     
 - 精细的ACL和QoS策略         
