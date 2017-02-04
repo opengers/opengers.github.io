@@ -102,21 +102,27 @@ OpenFlow中的流表(Tables)定义了交换机端口之间数据包的交换规�
 
 流表是OpenFlow交换机进行转发策略控制的核心数据结构，之所以说是OpenFlow交换机是因为，OVS也可以不使用OpenFlow来控制数据包的转发，而仅仅依靠自身的MAC地址学习完成转发，此时不需要连接OpenFlow控制器，上面讨论的都是在OVS使用OpenFlow的情况下，这里总结一下OVS的转发策略方案        
   
-** 使用OpenFlow控制器的转发策略             
+**使用OpenFlow控制器的转发策略**                
 
- + 此时OVS需要一个OpenFlow控制器来下发流表规则到OVS，OVS按照下发的流表规则完成数据转发。当有新的MAC地址加入(新建VM)，或者MAC地址从一个Port移到另一个Port上时(虚拟机迁移)，控制器会更新流表规则以匹配此改变，可见外部控制器决定着OVS中的流表规则，需要注意的是可以是同一个控制器管理多台计算节点上的OVS       
+ + 此时OVS需要一个OpenFlow控制器来下发流表规则到OVS，OVS按照下发的流表规则完成数据转发。当有新的MAC地址加入(新建VM)，或者MAC地址从一个Port移到另一个Port上时(虚拟机迁移)，控制器会更新流表规则以匹配此改变，可见外部控制器决定着OVS中的流表规则，需要注意的是可以是同一个控制器管理多台计算节点上的OVS   
+ 
+ + 关于此转发策略，可以参考openstack OVS+Vxlan网络部署模式下的`br-tun`网桥中的flow tables        
+ 
+  + 还有一些其它话题，比如当某条流表项中的执行动作为`normal`时，OpenFlow会把匹配到这条规则的数据包丢给OVS自身处理，这些数据包就不再匹配其它的流表规则。还有当外部控制器由于网络故障无法连接时， 这些情况到后面介绍流表规则时再讨论       
+ 
+**基于MAC地址学习的转发策略**               
 
- + 还有一些其它话题，比如当某条流表项中的执行动作为`normal`时，OpenFlow会把匹配到这条规则的数据包丢给OVS自身处理，这些数据包就不再匹配其它的流表规则。还有当外部控制器由于网络故障无法连接时， 这些情况到后面介绍流表规则时再讨论     
+ + 在没有OpenFlow控制器存在的情况下，OVS依靠MAC地址学习完成转发，考虑第一个数据包进入OVS的情况，由于之前没有任何数据包进入，也没了控制器的存在，OVS无法知道第一个数据包应该从哪个端口发出，此时只能依靠学习喽，OVS会把数据包转发到除了进入Port之外的所有Port，然后根据应答数据包的进入Port来学习MAC地址对应的Port，就像Linux Bridge那样。这种情况下OVS依然可以为Port设置Vlan tag，但Linux Bridge不支持设置Vlan    
 
-** 基于MAC地址学习的转发策略           
+**OpenFlow控制器+MAC地址学习**    
 
- + 在没有OpenFlow控制器存在的情况下，OVS依靠MAC地址学习完成转发，考虑第一个数据包进入OVS的情况，由于之前没有任何数据包进入，也没了控制器的存在，OVS无法知道第一个数据包应该从哪个端口发出，此时只能依靠学习喽，OVS会把数据包转发到除了进入Port之外的所有Port，然后根据应答数据包的进入Port来学习MAC地址对应的Port，就像Linux Bridge那样。这种情况下OVS依然可以为Port设置Vlan tag，但Linux Bridge不支持设置Vlan        
+ + 上面说的两种转发策略方案并不是对立的，在使用OpenFlow控制器的转发策略情况下，如果某条流表项中的执行动作`actions`为`normal`时，控制器会立即把此数据包交给OVS自身处理，之后此数据包就根据MAC地址学习完成转发，不再受流表规则控制，openstack OVS+Vxlan网络部署模式下的网桥`br-int`就是这种情况     
 
-** 手动建立流表规则         
+**手动建立流表规则**             
 
- + 前面不是提到`ovs-ofctl`工具可以通过OpenFlow协议去连接OVS，创建、修改或删除OVS中的流表项，那我们就自己建立一些流表项，处理数据包，测试或学习OpenFlow协议时可以这么干          
+ + 前面提到`ovs-ofctl`工具可以通过OpenFlow协议去连接OVS，创建、修改或删除OVS网桥中的流表项，那我们就自己`add-br`一个网桥，然后建立一些流表项观察数据包转发规则，测试或学习OpenFlow协议时可以这么干            
 
-**Neutron实现的OpenFLow控制器**    
+## Neutron实现的OpenFLow控制器        
 
 OpenStack Neutron中实现了一个OpenFlow控制器，来管理OVS和其上的VMs，在每一个运行`neutron-openvswitch-agent`的计算节点上，Neutron默认都建立了一个本地控制器`Controller "tcp:127.0.0.1:6633"`，该节点上的所有Bridge `br-int/br-tun/br-ext`等都连接到此Controller上，相关配置参考`/etc/neutron/plugins/ml2/openvswitch_agent.ini`中`[OVS]`      
 
@@ -154,9 +160,11 @@ a9fc1666-0bb4-48a6-8f5c-1c8b92431ef6
 ...
 ```  
 
-**OVS中管理工具的使用及区别**   
+## OVS中管理工具的使用及区别    
 
 上面介绍了OVS用户空间进程以及控制器和OpenFlow协议，这里说下相关的命令行工具的使用及区别               
+
+**ovs-vsctl**   
 
 `ovs-vsctl`是一个管理或配置`ovs-vswitchd`的高级命令行工具，高级是说其操作对用户友好，封装了对数据库的操作细节。它是最常用的命令，除了管理流表功能外，其它大部分操作比如Bridge/Port/Interface/Controller/Database/Vlan等都可以完成               
 
@@ -176,6 +184,8 @@ ovs-vsctl del-br br0
 #设置端口p1的vlan tag为100
 ovs-vsctl set Port p1 tag=100
 ```
+
+**ovsdb-tool**    
 
 `ovsdb-tool`是一个专门管理OVS数据库文件的工具，不常用，它不直接与`ovsdb-server`进程通信       
 
@@ -201,6 +211,8 @@ record 49: 2017-01-07 04:18:23.671 "ovs-vsctl: ovs-vsctl --timeout=5 -- --if-exi
 ...
 ```
 
+**ovsdb-client**   
+
 `ovsdb-client`是`ovsdb-server`进程的命令行工具，主要是从正在运行的`ovsdb-server`中查询信息，操作的是数据库相关   
 
 ``` shell
@@ -218,15 +230,22 @@ ovsdb-client monitor DATABASE TABLE
 
 `ovs-vsctl`是一个综合的配置管理工具，`ovsdb-client`倾向于从数据库中查询某些信息，而`ovsdb-tool`是维护数据库文件工具   
 
-**Kernel Datapath**     
-
-这里介绍下OVS内核空间，待续...
-
-文章地址http://www.isjian.com/openstack/openstack-base-use-openvswitch/  
+## Kernel Datapath           
 
 更详细的图   
 
-![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-details.png)  
+![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-details.png)   
+
+关于datapath，[The Design and Implementation of Open vSwitch](http://benpfaff.org/papers/ovs.pdf)中有描述  
+
+><small>datapath kernel module, is usually written specially for the host operating system for performance. Figure 1 depicts how the two main OVS components work together to forward packets. The datapath module in the kernel receives the packets first, from a physical NIC or a VM’s virtual NIC. Either ovs-vswitchd has instructed the datapath how to handle packets of this type, or it has not. In the former case, the datapath module simply follows the instructions, called actions, given by ovs-vswitchd, which list physical ports or tunnels on which to transmit the packet. Actions may also specify packet modifications, packet sampling, or instructions to drop the packet. In the other case, where the datapath has not been told what to do with the packet, it delivers it to ovs-vswitchd. In userspace, ovs-vswitchd determines how the packet should be handled, then it passes the packet back to the datapath with the desired handling. Usually, ovs-vswitchd also tells the datapath to cache the actions, for handling similar future packets. </small>   
+
+
+
+
+文章地址http://www.isjian.com/openstack/openstack-base-use-openvswitch/  
+
+  
 
 参考文章   
 
