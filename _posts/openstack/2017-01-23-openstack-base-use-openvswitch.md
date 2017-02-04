@@ -25,7 +25,7 @@ OVS支持以下[features](http://openvswitch.org/features/)
 - 支持NetFlow, IPFIX, sFlow, SPAN/RSPAN等流量监控协议     
 - 精细的ACL和QoS策略         
 - 可以使用OpenFlow和OVSDB协议进行集中控制     
-- Port bonding，LACP，tunneling  
+- Port bonding，LACP，tunneling(vxlan/gre/Ipsec)  
 - 适用于Xen，KVM，VirtualBox等hypervisors           
 - 支持标准的802.1Q VLAN协议   
 - 基于VM interface的流量管理策略        
@@ -42,7 +42,7 @@ OpenFlow 1.4`
 
 # OVS架构    
 
-先看下OVS整体架构，用户空间主要组件有数据库服务ovsdb-server和守护进程ovs-vswitchd。kernel中是datapath内核模块。最上面的Controller表示OVS的控制器，控制器与OVS是通过OpenFlow协议进行连接，但控制器不一定位于OVS主机上，下面分别介绍下各组件       
+先看下OVS整体架构，用户空间主要组件有数据库服务ovsdb-server和守护进程ovs-vswitchd。kernel中是datapath内核模块。最上面的Controller表示OVS的控制器，控制器与OVS是通过OpenFlow协议进行连接，但控制器不一定位于OVS主机上，下面分别介绍图中各组件       
 
 ![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-arch.png)   
 
@@ -232,20 +232,18 @@ ovsdb-client monitor DATABASE TABLE
 
 ## Kernel Datapath           
 
-更详细的图   
-
-![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-details.png)   
-
-关于datapath，[The Design and Implementation of Open vSwitch](http://benpfaff.org/papers/ovs.pdf)中有描述  
+datapath是一个Linux内核模块，它在内核中缓存流匹配结果以提高OVS数据处理性能，它实现了OVS中的`switching`和`tunneling`        
+关于datapath，[The Design and Implementation of Open vSwitch](http://benpfaff.org/papers/ovs.pdf)中有描述    
 
 ><small>datapath kernel module, is usually written specially for the host operating system for performance. Figure 1 depicts how the two main OVS components work together to forward packets. The datapath module in the kernel receives the packets first, from a physical NIC or a VM’s virtual NIC. Either ovs-vswitchd has instructed the datapath how to handle packets of this type, or it has not. In the former case, the datapath module simply follows the instructions, called actions, given by ovs-vswitchd, which list physical ports or tunnels on which to transmit the packet. Actions may also specify packet modifications, packet sampling, or instructions to drop the packet. In the other case, where the datapath has not been told what to do with the packet, it delivers it to ovs-vswitchd. In userspace, ovs-vswitchd determines how the packet should be handled, then it passes the packet back to the datapath with the desired handling. Usually, ovs-vswitchd also tells the datapath to cache the actions, for handling similar future packets. </small>   
 
+为了说明datapath，来看一张更详细的架构图，图中的大部分组件上面都有提到      
 
+![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-details.png)   
 
+在处理`switching`方面，OVS中的两个组件`ovs-vswitchd`和`Kernel Datapath`决定了数据包的转发，首先，`datapath`内核模块收到进入数据包，对于某一条flow规则，`datapath`并不知道第一条匹配该规则的数据包如何处理，此时它会把该调数据包送入用户空间，交由`ovs-vswitchd`处理，`ovs-vswitchd`查询flow tables后把此数据包连带actions返回给`datapath`并告诉`datapath`缓存此actions，这样，当第二条匹配该flow规则的数据包进入`datapath`内核模块，`datapath`查询自身缓存并立即处理该数据包，不用再次进入用户空间，提高了性能      
 
 文章地址http://www.isjian.com/openstack/openstack-base-use-openvswitch/  
-
-  
 
 参考文章   
 
