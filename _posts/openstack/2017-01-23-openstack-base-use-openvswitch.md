@@ -10,7 +10,7 @@ tags:
 format: quote
 ---
 
-## Open vSwitch介绍     
+# Open vSwitch介绍     
 
 在过去，数据中心的服务器是直接连在硬件交换机上，后来VMware实现了服务器虚拟化技术，使虚拟服务器(VMs)能够连接在虚拟交换机上，借助这个虚拟交换机，可以为服务器上运行的VMs或容器提供逻辑的虚拟的以太网接口，这些逻辑接口都连接到虚拟交换机上，有三种比较流行的虚拟交换机: VMware virtual switch, Cisco Nexus 1000V,和Openv Switch     
 
@@ -18,7 +18,7 @@ Open vSwitch(OVS)是运行在虚拟化平台上的虚拟交换机，其支持Ope
 
 在虚拟交换机的控制器或管理工具方面，一些商业产品都集成有控制器或管理工具，比如Cisco 1000V的`Virtual Supervisor Manager(VSM)`，VMware的分布式交换机中的`vCenter`。而OVS需要借助第三方控制器或管理工具进行管理。例如OVS支持OpenFlow 协议，我们就可以使用任何支持OpenFlow协议的控制器来对OVS进行远程管理。OpenStack Neutron中的ML2插件也能够实现对OVS的管理。但这并不意味着OVS必须要有一个控制器才能工作，在一些简单场景下，没有控制器，OVS本身就可以作为一个基于MAC地址学习实现转发功能的二层交换机，就像普通物理交换机那样    
 
-在基于Linux内核的系统上，应用最广泛的还是系统自带的虚拟交换机`Linux Bridge`，它是一个单纯的基于MAC地址学习的二层交换机，简单高效，但同时缺乏一些高级特性，比如OpenFlow,VLAN tag,QOS,ACL,Flow等，而且在隧道协议支持上，Linux Bridge只支持vxlan，OVS是gre/vxlan/IPsec等，这也决定了OVS更适用于实现SDN技术     
+在基于Linux内核的系统上，应用最广泛的还是系统自带的虚拟交换机`Linux Bridge`，它是一个单纯的基于MAC地址学习的二层交换机，简单高效，但同时缺乏一些高级特性，比如OpenFlow,VLAN tag,QOS,ACL,Flow等，而且在隧道协议支持上，Linux Bridge只支持vxlan，OVS支持gre/vxlan/IPsec等，这也决定了OVS更适用于实现SDN技术     
 
 OVS支持以下[features](http://openvswitch.org/features/)         
 
@@ -40,13 +40,13 @@ openvswitch 2.5
 OpenFlow 1.4`
 ```  
 
-## OVS架构    
+# OVS架构    
 
 先看下OVS整体架构，用户空间主要组件有数据库服务ovsdb-server和守护进程ovs-vswitchd。kernel中是datapath内核模块。最上面的Controller表示OVS的控制器，控制器与OVS是通过OpenFlow协议进行连接，但控制器不一定位于OVS主机上，下面分别介绍下各组件       
 
 ![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-arch.png)   
 
-**ovsdb-server**    
+## ovsdb-server      
 
 `ovsdb-server`是实现OVS的数据库服务进程,存放OVS所有配置信息，像网桥名,Port,interface,tunnel等这些，OVS主进程`ovs-vswitchd`需要连接此数据库，下面是`ovsdb-server`进程            
 
@@ -59,7 +59,7 @@ root     22166 22165  0 Jan17 ?        00:02:32 ovsdb-server /etc/openvswitch/co
 `--remote=punix:/var/run/openvswitch/db.sock` 实现了一个Unix sockets连接，OVS主进程`ovs-vswitchd`或其它命令工具(ovsdb-client)通过此socket连接管理ovsdb       
 `/var/log/openvswitch/ovsdb-server.log`是日志记录        
 
-**ovs-vswitchd**   
+## ovs-vswitchd    
 
 `ovs-vswitchd`是OVS主进程，其通过与ovsdb数据库交互实现像增删/Bridge/Port/Interface/VLan tag等功能，通过OpenFlow协议连接OpenFlow控制器实现流表规则。可以查看其进程信息       
 
@@ -86,7 +86,7 @@ intree:         Y
 ...
 ```
 
-**OpenFlow && Controller**   
+## OpenFlow && Controller    
 
 OpenFlow是一种用于管理交换机流表的协议，OpenFlow在OVS中的地位可以参考上面架构图，它是Controller和ovs-vswitched间的通信协议。需要注意的是，OpenFlow是一个独立的完整的流表协议，不依赖于OVS，OVS只是提供了对OpenFlow协议的支持，有了支持，我们可以使用任何支持OpenFlow的控制器来管理OVS中的流表，OpenFlow不仅仅支持虚拟交换机，某些硬件交换机也支持OpenFlow协议 
 
@@ -94,7 +94,7 @@ Controller指OpenFlow控制器。OpenFlow控制器可以通过OpenFlow协议连�
 
 `ovs-ofctl`是一个监控和管理OpenFlow交换机的命令行工具，它支持任何使用OpenFlow协议的交换机，不仅仅是OVS    
 
-OpenFlow的介绍上说的`OpenFlow协议实现了控制层面和转发层面分离`，控制层面就是指这里的OpenFlow控制器，分离就是说控制器负责控制，OVS负责转发的具体实现，他们是分离的两个软件，但是可以通过OpenFLow远程连接，不需要位于同一台主机上    
+OpenFlow的介绍上说的`OpenFlow协议实现了控制层面和转发层面分离`，控制层面就是指这里的OpenFlow控制器，分离就是说控制器负责控制转发规则，OVS负责转发的具体实现，他们是分离的两个软件，但是可以通过OpenFLow远程连接，不需要位于同一台主机上    
 
 OpenFlow中的流表(Tables)定义了交换机端口之间数据包的交换规则，以OVS为例，OVS交换机中可以有一个或者多个流表，每个流表包括多个流表项(Flow entrys)，每条流表项中的条目包含：数据包头的信息、匹配成功后要执行的指令和统计信息。当数据包进入OVS后，OVS会将数据包和Tables中的流表项进行匹配以决定此数据包是被转发/修改或是DROP。     
 
