@@ -43,6 +43,112 @@ openvswitch 2.5
 OpenFlow 1.4`
 ```  
 
+# OVS概念    
+
+先看一个OpenStack neutron+vxlan部署模式下计算节点OVS网桥  
+
+``` shell
+# ovs-vsctl show
+e44abab7-2f65-4efd-ab52-36e92d9f0200
+    Manager "ptcp:6640:127.0.0.1"
+        is_connected: true
+    Bridge br-ext
+        Controller "tcp:127.0.0.1:6633"
+            is_connected: true
+        fail_mode: secure
+        Port br-ext
+            Interface br-ext
+                type: internal
+        Port "eth1"
+            Interface "eth1"
+        Port phy-br-ext
+            Interface phy-br-ext
+                type: patch
+                options: {peer=int-br-ext}
+    Bridge br-tun
+        Controller "tcp:127.0.0.1:6633"
+            is_connected: true
+        fail_mode: secure
+        Port br-tun
+            Interface br-tun
+                type: internal
+        Port patch-int
+            Interface patch-int
+                type: patch
+                options: {peer=patch-tun}
+        Port "vxlan-080058ca"
+            Interface "vxlan-080058ca"
+                type: vxlan
+                options: {df_default="true", in_key=flow, local_ip="8.0.88.201", out_key=flow, remote_ip="8.0.88.202"}
+    Bridge br-int
+        Controller "tcp:127.0.0.1:6633"
+            is_connected: true
+        fail_mode: secure
+        Port "qr-11591618-c4"
+            tag: 3
+            Interface "qr-11591618-c4"
+                type: internal
+        Port patch-tun
+            Interface patch-tun
+                type: patch
+                options: {peer=patch-int}
+        Port int-br-ext
+            Interface int-br-ext
+                type: patch
+                options: {peer=phy-br-ext}
+    Bridge "br0"
+        fail_mode: secure
+        Port "br0"
+            Interface "br0"
+                type: internal
+        Port "p10"
+            Interface "p10"
+                type: internal
+```
+
+这部分说下OVS中重要概念   
+
+**Bridge**  
+
+Bridge代表一个以太网交换机(Switch)，一个主机中可以创建一个或者多个Bridge设备。其功能是根据一定规则，把从端口收到的数据包转发到另一个或多个端口。上图中有两个Bridge，`br-tun`和`br-int`   
+
+**Port**   
+
+端口Port与物理交换机的端口概念类似，Port是Bridge上创建的一个虚拟端口，每个Port都隶属于一个Bridge。Port有以下几种类型  
+
+- Normal   
+
+可以把操作系统中的网卡(物理网卡em1/eth0,或虚拟机的虚拟网卡tapxxx)绑定到ovs上，ovs会生成一个普通端口处理这块网卡进出的数据包。  
+
+``` shell
+ovs-vsctl add-port br-ext eth1
+```
+
+把网卡`eth1`绑定到OVS网桥`br-ext`上，OVS会自动创建同名Port `eth1`。      
+
+- Internal     
+
+``` shell
+#网桥br0上添加端口p10  
+ovs-vsctl add-port br0 p10 -- set Interface p10 type=internal
+```
+
+创建端口p10，其类型指定为internal时，ovs会创建一块同名虚拟网卡p10，端口收到的所有数据包都会交给该网卡，发出的包会通过该端口交给ovs。当ovs创建一个新网桥时，默认会创建一个与网桥同名的Internal Port。  
+
+Internal类型是由OVS在`add-port`时自动创建，而Normal类型是把一个系统中存在的网卡添加到OVS中作为一个Port     
+
+- Patch    
+
+当主机中有多个ovs网桥时，可以使用Patch Port把两个网桥连起来。Patch Port总是成对出现，分别连接在两个网桥上，从一个Patch Port收到的数据包会被转发到另一个Patch Port，类似于Linux系统中的`veth`    
+
+比如，网桥`br-ext`中的Port `phy-br-ext`与`br-int`中的Port `int-br-ext`是一对Patch Port   
+
+- Tunnel
+隧道端口是一种虚拟端口，支持使用gre或vxlan等隧道技术与位于网络上其他位置的远程端口通讯。
+
+**Interface**
+接口是ovs与外部交换数据包的组件。一个接口就是操作系统的一块网卡，这块网卡可能是ovs生成的虚拟网卡，也可能是物理网卡挂载在ovs上，也可能是操作系统的虚拟网卡（TUN/TAP）挂载在ovs上。  
+
 # OVS架构    
 
 先看下OVS整体架构，用户空间主要组件有数据库服务ovsdb-server和守护进程ovs-vswitchd。kernel中是datapath内核模块。最上面的Controller表示OVS的控制器，控制器与OVS是通过OpenFlow协议进行连接，但控制器不一定位于OVS主机上，下面分别介绍图中各组件       
