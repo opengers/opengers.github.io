@@ -10,6 +10,9 @@ tags:
 format: quote
 ---
 
+* TOC
+{:toc} 
+
 # Open vSwitch介绍     
 
 在过去，数据中心的服务器是直接连在硬件交换机上，后来VMware实现了服务器虚拟化技术，使虚拟服务器(VMs)能够连接在虚拟交换机上，借助这个虚拟交换机，可以为服务器上运行的VMs或容器提供逻辑的虚拟的以太网接口，这些逻辑接口都连接到虚拟交换机上，有三种比较流行的虚拟交换机: VMware virtual switch, Cisco Nexus 1000V,和Openv Switch     
@@ -59,20 +62,20 @@ root     22166 22165  0 Jan17 ?        00:02:32 ovsdb-server /etc/openvswitch/co
 `--remote=punix:/var/run/openvswitch/db.sock` 实现了一个Unix sockets连接，OVS主进程`ovs-vswitchd`或其它命令工具(ovsdb-client)通过此socket连接管理ovsdb       
 `/var/log/openvswitch/ovsdb-server.log`是日志记录        
 
-## ovs-vswitchd    
+## ovs-vswitchd          
 
-`ovs-vswitchd`是OVS主进程，其通过与ovsdb数据库交互实现像增删/Bridge/Port/Interface/VLan tag等功能，通过OpenFlow协议连接OpenFlow控制器实现流表规则。可以查看其进程信息       
+`ovs-vswitchd`是OVS主进程，它管理主机上所有OVS switches，它通过socket`/var/run/openvswitch/db.sock`连接ovsdb，从而与ovsdb数据库交互实现像增删/Bridge/Port/Interface/VLan tag等功能，其通过OpenFlow协议连接OpenFlow控制器。也有自己的日志文件`/var/log/openvswitch/ovs-vswitchd.log`    
 
 ``` shell
 # ps -ef |grep ovs-vs
 root     22176 22175  0 Jan17 ?        00:16:56 ovs-vswitchd unix:/var/run/openvswitch/db.sock -vconsole:emer -vsyslog:err -vfile:info --mlockall --no-chdir --log-file=/var/log/openvswitch/ovs-vswitchd.log --pidfile=/var/run/openvswitch/ovs-vswitchd.pid --detach --monitor
 ```   
+  
+`ovs-vswitchd`在启动时会读取ovsdb中配置信息，然后配置内核中的`datapaths`和所有OVS switches，当ovsdb中的配置信息改变时(例如使用ovs-vsctl工具)，`ovs-vswitchd`也会自动更新其配置以保持与数据库同步   
 
-`ovs-vswitchd`管理此主机上所有由OVS实现的虚拟网桥，其通过socket`/var/run/openvswitch/db.sock`连接ovsdb，并且有自己的日志文件`/var/log/openvswitch/ovs-vswitchd.log`      
-`ovs-vswitchd`在启动时会读取ovsdb中配置信息，然后配置内核中的`datapaths`和所有的虚拟网桥，当ovsdb中的配置信息改变时(例如使用ovs-vsctl工具)，`ovs-vswitchd`也会自动更新其配置以保持与数据库同步    
-其通过`netlink`与内核模块`datapath`通信     
+`ovs-vswitchd`需要加载`datapath`内核模块才能正常运行，其通过`netlink`与`datapath`通信以便对其进行管理，比如初始化`datapath`或缓存flow匹配结果到`datapath`，因此我们不必再使用`ovs-dpctl`去手动操作`datapath`，但`ovs-dpctl`仍可用于调试场合      
 
-`ovs-vswitchd`需要加载datapath内核模块才能正常运行，datapath内核模块信息如下        
+在OVS中，`ovs-vswitchd`从OpenFlow控制器获取流表规则，然后把从`datapath`中收到的数据包在流表中进行匹配，找到符合某条flow规则的数据包需要应用的actions，然后缓存这些actions到`datapath`模块，对于`datapath`来说，其并不知道OpenFlow的存在，datapath内核模块信息如下      
 
 ``` shell
 # modinfo openvswitch
@@ -177,12 +180,14 @@ ovs-vsctl list-br
 ovs-vsctl add-port br0 p1
 #查看网桥br0上所有Port   
 ovs-vsctl list-ports br0
-#获取br0网桥的OpenFlow控制器地址，没有则控制器返回空 
+#获取br0网桥的OpenFlow控制器地址，没有控制器则返回空 
 ovs-vsctl get-controller br0
 #删除网桥br0
 ovs-vsctl del-br br0
 #设置端口p1的vlan tag为100
 ovs-vsctl set Port p1 tag=100
+#设置Port p0类型为internal
+ovs-vsctl set Interface p0 type=internal
 ```
 
 **ovsdb-tool**    
@@ -232,8 +237,9 @@ ovsdb-client monitor DATABASE TABLE
 
 ## Kernel Datapath           
 
-datapath是一个Linux内核模块，它在内核中缓存流匹配结果以提高OVS数据处理性能，它实现了OVS中的`switching`和`tunneling`        
-关于datapath，[The Design and Implementation of Open vSwitch](http://benpfaff.org/papers/ovs.pdf)中有描述    
+下面讨论场景是OVS作为一个OpenFlow交换机    
+
+datapath是一个Linux内核模块，它缓存flow的actions以提高OVS数据处理性能，关于datapath，[The Design and Implementation of Open vSwitch](http://benpfaff.org/papers/ovs.pdf)中有描述     
 
 ><small>The datapath module in the kernel receives the packets first, from a physical NIC or a VM’s virtual NIC. Either ovs-vswitchd has instructed the datapath how to handle packets of this type, or it has not. In the former case, the datapath module simply follows the instructions, called actions, given by ovs-vswitchd, which list physical ports or tunnels on which to transmit the packet. Actions may also specify packet modifications, packet sampling, or instructions to drop the packet. In the other case, where the datapath has not been told what to do with the packet, it delivers it to ovs-vswitchd. In userspace, ovs-vswitchd determines how the packet should be handled, then it passes the packet back to the datapath with the desired handling. Usually, ovs-vswitchd also tells the datapath to cache the actions, for handling similar future packets. </small>   
 
@@ -241,7 +247,9 @@ datapath是一个Linux内核模块，它在内核中缓存流匹配结果以提�
 
 ![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-details.png)   
 
-在处理`switching`方面，OVS中的两个组件`ovs-vswitchd`和`Kernel Datapath`决定了数据包的转发，首先，`datapath`内核模块收到进入数据包，对于某一条flow规则，`datapath`并不知道第一条匹配该规则的数据包如何处理，此时它会把该调数据包送入用户空间，交由`ovs-vswitchd`处理，`ovs-vswitchd`查询flow tables后把此数据包连带actions返回给`datapath`并告诉`datapath`缓存此actions，这样，当第二条匹配该flow规则的数据包进入`datapath`内核模块，`datapath`查询自身缓存并立即处理该数据包，不用再次进入用户空间，提高了性能      
+OVS中的两个组件`ovs-vswitchd`和`datapath`决定了数据包的转发，首先，`datapath`内核模块收到进入数据包(物理网卡或虚拟网卡)，然后查找其缓存，若缓存中有匹配这种类型数据包所对应的actions，则直接应用其actions，否则`datapath`会把该数据包送入用户空间由`ovs-vswitchd`处理(图1中的First Packet)，`ovs-vswitchd`查询flow tables后把此数据包连带actions返回给`datapath`并缓存此actions到`datapath`中，这样后续进入的同类型的数据包(图1中的Subsequent Packets)因为缓存匹配到会直接在内核空间处理，不用再次进入用户空间，文章上面在介绍`ovs-vswitchd` 部分也有提到      
+
+由上面分析，与OpenFlow打交道的是`ovs-vswitchd`，`datapath`只是缓存流actions，不存储OpenFlow规则，也不知道OpenFlow的存在，它专注于处理match缓存的数据包或把未match缓存的数据包送入`ovs-vswitchd`    
 
 文章地址http://www.isjian.com/openstack/openstack-base-use-openvswitch/  
 
