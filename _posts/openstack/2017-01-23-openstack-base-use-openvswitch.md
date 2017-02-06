@@ -147,6 +147,18 @@ Port为tunnel端口，有两种类型`gre`或`vxlan`，支持使用gre或vxlan�
 
 `Interface`是系统中一块网卡(物理或虚拟)，`Port`是OVS网桥上一个虚拟端口，Interface挂载在Port上。    
 
+**Controller**    
+
+OpenFlow控制器。OVS可以同时接受一个或者多个OpenFlow控制器的管理。  
+
+**datapath**   
+
+OVS内核模块，负责执行数据交换，根据其流表缓存或向用户空间`ovs-vswitchd`查询流表对数据包执行匹配到的动作(从另一个Port发出/DROP/添加Vlan tag)       
+
+**流表**    
+
+支持OpenFlow协议的交换机应该包括一个或者多个流表，流表中的条目包含：数据包头的信息、匹配成功后要执行的指令和统计信息。 当数据包进入OVS后，会将数据包和流表中的流表项进行匹配，如果发现了匹配的流表项，则执行该流表项中的指令集(actions)。   
+
 # OVS架构    
 
 先看下OVS整体架构，用户空间主要组件有数据库服务ovsdb-server和守护进程ovs-vswitchd。kernel中是datapath内核模块。最上面的Controller表示OVS的控制器，控制器与OVS是通过OpenFlow协议进行连接，但控制器不一定位于OVS主机上，下面分别介绍图中各组件       
