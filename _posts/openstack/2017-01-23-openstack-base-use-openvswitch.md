@@ -100,11 +100,11 @@ e44abab7-2f65-4efd-ab52-36e92d9f0200
 
 这部分说下OVS中重要概念   
 
-#### Bridge    
+### Bridge    
 
 Bridge代表一个以太网交换机(Switch)，一个主机中可以创建一个或者多个Bridge设备。其功能是根据一定规则，把从端口收到的数据包转发到另一个或多个端口。上图中有两个Bridge，`br-tun`和`br-int` 
 
-#### Port     
+### Port     
 
 端口Port与物理交换机的端口概念类似，Port是Bridge上创建的一个虚拟端口，每个Port都隶属于一个Bridge。Port有以下几种类型  
 
@@ -141,21 +141,21 @@ ovs-vsctl add-port br0 p10 -- set Interface p10 type=internal
 
 Port为tunnel端口，有两种类型`gre`或`vxlan`，支持使用gre或vxlan等隧道技术与位于网络上其他位置的远程端口通讯。上面网桥`br-tun`中`Port "vxlan-080058ca"`就是一个`vxlan`类型tunnel端口       
  
-#### Interface      
+### Interface      
 
 接口是ovs与外部交换数据包的组件。一个接口就是操作系统中的一块网卡，这块网卡可能是ovs生成的虚拟网卡(Internal)，也可能是物理网卡挂载在ovs上，也可能是操作系统的虚拟网卡(TUN/TAP)挂载在ovs上。   
 
 `Interface`是系统中一块网卡(物理或虚拟)，`Port`是OVS网桥上一个虚拟端口，Interface挂载在Port上。    
 
-#### Controller       
+### Controller       
 
 OpenFlow控制器。OVS可以同时接受一个或者多个OpenFlow控制器的管理。  
 
-#### datapath       
+### datapath       
 
 OVS内核模块，负责执行数据交换，根据其流表缓存或向用户空间`ovs-vswitchd`查询流表对数据包执行匹配到的动作(从另一个Port发出/DROP/添加Vlan tag)       
 
-#### 流表        
+### 流表        
 
 支持OpenFlow协议的交换机应该包括一个或者多个流表，流表中的条目包含：数据包头的信息、匹配成功后要执行的指令和统计信息。 当数据包进入OVS后，会将数据包和流表中的流表项进行匹配，如果发现了匹配的流表项，则执行该流表项中的指令集(actions)。   
 
