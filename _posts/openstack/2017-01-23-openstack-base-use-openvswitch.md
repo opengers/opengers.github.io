@@ -355,7 +355,7 @@ ovsdb-client monitor DATABASE TABLE
 
 下面讨论场景是OVS作为一个OpenFlow交换机    
 
-datapath是一个Linux内核模块，它缓存flow的actions以提高OVS数据处理性能，关于datapath，[The Design and Implementation of Open vSwitch](http://benpfaff.org/papers/ovs.pdf)中有描述     
+datapath是一个Linux内核模块，它负责执行数据交换，同时也缓存flow的actions以提高OVS数据交换性能，关于datapath，[The Design and Implementation of Open vSwitch](http://benpfaff.org/papers/ovs.pdf)中有描述     
 
 ><small>The datapath module in the kernel receives the packets first, from a physical NIC or a VM’s virtual NIC. Either ovs-vswitchd has instructed the datapath how to handle packets of this type, or it has not. In the former case, the datapath module simply follows the instructions, called actions, given by ovs-vswitchd, which list physical ports or tunnels on which to transmit the packet. Actions may also specify packet modifications, packet sampling, or instructions to drop the packet. In the other case, where the datapath has not been told what to do with the packet, it delivers it to ovs-vswitchd. In userspace, ovs-vswitchd determines how the packet should be handled, then it passes the packet back to the datapath with the desired handling. Usually, ovs-vswitchd also tells the datapath to cache the actions, for handling similar future packets. </small>   
 
@@ -363,19 +363,20 @@ datapath是一个Linux内核模块，它缓存flow的actions以提高OVS数据�
 
 ![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-details.png)   
 
-OVS中的两个组件`ovs-vswitchd`和`datapath`决定了数据包的转发，首先，`datapath`内核模块收到进入数据包(物理网卡或虚拟网卡)，然后查找其缓存，若缓存中有匹配这种类型数据包所对应的actions，则直接应用其actions，否则`datapath`会把该数据包送入用户空间由`ovs-vswitchd`处理(图1中的First Packet)，`ovs-vswitchd`查询flow tables后把此数据包连带actions返回给`datapath`并缓存此actions到`datapath`中，这样后续进入的同类型的数据包(图1中的Subsequent Packets)因为缓存匹配到会直接在内核空间处理，不用再次进入用户空间，文章上面在介绍`ovs-vswitchd` 部分也有提到      
+OVS中的两个组件`ovs-vswitchd`和`datapath`决定了数据包的转发，首先，`datapath`内核模块收到进入数据包(物理网卡或虚拟网卡)，然后查找其缓存，若缓存中有匹配此类数据包所对应的actions，则执行其actions，否则`datapath`会把该数据包送入用户空间由`ovs-vswitchd`负责在其流表项中查询(图1中的First Packet)，`ovs-vswitchd`查询flow tables后把此数据包连带actions返回给`datapath`并缓存此actions到`datapath`中，这样后续进入的同类型的数据包(图1中的Subsequent Packets)因为缓存匹配到会被`datapath`直接处理，不用再次进入用户空间，文章上面在介绍`ovs-vswitchd` 部分也有提到      
 
-由上面分析，与OpenFlow打交道的是`ovs-vswitchd`，`datapath`只是缓存流actions，不存储OpenFlow规则，也不知道OpenFlow的存在，它专注于处理match缓存的数据包或把未match缓存的数据包送入`ovs-vswitchd`    
+`datapath`专注于数据交换，它不需要知道OpenFlow的存在。与OpenFlow打交道的是`ovs-vswitchd`，`ovs-vswitchd`存储所有Flow规则供`datapath`查询和缓存。`datapath`根据其缓存或由`ovs-vswitchd`查询负责执行数据交换          
 
-文章地址http://www.isjian.com/openstack/openstack-base-use-openvswitch/  
+文章地址http://www.isjian.com/openstack/openstack-base-use-openvswitch/     
 
-参考文章   
+参考文章     
 
-https://www.sdxcentral.com/cloud/open-source/definitions/what-is-open-vswitch/   
-http://openvswitch.org/features/    
+><small>
+https://www.sdxcentral.com/cloud/open-source/definitions/what-is-open-vswitch/     
+http://openvswitch.org/features/      
 https://www.ibm.com/developerworks/cn/cloud/library/1401_zhaoyi_openswitch/    
-http://openvswitch.org/slides/OpenStack-131107.pdf    
+http://openvswitch.org/slides/OpenStack-131107.pdf      
 http://horms.net/projects/openvswitch/2010-10/openvswitch.en.pdf   
 http://benpfaff.org/papers/ovs.pdf   
-https://networkheresy.com/category/open-vswitch/     
+https://networkheresy.com/category/open-vswitch/</small>     
 
