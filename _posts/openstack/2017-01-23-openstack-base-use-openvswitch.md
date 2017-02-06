@@ -100,11 +100,11 @@ e44abab7-2f65-4efd-ab52-36e92d9f0200
 
 这部分说下OVS中重要概念   
 
-**Bridge**  
+### Bridge    
 
 Bridge代表一个以太网交换机(Switch)，一个主机中可以创建一个或者多个Bridge设备。其功能是根据一定规则，把从端口收到的数据包转发到另一个或多个端口。上图中有两个Bridge，`br-tun`和`br-int` 
 
-**Port**   
+### Port     
 
 端口Port与物理交换机的端口概念类似，Port是Bridge上创建的一个虚拟端口，每个Port都隶属于一个Bridge。Port有以下几种类型  
 
@@ -304,6 +304,10 @@ ovs-vsctl del-br br0
 ovs-vsctl set Port p1 tag=100
 #设置Port p0类型为internal
 ovs-vsctl set Interface p0 type=internal
+#添加vlan10端口，并设置vlan tag为10，Port类型为Internal
+ovs-vsctl add-port br0 vlan10 tag=10 -- set Interface vlan10 type=internal
+#添加隧道端口gre0，类型为gre，远端IP为1.2.3.4
+ovs-vsctl add-port br0 gre0 -- set Interface gre0 type=gre options:remote_ip=1.2.3.4
 ```
 
 **ovsdb-tool**    
