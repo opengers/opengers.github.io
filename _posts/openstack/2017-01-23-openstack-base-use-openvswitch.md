@@ -45,7 +45,7 @@ OpenFlow 1.4`
 
 # OVS概念    
 
-先看一个OpenStack neutron+vxlan部署模式下计算节点OVS网桥  
+先看一个OpenStack neutron+vxlan部署模式下网络节点OVS网桥    
 
 ``` shell
 # ovs-vsctl show
@@ -96,21 +96,13 @@ e44abab7-2f65-4efd-ab52-36e92d9f0200
             Interface int-br-ext
                 type: patch
                 options: {peer=phy-br-ext}
-    Bridge "br0"
-        fail_mode: secure
-        Port "br0"
-            Interface "br0"
-                type: internal
-        Port "p10"
-            Interface "p10"
-                type: internal
 ```
 
 这部分说下OVS中重要概念   
 
 **Bridge**  
 
-Bridge代表一个以太网交换机(Switch)，一个主机中可以创建一个或者多个Bridge设备。其功能是根据一定规则，把从端口收到的数据包转发到另一个或多个端口。上图中有两个Bridge，`br-tun`和`br-int`   
+Bridge代表一个以太网交换机(Switch)，一个主机中可以创建一个或者多个Bridge设备。其功能是根据一定规则，把从端口收到的数据包转发到另一个或多个端口。上图中有两个Bridge，`br-tun`和`br-int` 
 
 **Port**   
 
@@ -118,24 +110,26 @@ Bridge代表一个以太网交换机(Switch)，一个主机中可以创建一个
 
 - Normal   
 
-可以把操作系统中的网卡(物理网卡em1/eth0,或虚拟机的虚拟网卡tapxxx)绑定到ovs上，ovs会生成一个普通端口处理这块网卡进出的数据包。  
+可以把操作系统中已有的网卡(物理网卡em1/eth0,或虚拟机的虚拟网卡tapxxx)绑定到ovs上，ovs会生成一个同名普通端口处理这块网卡进出的数据包。此时端口类型为Normal。  
 
 ``` shell
 ovs-vsctl add-port br-ext eth1
 ```
 
-把网卡`eth1`绑定到OVS网桥`br-ext`上，OVS会自动创建同名Port `eth1`。      
+把物理网卡`eth1`绑定到OVS网桥`br-ext`上，OVS会自动创建同名Port `eth1`。      
 
 - Internal     
 
-``` shell
-#网桥br0上添加端口p10  
+下面创建一个网桥br0，并添加一个端口类型为Internal的Port `p10`   
+
+``` shell 
+ovs-vsctl add-br br0   
 ovs-vsctl add-port br0 p10 -- set Interface p10 type=internal
 ```
 
-创建端口p10，其类型指定为internal时，ovs会创建一块同名虚拟网卡p10，端口收到的所有数据包都会交给该网卡，发出的包会通过该端口交给ovs。当ovs创建一个新网桥时，默认会创建一个与网桥同名的Internal Port。  
+端口p10类型指定为internal时，ovs会创建一块同名虚拟网卡p10，端口收到的所有数据包都会交给该网卡，发出的包会通过该端口交给ovs。当ovs创建一个新网桥时，默认会创建一个与网桥同名的Internal Port。  
 
-Internal类型是由OVS在`add-port`时自动创建，而Normal类型是把一个系统中存在的网卡添加到OVS中作为一个Port     
+当Port为Internal类型时，OVS会自动创建一个同名网卡挂载到新创建的Port上，而Normal类型是把一个系统中已有的网卡添加到OVS中           
 
 - Patch    
 
@@ -143,11 +137,15 @@ Internal类型是由OVS在`add-port`时自动创建，而Normal类型是把一�
 
 比如，网桥`br-ext`中的Port `phy-br-ext`与`br-int`中的Port `int-br-ext`是一对Patch Port   
 
-- Tunnel
-隧道端口是一种虚拟端口，支持使用gre或vxlan等隧道技术与位于网络上其他位置的远程端口通讯。
+- Tunnel   
 
-**Interface**
-接口是ovs与外部交换数据包的组件。一个接口就是操作系统的一块网卡，这块网卡可能是ovs生成的虚拟网卡，也可能是物理网卡挂载在ovs上，也可能是操作系统的虚拟网卡（TUN/TAP）挂载在ovs上。  
+Port为tunnel端口，有两种类型`gre`或`vxlan`，支持使用gre或vxlan等隧道技术与位于网络上其他位置的远程端口通讯。上面网桥`br-tun`中`Port "vxlan-080058ca"`就是一个`vxlan`类型tunnel端口       
+ 
+**Interface**   
+
+接口是ovs与外部交换数据包的组件。一个接口就是操作系统中的一块网卡，这块网卡可能是ovs生成的虚拟网卡(Internal)，也可能是物理网卡挂载在ovs上，也可能是操作系统的虚拟网卡(TUN/TAP)挂载在ovs上。   
+
+`Interface`是系统中一块网卡(物理或虚拟)，`Port`是OVS网桥上一个虚拟端口，Interface挂载在Port上。    
 
 # OVS架构    
 
