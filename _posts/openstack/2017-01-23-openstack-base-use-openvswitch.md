@@ -255,7 +255,9 @@ datapath是一个Linux内核模块，它负责执行数据交换，同时也缓�
 
 OVS中的两个组件`ovs-vswitchd`和`datapath`决定了数据包的转发，首先，`datapath`内核模块收到进入数据包(物理网卡或虚拟网卡)，然后查找其缓存，若缓存中有匹配此类数据包所对应的actions，则执行其actions，否则`datapath`会把该数据包送入用户空间由`ovs-vswitchd`负责在其流表项中查询(图1中的First Packet)，`ovs-vswitchd`查询flow tables后把此数据包连带actions返回给`datapath`并缓存此actions到`datapath`中，这样后续进入的同类型的数据包(图1中的Subsequent Packets)因为缓存匹配到会被`datapath`直接处理，不用再次进入用户空间，文章上面在介绍`ovs-vswitchd` 部分也有提到      
 
-`datapath`专注于数据交换，它不需要知道OpenFlow的存在。与OpenFlow打交道的是`ovs-vswitchd`，`ovs-vswitchd`存储所有Flow规则供`datapath`查询和缓存。`datapath`根据其缓存或由`ovs-vswitchd`查询负责执行数据交换          
+`datapath`专注于数据交换，它不需要知道OpenFlow的存在。与OpenFlow打交道的是`ovs-vswitchd`，`ovs-vswitchd`存储所有Flow规则供`datapath`查询和缓存。`datapath`根据其缓存或由`ovs-vswitchd`查询负责执行数据交换   
+
+虽然有`ovs-dpctl`管理工具的存在，但我们没必要去手动管理`datapath`，这是用户空间`ovs-vswitchd`的工作   
 
 # Neutron实现的OpenFLow控制器          
 
