@@ -15,13 +15,13 @@ format: quote
 
 # Open vSwitch介绍     
 
-在过去，数据中心的服务器是直接连在硬件交换机上，后来VMware实现了服务器虚拟化技术，使虚拟服务器(VMs)能够连接在虚拟交换机上，借助这个虚拟交换机，可以为服务器上运行的VMs或容器提供逻辑的虚拟的以太网接口，这些逻辑接口都连接到虚拟交换机上，有三种比较流行的虚拟交换机: VMware virtual switch, Cisco Nexus 1000V,和Openv Switch     
+在过去，数据中心的服务器是直接连在硬件交换机上，后来VMware实现了服务器虚拟化技术，使虚拟服务器(VMs)能够连接在虚拟交换机上，借助这个虚拟交换机，可以为服务器上运行的VMs或容器提供逻辑的虚拟的以太网接口，这些逻辑接口都连接到虚拟交换机上，有三种比较流行的虚拟交换机: VMware virtual switch, Cisco Nexus 1000V,和Open vSwitch       
 
-Open vSwitch(OVS)是运行在虚拟化平台上的虚拟交换机，其支持OpenFlow协议，也支持gre/vxlan/IPsec等隧道技术。在OVS之前，基于Linux的虚拟化平台比如KVM或Xen上，缺少一个功能丰富的虚拟交换机，因此OVS迅速崛起并开始在Xen中流行起来，并且应用于越来越多的开源项目，比如openstack neutron中的网络解决方案   
+Open vSwitch(OVS)是运行在虚拟化平台上的虚拟交换机，其支持OpenFlow协议，也支持gre/vxlan/IPsec等隧道技术。在OVS之前，基于Linux的虚拟化平台比如KVM或Xen上，缺少一个功能丰富的虚拟交换机，因此OVS迅速崛起并开始在Xen/KVM中流行起来，并且应用于越来越多的开源项目，比如openstack neutron中的网络解决方案     
 
-在虚拟交换机的控制器或管理工具方面，一些商业产品都集成有控制器或管理工具，比如Cisco 1000V的`Virtual Supervisor Manager(VSM)`，VMware的分布式交换机中的`vCenter`。而OVS需要借助第三方控制器或管理工具进行管理。例如OVS支持OpenFlow 协议，我们就可以使用任何支持OpenFlow协议的控制器来对OVS进行远程管理。OpenStack Neutron中的ML2插件也能够实现对OVS的管理。但这并不意味着OVS必须要有一个控制器才能工作，在一些简单场景下，没有控制器，OVS本身就可以作为一个基于MAC地址学习实现转发功能的二层交换机，就像普通物理交换机那样    
+在虚拟交换机的Flow控制器或管理工具方面，一些商业产品都集成有控制器或管理工具，比如Cisco 1000V的`Virtual Supervisor Manager(VSM)`，VMware的分布式交换机中的`vCenter`。而OVS则需要借助第三方控制器或管理工具实现复杂的转发策略。例如OVS支持OpenFlow 协议，我们就可以使用任何支持OpenFlow协议的控制器来对OVS进行远程管理。OpenStack Neutron中的ML2插件也能够实现对OVS的管理。但这并不意味着OVS必须要有一个控制器才能工作。在不连接外部控制器情况下，OVS自身可以依靠MAC地址学习实现二层数据包转发功能，就像`Linux Bridge`        
 
-在基于Linux内核的系统上，应用最广泛的还是系统自带的虚拟交换机`Linux Bridge`，它是一个单纯的基于MAC地址学习的二层交换机，简单高效，但同时缺乏一些高级特性，比如OpenFlow,VLAN tag,QOS,ACL,Flow等，而且在隧道协议支持上，Linux Bridge只支持vxlan，OVS支持gre/vxlan/IPsec等，这也决定了OVS更适用于实现SDN技术     
+在基于Linux内核的系统上，应用最广泛的还是系统自带的虚拟交换机`Linux Bridge`，它是一个单纯的基于MAC地址学习的二层交换机，简单高效，但同时缺乏一些高级特性，比如OpenFlow,VLAN tag,QOS,ACL,Flow等，而且在隧道协议支持上，Linux Bridge只支持vxlan，OVS支持gre/vxlan/IPsec等，这也决定了OVS更适用于实现SDN技术      
 
 OVS支持以下[features](http://openvswitch.org/features/)         
 
@@ -45,7 +45,7 @@ OpenFlow 1.4`
 
 # OVS概念    
 
-先看一个OpenStack neutron+vxlan部署模式下网络节点OVS网桥    
+这部分说下OVS中的重要概念，使用OpenStack neutron+vxlan部署模式下网络节点OVS网桥作为例子            
 
 ``` shell
 # ovs-vsctl show
@@ -98,39 +98,59 @@ e44abab7-2f65-4efd-ab52-36e92d9f0200
                 options: {peer=phy-br-ext}
 ```
 
-这部分说下OVS中重要概念   
+## Bridge    
 
-### Bridge    
+Bridge代表一个以太网交换机(Switch)，一个主机中可以创建一个或者多个Bridge。Bridge的功能是根据一定规则，把从端口收到的数据包转发到另一个或多个端口，上面例子中有三个Bridge，`br-tun`，`br-int`，`br-ext`     
 
-Bridge代表一个以太网交换机(Switch)，一个主机中可以创建一个或者多个Bridge设备。其功能是根据一定规则，把从端口收到的数据包转发到另一个或多个端口。上图中有两个Bridge，`br-tun`和`br-int` 
+## Port     
 
-### Port     
-
-端口Port与物理交换机的端口概念类似，Port是Bridge上创建的一个虚拟端口，每个Port都隶属于一个Bridge。Port有以下几种类型  
+端口Port与物理交换机的端口概念类似，Port是OVS Bridge上创建的一个虚拟端口，每个Port都隶属于一个Bridge。Port有以下几种类型       
 
 **Normal**      
 
-可以把操作系统中已有的网卡(物理网卡em1/eth0,或虚拟机的虚拟网卡tapxxx)绑定到ovs上，ovs会生成一个同名普通端口处理这块网卡进出的数据包。此时端口类型为Normal。  
+可以把操作系统中已有的网卡(物理网卡em1/eth0,或虚拟机的虚拟网卡tapxxx)挂载到ovs上，ovs会生成一个同名Port处理这块网卡进出的数据包。此时端口类型为Normal。  
 
+如下，主机中有一块物理网卡`eth1`，把其挂载到OVS网桥`br-ext`上，OVS会自动创建同名Port `eth1`。  
 ``` shell
 ovs-vsctl add-port br-ext eth1
+#Bridge br-ext中出现Port "eth1"
 ```
 
-把物理网卡`eth1`绑定到OVS网桥`br-ext`上，OVS会自动创建同名Port `eth1`。      
+有一点要注意的是，挂载到OVS上的网卡设备不支持分配IP地址，因此若之前`eth1`配置有IP地址，挂载到OVS之后IP地址将不可访问。这里的网卡设备不只包括物理网卡，也包括主机上创建的虚拟网卡           
 
 **Internal**       
 
-下面创建一个网桥br0，并添加一个端口类型为Internal的Port `p10`   
+Internal类型是OVS内部创建的Port，每创建一个Port，OVS会自动创建一个同名接口(Interface)挂载到新创建的Port上。接口的概念下面会提到。    
+
+下面创建一个网桥br0，并添加一个Internal类型的Port `p0`   
 
 ``` shell 
 ovs-vsctl add-br br0   
-ovs-vsctl add-port br0 p10 -- set Interface p10 type=internal
+ovs-vsctl add-port br0 p0 -- set Interface p0 type=internal
+
+#查看网桥br0   
+ovs-vsctl show br0
+    Bridge "br0"
+        fail_mode: secure
+        Port "p0"
+            Interface "p0"
+                type: internal
+        Port "br0"
+            Interface "br0"
+                type: internal
 ```
 
-端口p10类型指定为internal时，ovs会创建一块同名虚拟网卡p10，端口收到的所有数据包都会交给该网卡，发出的包会通过该端口交给ovs。当ovs创建一个新网桥时，默认会创建一个与网桥同名的Internal Port。  
+可以看到有两个Port。当ovs创建一个新网桥时，默认会创建一个与网桥同名的Internal Port。在OVS中，只有"internal"类型的设备才支持配置IP地址信息，因此我们可以为`br0`接口配置一个IP地址，当然`p0`也可以配置IP地址      
 
-当Port为Internal类型时，OVS会自动创建一个同名网卡挂载到新创建的Port上，而Normal类型是把一个系统中已有的网卡添加到OVS中           
+``` shell
+ip addr add 192.168.10.11/24 dev br0
+ip link set br0 up
+#添加默认路由
+ip route add default via 192.168.10.1 dev br0
+```
 
+上面两种Port类型区别在于，Internal类型会自动创建接口(Interface)，而Normal类型是把主机中已有的网卡接口添加到OVS中     
+      
 **Patch**    
 
 当主机中有多个ovs网桥时，可以使用Patch Port把两个网桥连起来。Patch Port总是成对出现，分别连接在两个网桥上，从一个Patch Port收到的数据包会被转发到另一个Patch Port，类似于Linux系统中的`veth`    
@@ -141,23 +161,31 @@ ovs-vsctl add-port br0 p10 -- set Interface p10 type=internal
 
 Port为tunnel端口，有两种类型`gre`或`vxlan`，支持使用gre或vxlan等隧道技术与位于网络上其他位置的远程端口通讯。上面网桥`br-tun`中`Port "vxlan-080058ca"`就是一个`vxlan`类型tunnel端口       
  
-### Interface      
+## Interface      
 
-接口是ovs与外部交换数据包的组件。一个接口就是操作系统中的一块网卡，这块网卡可能是ovs生成的虚拟网卡(Internal)，也可能是物理网卡挂载在ovs上，也可能是操作系统的虚拟网卡(TUN/TAP)挂载在ovs上。   
+接口是ovs与外部交换数据包的组件，一个接口就是操作系统中的一块网卡，这块网卡可能是ovs生成的虚拟网卡(Internal)，也可能是物理网卡挂载在ovs上，也可能是操作系统的虚拟网卡(TUN/TAP)挂载在ovs上。 OVS中只有"Internal"类型的网卡接口才支持配置IP地址   
 
 `Interface`是系统中一块网卡(物理或虚拟)，`Port`是OVS网桥上一个虚拟端口，Interface挂载在Port上。    
 
-### Controller       
+## Controller       
 
-OpenFlow控制器。OVS可以同时接受一个或者多个OpenFlow控制器的管理。  
+OpenFlow控制器。OVS可以同时接受一个或者多个OpenFlow控制器的管理。主要作用是下发流表(Flow Tables)到OVS，控制OVS数据包转发规则   
 
-### datapath       
+## datapath       
 
-OVS内核模块，负责执行数据交换，根据其流表缓存或向用户空间`ovs-vswitchd`查询流表对数据包执行匹配到的动作(从另一个Port发出/DROP/添加Vlan tag)       
+OVS内核模块，负责根据flows规则执行数据交换。其内部有缓存类型的flows，关于datapath，下面会细说        
 
-### 流表        
+## 流(flows)        
 
-支持OpenFlow协议的交换机应该包括一个或者多个流表，流表中的条目包含：数据包头的信息、匹配成功后要执行的指令和统计信息。 当数据包进入OVS后，会将数据包和流表中的流表项进行匹配，如果发现了匹配的流表项，则执行该流表项中的指令集(actions)。   
+flows是OVS进行数据转发策略控制的核心数据结构，OVS中可以有多种flows存在，用于不同目的    
+
+** OpenFlow flows**    
+
+OpenFlow是开源的用于管理交换机流表的协议。OpenFlow flows是OVS中最重要的一种flow，OpenFlow控制器使用这种flows定义OVS数据转发策略。OpenFlow flows支持通配符，优先级，多表数据结构        
+
+在OVS中，OpenFlow flows可以有一个或者多个流表，流表中包括多条流表项，每条流表项包含：数据包头的信息、匹配成功后要执行的指令集(actions)和统计信息。 当数据包进入OVS后，OVS会将数据包和流表中的流表项进行匹配，如果发现了匹配的流表项，则执行该流表项中的指令集。   
+
+OVS常用作SDN交换机，其中控制数据转发策略的就是OpenFlow flows。OpenStack Neutron中实现了一个OpenFlow控制器用于向OVS下发OpenFlow flows控制虚拟机间的访问或隔离，使OVS实现复杂的，灵活的数据转发策略。文中讨论的多是在这种使用场景下   
 
 # OVS架构    
 
