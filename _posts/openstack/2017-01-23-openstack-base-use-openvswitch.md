@@ -183,9 +183,9 @@ flows是OVS进行数据转发策略控制的核心数据结构，OVS中可以有
 
 OpenFlow是开源的用于管理交换机流表的协议。OpenFlow flows是OVS中最重要的一种flow，OpenFlow控制器使用这种flows定义OVS数据转发策略。OpenFlow flows支持通配符，优先级，多表数据结构        
 
-在OVS中，OpenFlow flows可以有一个或者多个流表，流表中包括多条流表项，每条流表项包含：数据包头的信息、匹配成功后要执行的指令集(actions)和统计信息。 当数据包进入OVS后，OVS会将数据包和流表中的流表项进行匹配，如果发现了匹配的流表项，则执行该流表项中的指令集。   
+在OVS中，OpenFlow flows位于用户空间主进程`ovs-vswitchd`，OpenFlow flows可以有一个或者多个流表，流表中包括多条流表项，每条流表项包含：数据包头的信息、匹配成功后要执行的指令集(actions)和统计信息。 当数据包进入OVS后，OVS会将数据包和流表中的流表项进行匹配，如果发现了匹配的流表项，则执行该流表项中的指令集。   
 
-OVS常用作SDN交换机，其中控制数据转发策略的就是OpenFlow flows。OpenStack Neutron中实现了一个OpenFlow控制器用于向OVS下发OpenFlow flows控制虚拟机间的访问或隔离，使OVS实现复杂的，灵活的数据转发策略。文中讨论的多是在这种使用场景下   
+OVS常用作SDN交换机(OpenFlow交换机)，其中控制数据转发策略的就是OpenFlow flows。OpenStack Neutron中实现了一个OpenFlow控制器用于向OVS下发OpenFlow flows控制虚拟机间的访问或隔离。本文讨论的默认是作为SDN交换机场景下      
 
 不是只有连接OpenFlow控制器才能配置OpenFlow flows，`ovs-ofctl`工具可以手动添加这种flows，可以查看`man ovs-ofctl`了解   
 
@@ -193,7 +193,7 @@ OVS常用作SDN交换机，其中控制数据转发策略的就是OpenFlow flows
 
 OVS在使用OpenFlow flow时，需要与OpenFlow控制器建立TCP连接，若此TCP连接是依靠主机其它网卡实现的，完全不依赖OVS是否正常运行，则没什么问题，此时就是`out-of-band control`模式，这种模式下不需要"hidden" flows    
 
-但是在`in-band control`模式下，TCP连接的建立使用OVS控制的网络，但此时OVS网络正常依赖OpenFLow控制器下发的flows，没法建立TCP连接也就无法下发flows，这就产生矛盾了，因此存在一些"hidden" flows，这些"hidden" flows使TCP连接能够正常建立。关于`in-band control`详细介绍，参考OVS官方文档(Design Decisions In Open vSwitch)[https://github.com/openvswitch/ovs/blob/master/Documentation/topics/design.rst] 中**In-Band Control**部分    
+但是在`in-band control`模式下，TCP连接的建立使用OVS控制的网络，但此时OVS网络正常依赖OpenFLow控制器下发的flows，没法建立TCP连接也就无法下发flows，这就产生矛盾了，因此存在一些"hidden" flows，这些"hidden" flows使TCP连接能够正常建立。关于`in-band control`详细介绍，参考OVS官方文档[Design Decisions In Open vSwitch](https://github.com/openvswitch/ovs/blob/master/Documentation/topics/design.rst) 中**In-Band Control**部分    
 
 可以使用`ovs-appctl`查看这些flows，下面命令输出内容包括`OpenFlow flows`,`"hidden" flows`     
 
@@ -203,6 +203,25 @@ ovs-appctl bridge/dump-flows <br>
 
 **datapath flows**    
 
+datapath flows是`datapath`内核模块维护的flows，由内核模块维护意味着我们并不需要去修改管理它。与OpenFlow flows不同的是，它不支持优先级，并且只有一个表，这些特点使它非常适合做缓存。与OpenFlow一样的是它支持通配符，也支持指令集  
+
+datapath flows可以来自用户空间`ovs-vswitchd`缓存(文章后面datapath部分会介绍)，也可以是datapath内核模块进行MAC地址学习到的flows，这取决与OVS是作为SDN交换机，还是像Linux Bridge那样只是一个简单基于MAC地址学习的二层交换机     
+
+**几种flows对比**    
+
+我们可以修改和配置的是OpenFlow flows，它使OVS实现复杂的，灵活的数据转发策略。datapath flow和"hidden" flows由OVS自身管理，我们不必去修改它。当然，调试场景下还是可以使用工具修改的      
+
+**flows命令行工具**   
+
+介绍下上面三种flows管理工具，不具体说明，具体使用可以查看相关man手册   
+
+- `ovs-ofctl dump-flows <br>` 打印指定网桥内的所有OpenFlow flows，可以存在多个流表(flow tables)，按表顺序显示。不包括"hidden" flows。这是最常用的查看flows命令，当然这条命令对所有OpenFlow交换机都有效，不单单是OVS    
+
+- `ovs-appctl bridge/dump-flows <br>` 打印指定网桥内所有OpenFlow flows，包括"hidden" flows，`in-band control`模式下排错可以用到    
+
+- `ovs-dpctl dump-flows [dp]` 打印内核模块中datapath flows，`[dp]`可以省略，默认主机中只有一个datapath `system@ovs-system`      
+
+man手册可以找到非常详细的用法说明，注意`ovs-ofctl`管理的是OpenFlow flows     
 
 # OVS架构    
 
