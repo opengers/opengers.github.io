@@ -179,13 +179,30 @@ OVS内核模块，负责根据flows规则执行数据交换。其内部有缓存
 
 flows是OVS进行数据转发策略控制的核心数据结构，OVS中可以有多种flows存在，用于不同目的    
 
-** OpenFlow flows**    
+**OpenFlow flows**    
 
 OpenFlow是开源的用于管理交换机流表的协议。OpenFlow flows是OVS中最重要的一种flow，OpenFlow控制器使用这种flows定义OVS数据转发策略。OpenFlow flows支持通配符，优先级，多表数据结构        
 
 在OVS中，OpenFlow flows可以有一个或者多个流表，流表中包括多条流表项，每条流表项包含：数据包头的信息、匹配成功后要执行的指令集(actions)和统计信息。 当数据包进入OVS后，OVS会将数据包和流表中的流表项进行匹配，如果发现了匹配的流表项，则执行该流表项中的指令集。   
 
 OVS常用作SDN交换机，其中控制数据转发策略的就是OpenFlow flows。OpenStack Neutron中实现了一个OpenFlow控制器用于向OVS下发OpenFlow flows控制虚拟机间的访问或隔离，使OVS实现复杂的，灵活的数据转发策略。文中讨论的多是在这种使用场景下   
+
+不是只有连接OpenFlow控制器才能配置OpenFlow flows，`ovs-ofctl`工具可以手动添加这种flows，可以查看`man ovs-ofctl`了解   
+
+**"hidden" flows**       
+
+OVS在使用OpenFlow flow时，需要与OpenFlow控制器建立TCP连接，若此TCP连接是依靠主机其它网卡实现的，完全不依赖OVS是否正常运行，则没什么问题，此时就是`out-of-band control`模式，这种模式下不需要"hidden" flows    
+
+但是在`in-band control`模式下，TCP连接的建立使用OVS控制的网络，但此时OVS网络正常依赖OpenFLow控制器下发的flows，没法建立TCP连接也就无法下发flows，这就产生矛盾了，因此存在一些"hidden" flows，这些"hidden" flows使TCP连接能够正常建立。关于`in-band control`详细介绍，参考OVS官方文档(Design Decisions In Open vSwitch)[https://github.com/openvswitch/ovs/blob/master/Documentation/topics/design.rst] 中**In-Band Control**部分    
+
+可以使用`ovs-appctl`查看这些flows，下面命令输出内容包括`OpenFlow flows`,`"hidden" flows`     
+
+``` shell
+ovs-appctl bridge/dump-flows <br>
+```
+
+**datapath flows**    
+
 
 # OVS架构    
 
