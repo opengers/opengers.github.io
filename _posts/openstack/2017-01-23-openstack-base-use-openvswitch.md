@@ -159,7 +159,7 @@ ip route add default via 192.168.10.1 dev br0
 
 当主机中有多个ovs网桥时，可以使用Patch Port把两个网桥连起来。Patch Port总是成对出现，分别连接在两个网桥上，从一个Patch Port收到的数据包会被转发到另一个Patch Port，类似于Linux系统中的`veth`。使用Patch连接的两个网桥跟一个网桥没什么区别，OpenStack Neutron中使用到了Patch Port。上面网桥`br-ext`中的Port `phy-br-ext`与`br-int`中的Port `int-br-ext`是一对Patch Port     
 
-可以使用`ovs-vsctl`创建patch设备,如下，创建两个网桥`br0,br1`，然后使用一对`Patch Port`连接它们    
+可以使用`ovs-vsctl`创建patch设备，如下创建两个网桥`br0,br1`，然后使用一对`Patch Port`连接它们      
 
 ``` shell
 ovs-vsctl add-br br0
@@ -188,7 +188,7 @@ ovs-vsctl \
                 options: {peer="patch0"}
 ```
 
-连接两个网桥不止上面一种方法，linux中支持创建Veth设备对，我们可以首先创建一对Veth设备对，然后把这两个Veth分别添加到两个网桥上，其效果跟OVS中创建Patch一样，只是性能会有差别       
+连接两个网桥不止上面一种方法，linux中支持创建`Veth`设备对，我们可以首先创建一对`Veth`设备对，然后把这两个`Veth`分别添加到两个网桥上，其效果跟OVS中创建Patch Port一样，只是性能会有差别        
 
 ``` shell
 #创建veth设备对veth-a,veth-b
@@ -200,9 +200,9 @@ ovs-vsctl add-port br1 veth-b
 
 **Tunnel**      
 
-OVS中支持添加隧道(Tunnel)端口，常见隧道技术有两种`gre`或`vxlan`。隧道技术是在现有的物理网络之上构建一个虚拟网络，上层应用只与虚拟网络相关，以此实现的虚拟网络比物理网络配置更加灵活，并能够实现跨主机的L2通信以及必要的租户隔离。各种隧道技术其大体思路均是将以太网报文承载到某种隧道层面，使用底层IP网络转发封装后的数据包，其差异性在于选择和构造隧道的协议不同。Tunnel在OpenStack中用作实现租户隔离，应对公有云大规模，多租户的复杂网络环境。               
+OVS中支持添加隧道(Tunnel)端口，常见隧道技术有两种`gre`或`vxlan`。隧道技术是在现有的物理网络之上构建一层虚拟网络，上层应用只与虚拟网络相关，以此实现的虚拟网络比物理网络配置更加灵活，并能够实现跨主机的L2通信以及必要的租户隔离。不同隧道技术其大体思路均是将以太网报文使用隧道协议封装，然后使用底层IP网络转发封装后的数据包，其差异性在于选择和构造隧道的协议不同。Tunnel在OpenStack中用作实现大二层网络以及租户隔离，以应对公有云大规模，多租户的复杂网络环境。                 
  
-OpenStack是多节点结构，同一子网的虚拟机可能被调度到不同计算节点上，因此需要有隧道技术来保证这些同子网不同节点上的虚拟机能够二层互通，就像他们连接在同一个交换机上，也需要保证能与其它子网虚拟机隔离。       
+OpenStack是多节点结构，同一子网的虚拟机可能被调度到不同计算节点上，因此需要有隧道技术来保证这些同子网不同节点上的虚拟机能够二层互通，就像他们连接在同一个交换机上，同时也要保证能与其它子网隔离。       
 
 OVS在计算和网络节点上建立隧道Port来连接各节点上的网桥`br-int`，这样所有网络和计算节点上的`br-int`互联形成了一个大的虚拟的跨所有节点的逻辑网桥(内部靠tunnel id或VNI隔离不同子网)，这个逻辑网桥对虚拟机和qrouter是透明的，它们觉得自己连接到了一个大的`br-int`上。从某个计算节点虚拟机发出的数据包会被封装进隧道通过底层网络传输到目的主机然后解封装。         
  
@@ -223,9 +223,9 @@ ovs-vsctl add-port br-vxlan tun0 -- set Interface tun0 type=vxlan options:remote
 
 ## Interface      
 
-接口是ovs与外部交换数据包的组件，一个接口就是操作系统中的一块网卡，这块网卡可能是ovs生成的虚拟网卡(Internal)，也可能是物理网卡挂载在ovs上，也可能是操作系统的虚拟网卡(TUN/TAP)挂载在ovs上。 OVS中只有"Internal"类型的网卡接口才支持配置IP地址   
+Interface是连接到Port的网络接口设备，是OVS与外部交换数据包的组件，在通常情况下，Port和Interface是一对一的关系，只有在配置Port为 bond模式后，Port和Interface是一对多的关系。这个网络接口设备可能是创建`Internal`类型Port时OVS自动生成的虚拟网卡，也可能是系统的物理网卡或虚拟网卡(TUN/TAP)挂载在ovs上。 OVS中只有"Internal"类型的网卡接口才支持配置IP地址     
 
-`Interface`是系统中一块网卡(物理或虚拟)，`Port`是OVS网桥上一个虚拟端口，Interface挂载在Port上。    
+`Interface`是一块网络接口设备，负责接收或发送数据包，Port是OVS网桥上建立的一个虚拟端口，`Interface`挂载在Port上。      
 
 ## Controller       
 
