@@ -1,5 +1,5 @@
 ---
-title: openstack基础-使用openvswitch
+title: openstack底层技术-使用openvswitch
 author: opengers
 layout: post
 permalink: /openstack/openstack-base-use-openvswitch/
@@ -100,7 +100,11 @@ e44abab7-2f65-4efd-ab52-36e92d9f0200
 
 ## Bridge    
 
-Bridge代表一个以太网交换机(Switch)，一个主机中可以创建一个或者多个Bridge。Bridge的功能是根据一定规则，把从端口收到的数据包转发到另一个或多个端口，上面例子中有三个Bridge，`br-tun`，`br-int`，`br-ext`     
+Bridge代表一个以太网交换机(Switch)，一个主机中可以创建一个或者多个Bridge。Bridge的功能是根据一定规则，把从端口收到的数据包转发到另一个或多个端口，上面例子中有三个Bridge，`br-tun`，`br-int`，`br-ext`   
+
+添加一个网桥`br0`  
+
+    ovs-vsctl add-br br0  
 
 ## Port     
 
@@ -120,9 +124,9 @@ ovs-vsctl add-port br-ext eth1
 
 **Internal**       
 
-Internal类型是OVS内部创建的Port，每创建一个Port，OVS会自动创建一个同名接口(Interface)挂载到新创建的Port上。接口的概念下面会提到。    
+Internal类型是OVS内部创建的虚拟网卡接口，每创建一个Port，OVS会自动创建一个同名接口(Interface)挂载到新创建的Port上。接口的概念下面会提到。    
 
-下面创建一个网桥br0，并添加一个Internal类型的Port `p0`   
+下面创建一个网桥br0，并创建一个Internal类型的Port `p0`   
 
 ``` shell 
 ovs-vsctl add-br br0   
@@ -153,14 +157,70 @@ ip route add default via 192.168.10.1 dev br0
       
 **Patch**    
 
-当主机中有多个ovs网桥时，可以使用Patch Port把两个网桥连起来。Patch Port总是成对出现，分别连接在两个网桥上，从一个Patch Port收到的数据包会被转发到另一个Patch Port，类似于Linux系统中的`veth`    
+当主机中有多个ovs网桥时，可以使用Patch Port把两个网桥连起来。Patch Port总是成对出现，分别连接在两个网桥上，从一个Patch Port收到的数据包会被转发到另一个Patch Port，类似于Linux系统中的`veth`。使用Patch连接的两个网桥跟一个网桥没什么区别，OpenStack Neutron中使用到了Patch Port。上面网桥`br-ext`中的Port `phy-br-ext`与`br-int`中的Port `int-br-ext`是一对Patch Port     
 
-比如，网桥`br-ext`中的Port `phy-br-ext`与`br-int`中的Port `int-br-ext`是一对Patch Port   
+可以使用`ovs-vsctl`创建patch设备,如下，创建两个网桥`br0,br1`，然后使用一对`Patch Port`连接它们    
+
+``` shell
+ovs-vsctl add-br br0
+ovs-vsctl add-br br1
+ovs-vsctl \
+-- add-port br0 patch0 -- set interface patch0 type=patch options:peer=patch1 \
+-- add-port br1 patch1 -- set interface patch1 type=patch options:peer=patch0
+
+#结果如下
+#ovs-vsctl show
+    Bridge "br0"
+        Port "br0"
+            Interface "br0"
+                type: internal
+        Port "patch0"
+            Interface "patch0"
+                type: patch
+                options: {peer="patch1"}
+    Bridge "br1"
+        Port "br1"
+            Interface "br1"
+                type: internal
+        Port "patch1"
+            Interface "patch1"
+                type: patch
+                options: {peer="patch0"}
+```
+
+连接两个网桥不止上面一种方法，linux中支持创建Veth设备对，我们可以首先创建一对Veth设备对，然后把这两个Veth分别添加到两个网桥上，其效果跟OVS中创建Patch一样，只是性能会有差别       
+
+``` shell
+#创建veth设备对veth-a,veth-b
+ip link add veth-a type veth peer name veth-b
+#使用Veth连接两个网桥
+ovs-vsctl add-port br0 veth-a
+ovs-vsctl add-port br1 veth-b
+```
 
 **Tunnel**      
 
-Port为tunnel端口，有两种类型`gre`或`vxlan`，支持使用gre或vxlan等隧道技术与位于网络上其他位置的远程端口通讯。上面网桥`br-tun`中`Port "vxlan-080058ca"`就是一个`vxlan`类型tunnel端口       
+OVS中支持添加隧道(Tunnel)端口，常见隧道技术有两种`gre`或`vxlan`。隧道技术是在现有的物理网络之上构建一个虚拟网络，上层应用只与虚拟网络相关，以此实现的虚拟网络比物理网络配置更加灵活，并能够实现跨主机的L2通信以及必要的租户隔离。各种隧道技术其大体思路均是将以太网报文承载到某种隧道层面，使用底层IP网络转发封装后的数据包，其差异性在于选择和构造隧道的协议不同。Tunnel在OpenStack中用作实现租户隔离，应对公有云大规模，多租户的复杂网络环境。               
  
+OpenStack是多节点结构，同一子网的虚拟机可能被调度到不同计算节点上，因此需要有隧道技术来保证这些同子网不同节点上的虚拟机能够二层互通，就像他们连接在同一个交换机上，也需要保证能与其它子网虚拟机隔离。       
+
+OVS在计算和网络节点上建立隧道Port来连接各节点上的网桥`br-int`，这样所有网络和计算节点上的`br-int`互联形成了一个大的虚拟的跨所有节点的逻辑网桥(内部靠tunnel id或VNI隔离不同子网)，这个逻辑网桥对虚拟机和qrouter是透明的，它们觉得自己连接到了一个大的`br-int`上。从某个计算节点虚拟机发出的数据包会被封装进隧道通过底层网络传输到目的主机然后解封装。         
+ 
+上面网桥`br-tun`中`Port "vxlan-080058ca"`就是一个`vxlan`类型tunnel端口。下面使用两台主机测试创建vxlan隧道           
+
+``` shell
+#主机192.168.7.21上
+ovs-vsctl add-br br-vxlan
+#主机192.168.7.23上
+ovs-vsctl add-br br-vxlan
+#主机192.168.7.21上添加连接到7.23的Tunnel Port
+ovs-vsctl add-port br-vxlan tun0 -- set Interface tun0 type=vxlan options:remote_ip=192.168.7.23
+#主机192.168.7.23上添加连接到7.21的Tunnel Port
+ovs-vsctl add-port br-vxlan tun0 -- set Interface tun0 type=vxlan options:remote_ip=192.168.7.21
+```
+
+然后，两个主机上桥接到`br-vxlan`的虚拟机就像连接到同一个交换机一样，可以实现跨主机的L2连接，同时又完全与物理网络隔离。     
+
 ## Interface      
 
 接口是ovs与外部交换数据包的组件，一个接口就是操作系统中的一块网卡，这块网卡可能是ovs生成的虚拟网卡(Internal)，也可能是物理网卡挂载在ovs上，也可能是操作系统的虚拟网卡(TUN/TAP)挂载在ovs上。 OVS中只有"Internal"类型的网卡接口才支持配置IP地址   
