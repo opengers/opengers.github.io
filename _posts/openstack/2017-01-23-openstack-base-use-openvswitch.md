@@ -5,8 +5,9 @@ layout: post
 permalink: /openstack/openstack-base-use-openvswitch/
 categories: openstack
 tags:
-  - virtualization
-  - kvm
+  - openstack
+  - openflow
+  - openvswitch
 format: quote
 ---
 
