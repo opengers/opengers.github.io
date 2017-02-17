@@ -375,7 +375,7 @@ OVS可以有多种工作模式，可以是一个简单的基于MAC地址学习�
 
 下面讨论场景是OVS作为一个OpenFlow交换机    
 
-datapath是一个Linux内核模块，它负责执行数据交换，同时也缓存flow的actions以提高OVS数据交换性能，关于datapath，[The Design and Implementation of Open vSwitch](http://benpfaff.org/papers/ovs.pdf)中有描述     
+datapath是一个Linux内核模块，它负责执行数据交换。关于datapath，[The Design and Implementation of Open vSwitch](http://benpfaff.org/papers/ovs.pdf)中有描述     
 
 ><small>The datapath module in the kernel receives the packets first, from a physical NIC or a VM’s virtual NIC. Either ovs-vswitchd has instructed the datapath how to handle packets of this type, or it has not. In the former case, the datapath module simply follows the instructions, called actions, given by ovs-vswitchd, which list physical ports or tunnels on which to transmit the packet. Actions may also specify packet modifications, packet sampling, or instructions to drop the packet. In the other case, where the datapath has not been told what to do with the packet, it delivers it to ovs-vswitchd. In userspace, ovs-vswitchd determines how the packet should be handled, then it passes the packet back to the datapath with the desired handling. Usually, ovs-vswitchd also tells the datapath to cache the actions, for handling similar future packets. </small>   
 
@@ -383,11 +383,11 @@ datapath是一个Linux内核模块，它负责执行数据交换，同时也缓�
 
 ![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-details.png)   
 
-OVS中的两个组件`ovs-vswitchd`和`datapath`决定了数据包的转发，首先，`datapath`内核模块收到进入数据包(物理网卡或虚拟网卡)，然后查找其缓存，若缓存中有匹配此类数据包所对应的actions，则执行其actions，否则`datapath`会把该数据包送入用户空间由`ovs-vswitchd`负责在其流表项中查询(图1中的First Packet)，`ovs-vswitchd`查询flow tables后把此数据包连带actions返回给`datapath`并缓存此actions到`datapath`中，这样后续进入的同类型的数据包(图1中的Subsequent Packets)因为缓存匹配到会被`datapath`直接处理，不用再次进入用户空间，文章上面在介绍`ovs-vswitchd` 部分也有提到      
+用户空间`ovs-vswitchd`和内核模块`datapath`决定了数据包的转发，首先，`datapath`内核模块收到进入数据包(物理网卡或虚拟网卡)，然后查找其缓存(datapath flows)，当有一个匹配的flow时它执行对应的操作，否则`datapath`会把该数据包送入用户空间由`ovs-vswitchd`负责在其OpenFlow flows中查询(图1中的First Packet)，`ovs-vswitchd`查询后把匹配的actions返回给`datapath`并设置一条datapath flows到`datapath`中，这样后续进入的同类型的数据包(图1中的Subsequent Packets)因为缓存匹配会被`datapath`直接处理，不用再次进入用户空间。           
 
-`datapath`专注于数据交换，它不需要知道OpenFlow的存在。与OpenFlow打交道的是`ovs-vswitchd`，`ovs-vswitchd`存储所有Flow规则供`datapath`查询和缓存。`datapath`根据其缓存或由`ovs-vswitchd`查询负责执行数据交换   
+`datapath`专注于数据交换，它不需要知道OpenFlow的存在。与OpenFlow打交道的是`ovs-vswitchd`，`ovs-vswitchd`存储所有Flow规则供`datapath`查询或缓存.    
 
-虽然有`ovs-dpctl`管理工具的存在，但我们没必要去手动管理`datapath`，这是用户空间`ovs-vswitchd`的工作   
+虽然有`ovs-dpctl`管理工具的存在，但我们没必要去手动管理`datapath`，这是用户空间`ovs-vswitchd`的工作     
 
 # Neutron实现的OpenFLow控制器          
 
@@ -433,7 +433,7 @@ a9fc1666-0bb4-48a6-8f5c-1c8b92431ef6
 
 **ovs-vsctl**   
 
-`ovs-vsctl`是一个管理或配置`ovs-vswitchd`的高级命令行工具，高级是说其操作对用户友好，封装了对数据库的操作细节。它是最常用的命令，除了管理流表功能外，其它大部分操作比如Bridge/Port/Interface/Controller/Database/Vlan等都可以完成               
+`ovs-vsctl`是一个管理或配置`ovs-vswitchd`的高级命令行工具，高级是说其操作对用户友好，封装了对数据库的操作细节。它是管理OVS最常用的命令，除了配置flows之外，其它大部分操作比如Bridge/Port/Interface/Controller/Database/Vlan等都可以完成               
 
 ``` shell
 #添加网桥br0
@@ -446,6 +446,10 @@ ovs-vsctl add-port br0 p1
 ovs-vsctl list-ports br0
 #获取br0网桥的OpenFlow控制器地址，没有控制器则返回空 
 ovs-vsctl get-controller br0
+#设置OpenFlow控制器,控制器地址为192.168.1.10，端口为6633
+ovs-vsctl set-controller br0 tcp:192.168.1.10:6633
+#移除controller
+ovs-vsctl del-controller br0
 #删除网桥br0
 ovs-vsctl del-br br0
 #设置端口p1的vlan tag为100
@@ -455,7 +459,7 @@ ovs-vsctl set Interface p0 type=internal
 #添加vlan10端口，并设置vlan tag为10，Port类型为Internal
 ovs-vsctl add-port br0 vlan10 tag=10 -- set Interface vlan10 type=internal
 #添加隧道端口gre0，类型为gre，远端IP为1.2.3.4
-ovs-vsctl add-port br0 gre0 -- set Interface gre0 type=gre options:remote_ip=1.2.3.4
+ovs-vsctl add-port br0 gre0 -- set Interface gre0 type=gre options:remote_ip=1.2.3.4  
 ```
 
 **ovsdb-tool**    
@@ -501,7 +505,28 @@ ovsdb-client dump [DATABASE] [TABLE]
 ovsdb-client monitor DATABASE TABLE
 ```
 
-`ovs-vsctl`是一个综合的配置管理工具，`ovsdb-client`倾向于从数据库中查询某些信息，而`ovsdb-tool`是维护数据库文件工具   
+**ovs-ofctl**   
+
+`ovs-ofctl`是专门管理配置OpenFlow交换机的命令行工具，我们可以用它手动配置OVS中的OpenFlow flows，注意其不能操作datapath flows和"hidden" flows          
+
+``` shell
+#查看br-tun中OpenFlow flows
+ovs-ofctl dump-flows br-tun
+#查看br-tun端口信息   
+ovs-ofctl show br-tun
+#添加新的flow：对于从端口p0进入交换机的数据包，如果它不包含任何VLAN tag，则自动为它添加VLAN tag 101
+ovs-ofctl add-flow br0 "priority=3,in_port=100,dl_vlan=0xffff,actions=mod_vlan_vid:101,normal"
+#对于从端口3进入的数据包，若其vlan tag为100，去掉其vlan tag，并从端口1发出 
+ovs-ofctl add-flow br0 in_port=3,dl_vlan=101,actions=strip_vlan,output:1
+#添加新的flow: 修改从端口p1收到的数据包的源地址为9.181.137.1,show 查看p1端口ID为100   
+ovs-ofctl add-flow br0 "priority=1 idle_timeout=0,in_port=100,actions=mod_nw_src:9.181.137.1,normal"
+#添加新的flow: 重定向所有的ICMP数据包到端口 p2
+ovs-ofctl add-flow br0 idle_timeout=0,dl_type=0x0800,nw_proto=1,actions=output:102
+#删除编号为 100 的端口上的所有流表项   
+ovs-ofctl del-flows br0 "in_port=100"    
+```      
+
+`ovs-vsctl`是一个综合的配置管理工具，`ovsdb-client`倾向于从数据库中查询某些信息，而`ovsdb-tool`是维护数据库文件工具     
 
 文章地址http://www.isjian.com/openstack/openstack-base-use-openvswitch/     
 
