@@ -66,7 +66,7 @@ qcow2(qemu copy-on-write)格式镜像支持快照,具有创建一个base-image,�
 
 如下,我们有一个centosbase的原始镜像(包含完整OS和引导程序),现在用它作为模板创建多个虚拟机,每个虚拟机都可以创建多个快照组成快照链,当然不能直接为centosbase创建快照  
 
-[![1](http://blog.isjian.com/wp-content/uploads/2015/07/1.png)](http://blog.isjian.com/wp-content/uploads/2015/07/1.png)   
+[centosbase](/images/virtualization/kvm-libvirt-qemu-5/centosbase.png)   
 
 以CentOS系统来说,我们制作了一个qcow2格式的虚拟机镜像,想要以它作为模板来创建多个虚拟机实例,有两种方法创建实例    
 1. 每新建一个实例,把centosbase模板复制一份,创建速度慢
