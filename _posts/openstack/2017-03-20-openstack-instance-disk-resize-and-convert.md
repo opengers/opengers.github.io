@@ -194,7 +194,7 @@ tmpfs           2.0G     0  2.0G   0% /dev/shm
 CHANGED: partition=2 start=33556480 old: size=50329600 end=83886080 new: size=134210315,end=167766795
 
 #然后扩容分区2文件系统    
-[root@localhost ~]# xfs_growfs /
+#xfs_growfs /
 meta-data=/dev/vda2              isize=512    agcount=4, agsize=1572800 blks
          =                       sectsz=512   attr=2, projid32bit=1
          =                       crc=1        finobt=0 spinodes=0
@@ -234,17 +234,21 @@ qemu-img convert disk.qcow2 rbd:vms/disk.rbd
 
 ## virt-resize
 
-当然，`virt-resize`工具也能够扩容虚拟机磁盘    
-
-现有一个16G的qcow2格式的centos镜像,需要扩容到50G    
+当然，`virt-resize`工具也能够扩容虚拟机磁盘，例如现有一个16G的qcow2格式的centos镜像,需要扩容到50G       
 * 查看分区
 
-	virt-filesystems --long --parts --blkdevs -h -a /data/images/centos.qcow2
+``` shell
+virt-filesystems --long --parts --blkdevs -h -a /data/images/centos.qcow2
+```
 
 * 创建新镜像,大小为50G，要比旧镜像大    
 
-	qemu-img create -f qcow2 /data/images/centos-50g.qcw2 50G
+``` shell
+qemu-img create -f qcow2 /data/images/centos-50g.qcw2 50G
+```
 
 * 扩容虚拟机sda2分区   
 
-	virt-resize --expand /dev/sda2 /data/images/centos.qcow2 /data/images/centos-50g.qcow2
+``` shell
+virt-resize --expand /dev/sda2 /data/images/centos.qcow2 /data/images/centos-50g.qcow2
+```
