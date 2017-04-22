@@ -1,17 +1,17 @@
 ---
-title: "openstack实例磁盘扩容"
+title: "openstack底层技术-实例磁盘扩容及格式转换"
 author: opengers
 layout: post
-permalink: /virtualization/openstack-instance-disk-resize/
+permalink: /virtualization/openstack-instance-disk-resize-and-convert/
 categories: virtualization
 tags:
   - openstack
   - kvm
-  - resize
+  - convert
 format: quote
 ---
 
-><small>主要总结下openstack实例中，raw/qcow2/rbd等实例格式的扩容,同时也会介绍根磁盘与挂载卷的不同</small>    
+><small>主要总结下虚拟机实例磁盘扩容以及格式间的转换</small>    
 
 本文所使用宿主机，及kvm版本如下     
 
@@ -132,6 +132,8 @@ disk size: 1.2G
 virsh shutdown centos6
 
 qemu-img resize centos6.qcow2 +40G
+
+rbd resize vms/disk.rbd -s 400G
 ```
 
 启动虚拟机，会发现磁盘大小已变为80G，下面我们安装工具扩容其文件系统，需要注意的是，因为根磁盘在虚拟机运行期间处于挂载状态，无法扩容，只能在系统启动期间让工具自动检测并扩容     
@@ -151,6 +153,64 @@ cd linux-rootfs-resize-master
 之后重启虚拟机，启动过程中inode会自动扩容   
 
 ![resize](/images/openstack/install-resize/resize1.png)    
+
+## centos7下的磁盘扩容      
+
+centos7中默认使用xfs格式，下面以xfs磁盘格式为例。   
+
+同样，首先关机，扩容虚拟机磁盘     
+
+``` shell
+qemu-img resize centos7.qcow2 +40G    
+```
+
+然后启动虚拟机    
+
+``` shell
+#安装扩容工具  
+
+#yum install cloud-utils-growpart
+
+#磁盘已扩为80G
+#fdisk -l
+
+Disk /dev/vda: 85.9 GB, 85899345920 bytes, 167772160 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: dos
+Disk identifier: 0x000b314e
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/vda1            2048    33556479    16777216   82  Linux swap / Solaris
+/dev/vda2   *    33556480    83886079    25164800   83  Linux
+
+[root@localhost ~]# df -h
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda2        24G  1.6G   23G   7% /
+devtmpfs        2.0G     0  2.0G   0% /dev
+tmpfs           2.0G     0  2.0G   0% /dev/shm
+tmpfs           2.0G  8.3M  2.0G   1% /run
+tmpfs           2.0G     0  2.0G   0% /sys/fs/cgroup
+tmpfs           396M     0  396M   0% /run/user/0
+
+#我们把40G加到分区2上   
+#growpart /dev/vda 2
+CHANGED: partition=2 start=33556480 old: size=50329600 end=83886080 new: size=134210315,end=167766795
+
+#扩容分区2文件系统
+[root@localhost ~]# xfs_growfs /
+meta-data=/dev/vda2              isize=512    agcount=4, agsize=1572800 blks
+         =                       sectsz=512   attr=2, projid32bit=1
+         =                       crc=1        finobt=0 spinodes=0
+data     =                       bsize=4096   blocks=6291200, imaxpct=25
+         =                       sunit=0      swidth=0 blks
+naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
+log      =internal               bsize=4096   blocks=3071, version=2
+         =                       sectsz=512   sunit=0 blks, lazy-count=1
+realtime =none                   extsz=4096   blocks=0, rtextents=0
+data blocks changed from 6291200 to 16776289
+```
 
 
        
