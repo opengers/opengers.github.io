@@ -150,7 +150,7 @@ cd linux-rootfs-resize-master
 
 之后重启虚拟机，启动过程中inode会自动扩容   
 
-[resize](/images/openstack/install-resize/resize1.png)    
+![resize](/images/openstack/install-resize/resize1.png)    
 
 
        
