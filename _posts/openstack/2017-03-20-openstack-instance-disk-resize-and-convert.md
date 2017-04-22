@@ -110,6 +110,8 @@ disk size: unavailable
 
 centos6默认磁盘格式为ext4，centos7系列使用的xfs，因此扩容方式也不同      
 
+#### 根磁盘扩容   
+
 测试用的虚拟机为centos6.3系统，我们准备把根磁盘扩容到80G。扩容磁盘大小可以使用`qemu-img`工具，扩容文件系统主要是使用growpart等工具在系统启动时检测磁盘大小变化，并自动增大分区文件系统inode数量       
 
 ``` shell    
@@ -133,10 +135,10 @@ virsh shutdown centos6
 qemu-img resize centos6.qcow2 +40G
 
 #rbd磁盘也可以使用rbd工具  
-rbd resize vms/disk.rbd -s 400G
+rbd resize vms/disk.rbd -s 80G
 ```
 
-启动虚拟机，磁盘大小已变为80G，下面扩容其文件系统，需要注意的是，因为根磁盘在虚拟机运行期间处于挂载状态，无法扩容，只能在系统启动期间自动检测并扩容       
+启动虚拟机，磁盘大小已变为80G，下面扩容其文件系统，需要注意的是，因为根磁盘在虚拟机运行期间处于挂载状态，无法扩容，只能在系统启动期间自动检测并扩容，可以参考openstack官方文档[disk-partitions-and-resize-root-partition-on-boot-cloud-init](https://docs.openstack.org/image-guide/openstack-images.html#disk-partitions-and-resize-root-partition-on-boot-cloud-init)   
   
 ``` shell
 #安装parted growpart
