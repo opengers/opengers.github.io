@@ -15,6 +15,6 @@ github默认建立的博客地址是`name.github.io`(name是你的github用户�
 
 ### 然后说下我  
 **工作**
-目前从事运维开发工作，工作内容呢，还是用关键字做介绍吧 `kvm-virtualization/python/ansible/fabric/docker`    
+目前从事运维开发工作，工作内容呢，还是用关键字做介绍吧 `kvm/python/openstack`    
 **生活**
 三国杀、烧烤、权利的游戏、卡丁车、三体、玻璃栈道、禁闭岛、钓鱼、控方证人... 统统到碗里来(￣﹏￣) (￣ˇ￣) 
