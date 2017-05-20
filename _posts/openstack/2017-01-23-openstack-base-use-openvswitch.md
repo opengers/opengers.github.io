@@ -44,13 +44,13 @@ openvswitch 2.5
 OpenFlow 1.4`
 ```  
 
-# OVS架构    
+OVS架构      
 
 先看下OVS整体架构，用户空间主要组件有数据库服务ovsdb-server和守护进程ovs-vswitchd。kernel中是datapath内核模块。最上面的Controller表示OpenFlow控制器，控制器与OVS是通过OpenFlow协议进行连接，控制器不一定位于OVS主机上，下面分别介绍图中各组件       
 
 ![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-arch.png)   
 
-## ovs-vswitchd           
+### ovs-vswitchd           
 
 `ovs-vswitchd`守护进程是OVS的核心部件，它和`datapath`内核模块一起实现OVS基于流的数据交换。作为核心组件，它使用openflow协议与上层OpenFlow控制器通信，使用OVSDB协议与`ovsdb-server`通信，使用`netlink`和`datapath`内核模块通信。`ovs-vswitchd`在启动时会读取`ovsdb-server`中配置信息，然后配置内核中的`datapaths`和所有OVS switches，当ovsdb中的配置信息改变时(例如使用ovs-vsctl工具)，`ovs-vswitchd`也会自动更新其配置以保持与数据库同步     
    
@@ -75,7 +75,7 @@ intree:         Y
 ...
 ```
 
-## ovsdb-server      
+### ovsdb-server      
 
 `ovsdb-server`是OVS轻量级的数据库服务，用于整个OVS的配置信息，包括接口/交换内容/VLAN等，OVS主进程`ovs-vswitchd`根据数据库中的配置信息工作，下面是`ovsdb-server`进程详细信息               
 
@@ -88,7 +88,7 @@ root     22166 22165  0 Jan17 ?        00:02:32 ovsdb-server /etc/openvswitch/co
 `--remote=punix:/var/run/openvswitch/db.sock` 实现了一个Unix sockets连接，OVS主进程`ovs-vswitchd`或其它命令工具(ovsdb-client)通过此socket连接管理ovsdb       
 `/var/log/openvswitch/ovsdb-server.log`是日志记录        
 
-## OpenFlow         
+### OpenFlow         
 
 OpenFlow是开源的用于管理交换机流表的协议，OpenFlow在OVS中的地位可以参考上面架构图，它是Controller和ovs-vswitched间的通信协议。需要注意的是，OpenFlow是一个独立的完整的流表协议，不依赖于OVS，OVS只是提供了对OpenFlow协议的支持，有了支持，我们可以使用任何支持OpenFlow的控制器来管理OVS中的流表，OpenFlow不仅仅支持虚拟交换机，某些硬件交换机也支持OpenFlow协议             
 
@@ -98,11 +98,11 @@ OpenFlow flows的流表项存放于用户空间主进程`ovs-vswitchd`中，OVS�
 
 在OVS中，OpenFlow flows是最重要的一种flow, 然而还有其它几种flows存在，文章下面OVS概念部分会提到         
 
-## Controller   
+### Controller   
 
 Controller指OpenFlow控制器。OpenFlow控制器可以通过OpenFlow协议连接到任何支持OpenFlow的交换机，比如OVS。控制器通过向交换机下发流表规则来控制数据流向。除了可以通过OpenFlow控制器配置OVS中flows，也可以使用OVS提供的`ovs-ofctl`命令通过OpenFlow协议去连接OVS，从而配置flows，命令也能够对OVS的运行状况进行动态监控。          
 
-## Kernel Datapath           
+### Kernel Datapath           
 
 下面讨论场景是OVS作为一个OpenFlow交换机    
 
@@ -175,7 +175,7 @@ e44abab7-2f65-4efd-ab52-36e92d9f0200
                 options: {peer=phy-br-ext}
 ```
 
-## Bridge    
+### Bridge    
 
 Bridge代表一个以太网交换机(Switch)，一个主机中可以创建一个或者多个Bridge。Bridge的功能是根据一定规则，把从端口收到的数据包转发到另一个或多个端口，上面例子中有三个Bridge，`br-tun`，`br-int`，`br-ext`    
 
@@ -183,11 +183,11 @@ Bridge代表一个以太网交换机(Switch)，一个主机中可以创建一个
 
     ovs-vsctl add-br br0  
 
-## Port     
+### Port     
 
 端口Port与物理交换机的端口概念类似，Port是OVS Bridge上创建的一个虚拟端口，每个Port都隶属于一个Bridge。Port有以下几种类型       
 
-**Normal**      
+- **Normal**      
 
 可以把操作系统中已有的网卡(物理网卡em1/eth0,或虚拟机的虚拟网卡tapxxx)挂载到ovs上，ovs会生成一个同名Port处理这块网卡进出的数据包。此时端口类型为Normal。  
 
@@ -199,7 +199,7 @@ ovs-vsctl add-port br-ext eth1
 
 有一点要注意的是，挂载到OVS上的网卡设备不支持分配IP地址，因此若之前`eth1`配置有IP地址，挂载到OVS之后IP地址将不可访问。这里的网卡设备不只包括物理网卡，也包括主机上创建的虚拟网卡           
 
-**Internal**       
+- **Internal**       
 
 Internal类型是OVS内部创建的虚拟网卡接口，每创建一个Port，OVS会自动创建一个同名接口(Interface)挂载到新创建的Port上。接口的概念下面会提到。    
 
@@ -232,7 +232,7 @@ ip route add default via 192.168.10.1 dev br0
 
 上面两种Port类型区别在于，Internal类型会自动创建接口(Interface)，而Normal类型是把主机中已有的网卡接口添加到OVS中     
       
-**Patch**    
+- **Patch**    
 
 当主机中有多个ovs网桥时，可以使用Patch Port把两个网桥连起来。Patch Port总是成对出现，分别连接在两个网桥上，从一个Patch Port收到的数据包会被转发到另一个Patch Port，类似于Linux系统中的`veth`。使用Patch连接的两个网桥跟一个网桥没什么区别，OpenStack Neutron中使用到了Patch Port。上面网桥`br-ext`中的Port `phy-br-ext`与`br-int`中的Port `int-br-ext`是一对Patch Port     
 
@@ -275,7 +275,7 @@ ovs-vsctl add-port br0 veth-a
 ovs-vsctl add-port br1 veth-b
 ```
 
-**Tunnel**      
+- **Tunnel**      
 
 OVS中支持添加隧道(Tunnel)端口，常见隧道技术有两种`gre`或`vxlan`。隧道技术是在现有的物理网络之上构建一层虚拟网络，上层应用只与虚拟网络相关，以此实现的虚拟网络比物理网络配置更加灵活，并能够实现跨主机的L2通信以及必要的租户隔离。不同隧道技术其大体思路均是将以太网报文使用隧道协议封装，然后使用底层IP网络转发封装后的数据包，其差异性在于选择和构造隧道的协议不同。Tunnel在OpenStack中用作实现大二层网络以及租户隔离，以应对公有云大规模，多租户的复杂网络环境。                 
  
@@ -298,23 +298,23 @@ ovs-vsctl add-port br-vxlan tun0 -- set Interface tun0 type=vxlan options:remote
 
 然后，两个主机上桥接到`br-vxlan`的虚拟机就像连接到同一个交换机一样，可以实现跨主机的L2连接，同时又完全与物理网络隔离。     
 
-## Interface      
+### Interface       
 
 Interface是连接到Port的网络接口设备，是OVS与外部交换数据包的组件，在通常情况下，Port和Interface是一对一的关系，只有在配置Port为 bond模式后，Port和Interface是一对多的关系。这个网络接口设备可能是创建`Internal`类型Port时OVS自动生成的虚拟网卡，也可能是系统的物理网卡或虚拟网卡(TUN/TAP)挂载在ovs上。 OVS中只有"Internal"类型的网卡接口才支持配置IP地址     
 
 `Interface`是一块网络接口设备，负责接收或发送数据包，Port是OVS网桥上建立的一个虚拟端口，`Interface`挂载在Port上。      
 
-## Controller       
+### Controller       
 
 OpenFlow控制器。OVS可以同时接受一个或者多个OpenFlow控制器的管理。主要作用是下发流表(Flow Tables)到OVS，控制OVS数据包转发规则。控制器与OVS通过网络连接，不一定要在同一主机上     
 
 可以看到上面实例中三个网桥`br-int`,`br-ext`,`br-tun`都连接到控制器`Controller "tcp:127.0.0.1:6633`上        
 
-## datapath       
+### datapath       
 
 OVS内核模块，负责执行数据交换。其内部有作为缓存使用的flows，关于datapath，下面会细说        
 
-## 流(flows)         
+### 流(flows)         
 
 flows是OVS进行数据转发策略控制的核心数据结构，区别于Linux Bridge是个单纯基于MAC地址学习的二层交换机，flows的存在使OVS作为一款SDN交换机成为云平台网络虚拟机化主要组件          
 
