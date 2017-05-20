@@ -44,7 +44,7 @@ openvswitch 2.5
 OpenFlow 1.4`
 ```  
 
-OVS架构      
+# OVS架构      
 
 先看下OVS整体架构，用户空间主要组件有数据库服务ovsdb-server和守护进程ovs-vswitchd。kernel中是datapath内核模块。最上面的Controller表示OpenFlow控制器，控制器与OVS是通过OpenFlow协议进行连接，控制器不一定位于OVS主机上，下面分别介绍图中各组件       
 
@@ -320,11 +320,11 @@ flows是OVS进行数据转发策略控制的核心数据结构，区别于Linux 
 
 OVS中有多种flows存在，用于不同目的，但最主要的还是OpenFlow flows这种，文中未明确说明的flows都是指OpenFlow flows                    
 
-- OpenFlow flows      
+- **OpenFlow flows**          
    
 OVS中最重要的一种flows，Controller控制器下发的就是这种flows，OVS架构部分已经简单介绍过，关于openflow的具体使用，会在另一篇文章中说明   
 
-- "hidden" flows    
+- **"hidden" flows**       
 
 OVS在使用OpenFlow flow时，需要与OpenFlow控制器建立TCP连接，若此TCP连接不依赖OVS，即没有OVS依然可以建立连接，此时就是`out-of-band control`模式，这种模式下不需要"hidden" flows    
 
@@ -336,7 +336,7 @@ OVS在使用OpenFlow flow时，需要与OpenFlow控制器建立TCP连接，若�
 ovs-appctl bridge/dump-flows <br>
 ```
 
-- datapath flows         
+- **datapath flows**              
 
 datapath flows是`datapath`内核模块维护的flows，由内核模块维护意味着我们并不需要去修改管理它。与OpenFlow flows不同的是，它不支持优先级，并且只有一个表，这些特点使它非常适合做缓存。与OpenFlow一样的是它支持通配符，也支持指令集(多个action)       
 
