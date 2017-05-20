@@ -44,7 +44,83 @@ openvswitch 2.5
 OpenFlow 1.4`
 ```  
 
-# OVS概念    
+# OVS架构    
+
+先看下OVS整体架构，用户空间主要组件有数据库服务ovsdb-server和守护进程ovs-vswitchd。kernel中是datapath内核模块。最上面的Controller表示OpenFlow控制器，控制器与OVS是通过OpenFlow协议进行连接，控制器不一定位于OVS主机上，下面分别介绍图中各组件       
+
+![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-arch.png)   
+
+## ovs-vswitchd           
+
+`ovs-vswitchd`守护进程是OVS的核心部件，它和`datapath`内核模块一起实现OVS基于流的数据交换。作为核心组件，它使用openflow协议与上层OpenFlow控制器通信，使用OVSDB协议与`ovsdb-server`通信，使用`netlink`和`datapath`内核模块通信。`ovs-vswitchd`在启动时会读取`ovsdb-server`中配置信息，然后配置内核中的`datapaths`和所有OVS switches，当ovsdb中的配置信息改变时(例如使用ovs-vsctl工具)，`ovs-vswitchd`也会自动更新其配置以保持与数据库同步     
+   
+``` shell
+# ps -ef |grep ovs-vs
+root     22176 22175  0 Jan17 ?        00:16:56 ovs-vswitchd unix:/var/run/openvswitch/db.sock -vconsole:emer -vsyslog:err -vfile:info --mlockall --no-chdir --log-file=/var/log/openvswitch/ovs-vswitchd.log --pidfile=/var/run/openvswitch/ovs-vswitchd.pid --detach --monitor
+```   
+
+`ovs-vswitchd`需要加载`datapath`内核模块才能正常运行。它会自动配置`datapath` flows，因此我们不必再使用`ovs-dpctl`去手动操作`datapath`，但`ovs-dpctl`仍可用于调试场合      
+
+在OVS中，`ovs-vswitchd`从OpenFlow控制器获取流表规则，然后把从`datapath`中收到的数据包在流表中进行匹配，找到匹配的flows并把所需应用的actions返回给`datapath`，同时作为处理的一部分，`ovs-vswitchd`会在`datapath`中设置一条datapath flows用于后续相同类型的数据包可以直接在内核中执行动作，此datapath flows相当于OpenFlow flows的缓存。对于`datapath`来说，其并不知道用户空间OpenFlow的存在，datapath内核模块信息如下         
+
+``` shell
+# modinfo openvswitch
+filename:       /lib/modules/3.10.0-327.el7.x86_64/kernel/net/openvswitch/openvswitch.ko
+license:        GPL
+description:    Open vSwitch switching datapath
+rhelversion:    7.2
+srcversion:     F75F2B83324DCC665887FD5
+depends:        libcrc32c
+intree:         Y
+...
+```
+
+## ovsdb-server      
+
+`ovsdb-server`是OVS轻量级的数据库服务，用于整个OVS的配置信息，包括接口/交换内容/VLAN等，OVS主进程`ovs-vswitchd`根据数据库中的配置信息工作，下面是`ovsdb-server`进程详细信息               
+
+``` shell 
+ps -ef |grep ovsdb-server
+root     22166 22165  0 Jan17 ?        00:02:32 ovsdb-server /etc/openvswitch/conf.db -vconsole:emer -vsyslog:err -vfile:info --remote=punix:/var/run/openvswitch/db.sock --private-key=db:Open_vSwitch,SSL,private_key --certificate=db:Open_vSwitch,SSL,certificate --bootstrap-ca-cert=db:Open_vSwitch,SSL,ca_cert --no-chdir --log-file=/var/log/openvswitch/ovsdb-server.log --pidfile=/var/run/openvswitch/ovsdb-server.pid --detach --monitor
+```
+
+`/etc/openvswitch/conf.db`是数据库文件存放位置，文件形式存储保证了服务器重启不会影响其配置信息，`ovsdb-server`需要文件才能启动，可以使用`ovsdb-tool create`命令创建并初始化此数据库文件        
+`--remote=punix:/var/run/openvswitch/db.sock` 实现了一个Unix sockets连接，OVS主进程`ovs-vswitchd`或其它命令工具(ovsdb-client)通过此socket连接管理ovsdb       
+`/var/log/openvswitch/ovsdb-server.log`是日志记录        
+
+## OpenFlow         
+
+OpenFlow是开源的用于管理交换机流表的协议，OpenFlow在OVS中的地位可以参考上面架构图，它是Controller和ovs-vswitched间的通信协议。需要注意的是，OpenFlow是一个独立的完整的流表协议，不依赖于OVS，OVS只是提供了对OpenFlow协议的支持，有了支持，我们可以使用任何支持OpenFlow的控制器来管理OVS中的流表，OpenFlow不仅仅支持虚拟交换机，某些硬件交换机也支持OpenFlow协议             
+
+OVS常用作SDN交换机(OpenFlow交换机)，其中控制数据转发策略的就是OpenFlow flows。OpenStack Neutron中实现了一个OpenFlow控制器用于向OVS下发OpenFlow flows控制虚拟机间的访问或隔离。本文讨论的默认是作为SDN交换机场景下     
+
+OpenFlow flows的流表项存放于用户空间主进程`ovs-vswitchd`中，OVS除了连接OpenFlow控制器获取这种flows，文章后面会提到的命令行工具`ovs-ofctl`工具也可以手动配置OpenFlow flows，可以查看`man ovs-ofctl`了解        
+
+在OVS中，OpenFlow flows是最重要的一种flow, 然而还有其它几种flows存在，文章下面OVS概念部分会提到         
+
+## Controller   
+
+Controller指OpenFlow控制器。OpenFlow控制器可以通过OpenFlow协议连接到任何支持OpenFlow的交换机，比如OVS。控制器通过向交换机下发流表规则来控制数据流向。除了可以通过OpenFlow控制器配置OVS中flows，也可以使用OVS提供的`ovs-ofctl`命令通过OpenFlow协议去连接OVS，从而配置flows，命令也能够对OVS的运行状况进行动态监控。          
+
+## Kernel Datapath           
+
+下面讨论场景是OVS作为一个OpenFlow交换机    
+
+datapath是一个Linux内核模块，它负责执行数据交换。关于datapath，[The Design and Implementation of Open vSwitch](http://benpfaff.org/papers/ovs.pdf)中有描述     
+
+><small>The datapath module in the kernel receives the packets first, from a physical NIC or a VM’s virtual NIC. Either ovs-vswitchd has instructed the datapath how to handle packets of this type, or it has not. In the former case, the datapath module simply follows the instructions, called actions, given by ovs-vswitchd, which list physical ports or tunnels on which to transmit the packet. Actions may also specify packet modifications, packet sampling, or instructions to drop the packet. In the other case, where the datapath has not been told what to do with the packet, it delivers it to ovs-vswitchd. In userspace, ovs-vswitchd determines how the packet should be handled, then it passes the packet back to the datapath with the desired handling. Usually, ovs-vswitchd also tells the datapath to cache the actions, for handling similar future packets. </small>   
+
+为了说明datapath，来看一张更详细的架构图，图中的大部分组件上面都有提到      
+
+![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-details.png)   
+
+用户空间`ovs-vswitchd`和内核模块`datapath`决定了数据包的转发，首先，`datapath`内核模块收到进入数据包(物理网卡或虚拟网卡)，然后查找其缓存(datapath flows)，当有一个匹配的flow时它执行对应的操作，否则`datapath`会把该数据包送入用户空间由`ovs-vswitchd`负责在其OpenFlow flows中查询(图1中的First Packet)，`ovs-vswitchd`查询后把匹配的actions返回给`datapath`并设置一条datapath flows到`datapath`中，这样后续进入的同类型的数据包(图1中的Subsequent Packets)因为缓存匹配会被`datapath`直接处理，不用再次进入用户空间。           
+
+`datapath`专注于数据交换，它不需要知道OpenFlow的存在。与OpenFlow打交道的是`ovs-vswitchd`，`ovs-vswitchd`存储所有Flow规则供`datapath`查询或缓存.    
+
+虽然有`ovs-dpctl`管理工具的存在，但我们没必要去手动管理`datapath`，这是用户空间`ovs-vswitchd`的工作  
+
+# OVS概念        
 
 这部分说下OVS中的重要概念，使用OpenStack neutron+vxlan部署模式下网络节点OVS网桥作为例子            
 
@@ -232,27 +308,23 @@ Interface是连接到Port的网络接口设备，是OVS与外部交换数据包�
 
 OpenFlow控制器。OVS可以同时接受一个或者多个OpenFlow控制器的管理。主要作用是下发流表(Flow Tables)到OVS，控制OVS数据包转发规则。控制器与OVS通过网络连接，不一定要在同一主机上     
 
+可以看到上面实例中三个网桥`br-int`,`br-ext`,`br-tun`都连接到控制器`Controller "tcp:127.0.0.1:6633`上        
+
 ## datapath       
 
 OVS内核模块，负责执行数据交换。其内部有作为缓存使用的flows，关于datapath，下面会细说        
 
 ## 流(flows)         
 
-flows是OVS进行数据转发策略控制的核心数据结构，区别于Linux Bridge是个单纯基于MAC地址学习的二层交换机，flows的存在使OVS作为一款SDN交换机成为云平台网络虚拟机化主要组件        
+flows是OVS进行数据转发策略控制的核心数据结构，区别于Linux Bridge是个单纯基于MAC地址学习的二层交换机，flows的存在使OVS作为一款SDN交换机成为云平台网络虚拟机化主要组件          
 
-OVS中有多种flows存在，用于不同目的，但最主要的还是OpenFlow flows这种，文中所提到的flows都是指OpenFlow flows                
+OVS中有多种flows存在，用于不同目的，但最主要的还是OpenFlow flows这种，文中未明确说明的flows都是指OpenFlow flows                    
 
-**OpenFlow flows**    
+- OpenFlow flows      
+   
+OVS中最重要的一种flows，Controller控制器下发的就是这种flows，OVS架构部分已经简单介绍过，关于openflow的具体使用，会在另一篇文章中说明   
 
-OpenFlow是开源的用于管理交换机流表的协议。OpenFlow flows是OVS中最重要的一种flow，OpenFlow控制器使用这种flows定义OVS数据转发策略。OpenFlow flows支持通配符，优先级，多表数据结构        
-
-在OVS中，OpenFlow flows位于用户空间主进程`ovs-vswitchd`，OpenFlow flows可以有一个或者多个流表，每个流表中包括多条流表项，每条流表项包含：数据包头的信息、匹配成功后要执行的指令集(actions)和统计信息。 当数据包进入OVS后，OVS会将数据包和流表中的流表项进行匹配，如果发现了匹配的流表项，则执行该流表项中的指令集。   
-
-OVS常用作SDN交换机(OpenFlow交换机)，其中控制数据转发策略的就是OpenFlow flows。OpenStack Neutron中实现了一个OpenFlow控制器用于向OVS下发OpenFlow flows控制虚拟机间的访问或隔离。本文讨论的默认是作为SDN交换机场景下      
-
-不是只有连接OpenFlow控制器才能配置OpenFlow flows，`ovs-ofctl`工具可以手动添加这种flows，可以查看`man ovs-ofctl`了解   
-
-**"hidden" flows**       
+- "hidden" flows    
 
 OVS在使用OpenFlow flow时，需要与OpenFlow控制器建立TCP连接，若此TCP连接不依赖OVS，即没有OVS依然可以建立连接，此时就是`out-of-band control`模式，这种模式下不需要"hidden" flows    
 
@@ -264,11 +336,11 @@ OVS在使用OpenFlow flow时，需要与OpenFlow控制器建立TCP连接，若�
 ovs-appctl bridge/dump-flows <br>
 ```
 
-**datapath flows**    
+- datapath flows         
 
 datapath flows是`datapath`内核模块维护的flows，由内核模块维护意味着我们并不需要去修改管理它。与OpenFlow flows不同的是，它不支持优先级，并且只有一个表，这些特点使它非常适合做缓存。与OpenFlow一样的是它支持通配符，也支持指令集(多个action)       
 
-datapath flows可以来自用户空间`ovs-vswitchd`缓存(文章后面datapath部分会介绍)，也可以是datapath内核模块进行MAC地址学习到的flows，这取决与OVS是作为SDN交换机，还是像Linux Bridge那样只是一个简单基于MAC地址学习的二层交换机     
+datapath flows可以来自用户空间`ovs-vswitchd`缓存，也可以是datapath内核模块进行MAC地址学习到的flows，这取决与OVS是作为SDN交换机，还是像Linux Bridge那样只是一个简单基于MAC地址学习的二层交换机     
 
 **几种flows对比**    
 
@@ -283,150 +355,7 @@ datapath flows可以来自用户空间`ovs-vswitchd`缓存(文章后面datapath�
 - `ovs-appctl bridge/dump-flows <br>` 打印指定网桥内所有OpenFlow flows，包括"hidden" flows，`in-band control`模式下排错可以用到    
 
 - `ovs-dpctl dump-flows [dp]` 打印内核模块中datapath flows，`[dp]`可以省略，默认主机中只有一个datapath `system@ovs-system`      
-
 man手册可以找到非常详细的用法说明，注意`ovs-ofctl`管理的是OpenFlow flows     
-
-# OVS架构    
-
-先看下OVS整体架构，用户空间主要组件有数据库服务ovsdb-server和守护进程ovs-vswitchd。kernel中是datapath内核模块。最上面的Controller表示OpenFlow控制器，控制器与OVS是通过OpenFlow协议进行连接，控制器不一定位于OVS主机上，下面分别介绍图中各组件       
-
-![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-arch.png)   
-
-## ovs-vswitchd           
-
-`ovs-vswitchd`守护进程是OVS的核心部件，它和`datapath`内核模块一起实现OVS基于流的数据交换。作为核心组件，它使用openflow协议与上层OpenFlow控制器通信，使用OVSDB协议与`ovsdb-server`通信，使用`netlink`和`datapath`内核模块通信。`ovs-vswitchd`在启动时会读取`ovsdb-server`中配置信息，然后配置内核中的`datapaths`和所有OVS switches，当ovsdb中的配置信息改变时(例如使用ovs-vsctl工具)，`ovs-vswitchd`也会自动更新其配置以保持与数据库同步     
-   
-``` shell
-# ps -ef |grep ovs-vs
-root     22176 22175  0 Jan17 ?        00:16:56 ovs-vswitchd unix:/var/run/openvswitch/db.sock -vconsole:emer -vsyslog:err -vfile:info --mlockall --no-chdir --log-file=/var/log/openvswitch/ovs-vswitchd.log --pidfile=/var/run/openvswitch/ovs-vswitchd.pid --detach --monitor
-```   
-
-`ovs-vswitchd`需要加载`datapath`内核模块才能正常运行。它会自动配置`datapath` flows，因此我们不必再使用`ovs-dpctl`去手动操作`datapath`，但`ovs-dpctl`仍可用于调试场合      
-
-在OVS中，`ovs-vswitchd`从OpenFlow控制器获取流表规则，然后把从`datapath`中收到的数据包在流表中进行匹配，找到匹配的flows并把所需应用的actions返回给`datapath`，同时作为处理的一部分，`ovs-vswitchd`会在`datapath`中设置一条datapath flows用于后续相同类型的数据包可以直接在内核中执行动作，此datapath flows相当于OpenFlow flows的缓存。对于`datapath`来说，其并不知道用户空间OpenFlow的存在，datapath内核模块信息如下         
-
-``` shell
-# modinfo openvswitch
-filename:       /lib/modules/3.10.0-327.el7.x86_64/kernel/net/openvswitch/openvswitch.ko
-license:        GPL
-description:    Open vSwitch switching datapath
-rhelversion:    7.2
-srcversion:     F75F2B83324DCC665887FD5
-depends:        libcrc32c
-intree:         Y
-...
-```
-
-## ovsdb-server      
-
-`ovsdb-server`是OVS轻量级的数据库服务，用于整个OVS的配置信息，包括接口/交换内容/VLAN等，OVS主进程`ovs-vswitchd`根据数据库中的配置信息工作，下面是`ovsdb-server`进程详细信息               
-
-``` shell 
-ps -ef |grep ovsdb-server
-root     22166 22165  0 Jan17 ?        00:02:32 ovsdb-server /etc/openvswitch/conf.db -vconsole:emer -vsyslog:err -vfile:info --remote=punix:/var/run/openvswitch/db.sock --private-key=db:Open_vSwitch,SSL,private_key --certificate=db:Open_vSwitch,SSL,certificate --bootstrap-ca-cert=db:Open_vSwitch,SSL,ca_cert --no-chdir --log-file=/var/log/openvswitch/ovsdb-server.log --pidfile=/var/run/openvswitch/ovsdb-server.pid --detach --monitor
-```
-
-`/etc/openvswitch/conf.db`是数据库文件存放位置，文件形式存储保证了服务器重启不会影响其配置信息，`ovsdb-server`需要文件才能启动，可以使用`ovsdb-tool create`命令创建并初始化此数据库文件        
-`--remote=punix:/var/run/openvswitch/db.sock` 实现了一个Unix sockets连接，OVS主进程`ovs-vswitchd`或其它命令工具(ovsdb-client)通过此socket连接管理ovsdb       
-`/var/log/openvswitch/ovsdb-server.log`是日志记录        
-
-## OpenFlow && Controller      
-
-OpenFlow是一种用于管理交换机流表的协议，OpenFlow在OVS中的地位可以参考上面架构图，它是Controller和ovs-vswitched间的通信协议。需要注意的是，OpenFlow是一个独立的完整的流表协议，不依赖于OVS，OVS只是提供了对OpenFlow协议的支持，有了支持，我们可以使用任何支持OpenFlow的控制器来管理OVS中的流表，OpenFlow不仅仅支持虚拟交换机，某些硬件交换机也支持OpenFlow协议    
-
-Controller指OpenFlow控制器。OpenFlow控制器可以通过OpenFlow协议连接到任何支持OpenFlow的交换机，比如OVS。控制器通过向交换机下发流表规则来控制数据流向。除了可以通过OpenFlow控制器配置OVS中flows，也可以使用OVS提供的`ovs-ofctl`命令通过OpenFlow协议去连接OVS，从而配置flows，命令也能够对OVS的运行状况进行动态监控。       
-
-`ovs-ofctl`是一个监控和管理OpenFlow交换机的命令行工具，它支持任何使用OpenFlow协议的交换机，不仅仅是OVS      
-
-OpenFlow的介绍上提到的`OpenFlow协议实现了控制层面和转发层面的分离`，控制层面就是指这里的OpenFlow控制器，分离就是说控制器负责控制转发规则，OVS则负责执行转发，他们可以通过IP网络使用OpeenFlow协议连接，不需要位于同一台主机上    
-
-OpenFlow中的flows定义了交换机端口之间数据包的转发规则，以OVS为例，OVS交换机中可以有一个或者多个流表，每个流表包括多个流表项(Flow entrys)，每条流表项中的条目包含：数据包头的信息、匹配成功后要执行的指令和统计信息。当数据包进入OVS后，OVS会将数据包和flows中的流表项进行匹配以决定此数据包是被转发/修改或是DROP。     
-
-![openflow](/images/openstack/openstack-use-openvswitch/openvswitch-openflow-match.png)    
-
-OVS可以有多种工作模式，可以是一个简单的基于MAC地址学习的二层交换机，也可以连接OpenFLow控制器作为一个SDN交换机，最常用场景还是作为SDN交换机(比如OpenStack Neutron vxlan/gre网络模式)，这里根据OpenStack Neutron中对OVS的使用总结一下OVS不同的转发策略               
-  
-**使用OpenFlow flows的转发策略**                
-
-- OVS连接OpenFLow控制器，控制器下发flows到OVS，OVS按照下发的flows执行数据转发。当有新的MAC地址加入(新建VM)，或者MAC地址从一个Port移到另一个Port上时(虚拟机迁移)，控制器会更新流表规则以匹配此改变，可见外部控制器决定着OVS中的流表规则，需要注意的是可以是同一个控制器管理多台计算节点上的OVS   
-
-- openstack OVS+Vxlan网络部署模式下的`br-tun`网桥就是依据OpenFlow flows完成转发              
-
-- 还有一些其它话题，比如当某条流表项中的执行动作为`normal`时，OpenFlow会把匹配到这条规则的数据包丢给OVS自身处理，这些数据包就不再匹配其它的流表规则。还有当外部控制器由于网络故障无法连接时， 这些情况到后面介绍流表规则时再讨论       
-
-**OpenFlow控制器+MAC地址学习**      
-
-- OpenFlow flows中执行动作action可以为`NORMAL`，`NORMAL`意思是丢给OVS自身完成转发，不再匹配flows。也即匹配到此flow的数据包会走正常的MAC学习转发策略。    
-
-- openstack OVS+Vxlan网络部署模式下的网桥`br-int`，`br-ext`就是这种模式，其连接了Neutron实现的OpenFlow控制器          
-
-**基于MAC地址学习的转发策略**               
-
-- 此种模式下没有OpenFlow的参与，类似Linux Bridge，只是简单的基于MAC地址完成转发   
-
-- 考虑第一个数据包进入OVS的情况，由于之前没有任何数据包进入，也没有flows规则，OVS无法知道第一个数据包应该从哪个端口发出，此时只能依靠学习喽，OVS会把数据包转发到除了进入Port之外的所有Port，然后根据应答数据包的进入Port来学习MAC地址对应的Port，就像Linux Bridge那样。这种情况下OVS依然可以为Port设置Vlan tag，但Linux Bridge不支持设置Vlan    
-
-- 使用ovs-vsctl新建的网桥，默认是没有控制器存在的，是一个简单的二层交换机        
-
-**手动建立流表规则**             
-
-- 前面提到`ovs-ofctl`工具可以通过OpenFlow协议配置OVS中的flows，那我们就自己`add-br`一个网桥，然后建立一些流表项观察数据包转发规则，测试或学习OpenFlow协议时可以这么干    
-
-## Kernel Datapath           
-
-下面讨论场景是OVS作为一个OpenFlow交换机    
-
-datapath是一个Linux内核模块，它负责执行数据交换。关于datapath，[The Design and Implementation of Open vSwitch](http://benpfaff.org/papers/ovs.pdf)中有描述     
-
-><small>The datapath module in the kernel receives the packets first, from a physical NIC or a VM’s virtual NIC. Either ovs-vswitchd has instructed the datapath how to handle packets of this type, or it has not. In the former case, the datapath module simply follows the instructions, called actions, given by ovs-vswitchd, which list physical ports or tunnels on which to transmit the packet. Actions may also specify packet modifications, packet sampling, or instructions to drop the packet. In the other case, where the datapath has not been told what to do with the packet, it delivers it to ovs-vswitchd. In userspace, ovs-vswitchd determines how the packet should be handled, then it passes the packet back to the datapath with the desired handling. Usually, ovs-vswitchd also tells the datapath to cache the actions, for handling similar future packets. </small>   
-
-为了说明datapath，来看一张更详细的架构图，图中的大部分组件上面都有提到      
-
-![ovs1](/images/openstack/openstack-use-openvswitch/openvswitch-details.png)   
-
-用户空间`ovs-vswitchd`和内核模块`datapath`决定了数据包的转发，首先，`datapath`内核模块收到进入数据包(物理网卡或虚拟网卡)，然后查找其缓存(datapath flows)，当有一个匹配的flow时它执行对应的操作，否则`datapath`会把该数据包送入用户空间由`ovs-vswitchd`负责在其OpenFlow flows中查询(图1中的First Packet)，`ovs-vswitchd`查询后把匹配的actions返回给`datapath`并设置一条datapath flows到`datapath`中，这样后续进入的同类型的数据包(图1中的Subsequent Packets)因为缓存匹配会被`datapath`直接处理，不用再次进入用户空间。           
-
-`datapath`专注于数据交换，它不需要知道OpenFlow的存在。与OpenFlow打交道的是`ovs-vswitchd`，`ovs-vswitchd`存储所有Flow规则供`datapath`查询或缓存.    
-
-虽然有`ovs-dpctl`管理工具的存在，但我们没必要去手动管理`datapath`，这是用户空间`ovs-vswitchd`的工作     
-
-# Neutron实现的OpenFLow控制器          
-
-OpenStack Neutron中实现了一个OpenFlow控制器，来管理OVS和其上的VMs，在每一个运行`neutron-openvswitch-agent`的计算节点上，Neutron默认都建立了一个本地控制器`Controller "tcp:127.0.0.1:6633"`，该节点上的所有Bridge `br-int/br-tun/br-ext`等都连接到此Controller上，相关配置参考`/etc/neutron/plugins/ml2/openvswitch_agent.ini`中`[OVS]`      
-
-``` shell
-cat /etc/neutron/plugins/ml2/openvswitch_agent.ini
-[ovs]
-...
-# Address to listen on for OpenFlow connections. Used only for 'native' driver.
-# (IP address value)
-#of_listen_address = 127.0.0.1
-
-# Port to listen on for OpenFlow connections. Used only for 'native' driver.
-# (port value)
-# Minimum value: 0
-# Maximum value: 65535
-#of_listen_port = 6633
-...
-```   
-
-运行`neutron-openvswitch-agent`的计算节点中网桥`br-tun`上连接的控制器       
-
-``` shell
-ovs-vsctl show
-a9fc1666-0bb4-48a6-8f5c-1c8b92431ef6
-    Manager "ptcp:6640:127.0.0.1"
-        is_connected: true
-    Bridge br-tun
-        Controller "tcp:127.0.0.1:6633"
-            is_connected: true
-        fail_mode: secure
-        Port "vxlan-080058ca"
-            Interface "vxlan-080058ca"
-                type: vxlan
-                options: {df_default="true", in_key=flow, local_ip="8.0.88.204", out_key=flow, remote_ip="8.0.88.202"}
-...
-```  
 
 # OVS中管理工具的使用及区别      
 
@@ -527,12 +456,49 @@ ovs-ofctl add-flow br0 idle_timeout=0,dl_type=0x0800,nw_proto=1,actions=output:1
 ovs-ofctl del-flows br0 "in_port=100"    
 ```      
 
-`ovs-vsctl`是一个综合的配置管理工具，`ovsdb-client`倾向于从数据库中查询某些信息，而`ovsdb-tool`是维护数据库文件工具     
+`ovs-vsctl`是一个综合的配置管理工具，`ovsdb-client`倾向于从数据库中查询某些信息，而`ovsdb-tool`是维护数据库文件工具       
+
+# Neutron实现的OpenFLow控制器             
+
+OpenStack Neutron中实现了一个OpenFlow控制器，来管理OVS和其上的VMs，在每一个运行`neutron-openvswitch-agent`的计算节点上，Neutron默认都建立了一个本地控制器`Controller "tcp:127.0.0.1:6633"`，该节点上的所有Bridge `br-int/br-tun/br-ext`等都连接到此Controller上，相关配置参考`/etc/neutron/plugins/ml2/openvswitch_agent.ini`中`[OVS]`      
+
+``` shell
+cat /etc/neutron/plugins/ml2/openvswitch_agent.ini
+[ovs]
+...
+# Address to listen on for OpenFlow connections. Used only for 'native' driver.
+# (IP address value)
+#of_listen_address = 127.0.0.1
+
+# Port to listen on for OpenFlow connections. Used only for 'native' driver.
+# (port value)
+# Minimum value: 0
+# Maximum value: 65535
+#of_listen_port = 6633
+...
+```   
+
+运行`neutron-openvswitch-agent`的计算节点中网桥`br-tun`上连接的控制器       
+
+``` shell
+ovs-vsctl show
+a9fc1666-0bb4-48a6-8f5c-1c8b92431ef6
+    Manager "ptcp:6640:127.0.0.1"
+        is_connected: true
+    Bridge br-tun
+        Controller "tcp:127.0.0.1:6633"
+            is_connected: true
+        fail_mode: secure
+        Port "vxlan-080058ca"
+            Interface "vxlan-080058ca"
+                type: vxlan
+                options: {df_default="true", in_key=flow, local_ip="8.0.88.204", out_key=flow, remote_ip="8.0.88.202"}
+...
+```  
 
 文章地址http://www.isjian.com/openstack/openstack-base-use-openvswitch/     
 
 参考文章     
-
 ><small>
 https://www.sdxcentral.com/cloud/open-source/definitions/what-is-open-vswitch/     
 http://openvswitch.org/features/      
