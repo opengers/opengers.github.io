@@ -14,9 +14,11 @@ format: quote
 * TOC
 {:toc}    
 
-[上篇文章](http://www.isjian.com/openstack/openstack-base-use-openvswitch/) 已经介绍了OVS基础知识，本篇文章主要介绍如何使用OVS中的OpenFlow流表      
+[上篇文章](http://www.isjian.com/openstack/openstack-base-use-openvswitch/) 介绍了OVS基础知识，还有对OpenFlow协议及其在VOS中的作用也有介绍，本篇主要介绍下OpenFlow语法，以及分析下openstack+OVS网络模式下的流表项             
 
 # OpenFlow介绍           
+
+OpenFlow允许从远程控制网络交换器的数据包转送表，通过新增、修改与移除数据包控制规则与行动，来改变数据包转送的路径。比起用 访问控制表 (ACLs) 和路由协议，允许更复杂的流量管理。同时，OpenFlow允许不同供应商用一个简单，开源的协议去远程管理交换机    
 
 OpenFlow控制器使用这种flows定义OVS数据转发策略。OpenFlow flows支持通配符，优先级，多表数据结构
 
