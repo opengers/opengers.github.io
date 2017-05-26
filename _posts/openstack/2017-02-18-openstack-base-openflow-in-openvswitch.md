@@ -14,7 +14,7 @@ format: quote
 * TOC
 {:toc}    
 
-[上篇文章](http://www.isjian.com/openstack/openstack-base-use-openvswitch/) 介绍了OVS一些基础知识以及openflow在OVS中的应用，本篇主要介绍下OVS中的OpenFlow语法，以及分析下openstack Neutron+OVS网络模式下的流表项             
+[上篇文章](http://www.isjian.com/openstack/openstack-base-use-openvswitch/) 介绍了OVS和openflow一些基础知识，本篇主要介绍下OVS中的OpenFlow语法，以及分析下openstack Neutron+OVS网络模式下的流表项             
 
 # OpenFlow介绍           
 
