@@ -14,25 +14,50 @@ format: quote
 * TOC
 {:toc}    
 
-[上篇文章](http://www.isjian.com/openstack/openstack-base-use-openvswitch/) 介绍了OVS和openflow一些基础知识，本篇主要介绍下OVS中的OpenFlow语法，以及分析下openstack Neutron+OVS网络模式下的流表项             
+[上篇文章](http://www.isjian.com/openstack/openstack-base-use-openvswitch/) 介绍了OVS和OpenFlow一些基础知识，本篇主要介绍下OVS中的OpenFlow语法，以及分析下openstack Neutron+OVS网络模式下的流表项             
 
 # OpenFlow介绍           
 
-上篇文章已经说过，OpenFlow是一个开源的用于管理交换机流表的协议，其通过灵活强大的流(flow)规则来对进入交换机的数据包进行转发/修改或DROP。OpenFLow协议原理本身就很复杂，而其控制器的研究更为复杂。我们文中主要讨论的是其在OVS中的具体应用以及通过修改OVS中的flow来控制数据包的转发。        
+上篇文章已经说过，OpenFlow是一个开源的用于管理交换机流表的协议，其通过灵活强大的流(flow)规则来对进入交换机的数据包进行转发/修改或DROP。OpenFLow协议原理本身就很复杂，而其控制器的研究更为复杂。我们文中主要讨论的是其在OVS中的具体应用       
 
-OpenFlow的介绍上提到的`OpenFlow协议实现了控制层面和转发层面的分离`，控制层面就是指这里的OpenFlow控制器，分离就是说控制器负责控制转发规则，OVS则负责执行转发，他们可以通过IP网络使用OpeenFlow协议连接，不需要位于同一台主机上     
+网上关于OpenFlow的介绍中经常提到`OpenFlow协议实现了控制层面和转发层面的分离`，控制层面就是指这里的OpenFlow控制器，分离就是说控制器负责控制转发规则，OVS则负责执行转发工作，他们可以通过IP网络使用OpenFlow协议连接，不需要位于同一台主机上     
 
-# OVS工作模式     
+下图是一个进入OVS的数据包(Packet)被OpenFlow flow处理的过程，flow定义了交换机端口之间数据包的转发规则，OVS中可以有一个或者多个流表(flow table)，每个流表包括多条流表项(Flow entrys)，每条流表项包含多个匹配字段(match fields)、匹配成功后要执行的指令集(action set)和统计信息。OpenFlow中的流(flow)支持通配符，优先级，多表数据结构。         
 
-OVS有多种工作模式，可以是一个简单的基于MAC地址学习的二层交换机(像Linux bridge一样)，也可以连接OpenFLow控制器作为一个SDN交换机，最常用场景还是作为SDN交换机(比如OpenStack Neutron OVS+vxlan/gre网络模式)，这里根据OpenStack Neutron中对OVS的使用总结一下OVS不同的工作模式                   
+![openflow](/images/openstack/openstack-use-openvswitch/openvswitch-openflow-match.png)      
+
+我们输出一个`OpenStack Neutron+Vlan`网络模式下控制节点`br-int`网桥中的流表信息，可以看到其有三个流表(table=0/23/24),流表匹配顺序是`0->n`，其中table 0有6条流表项。这6条流表项的匹配顺序是`priority`字段值越大，优先级越高。`priority`字段值相同的就按顺序匹配。要注意数据包并不总是严格按照table从小到大的顺序往下匹配，假如数据包匹配到的某条流表项动作`action`是转发到指定的table，那此时数据包就会被转发到指定的table中去。因此数据包的匹配规则是由table、priority、action共同决定的    
+
+``` shell
+[root@controller ~]# ovs-ofctl dump-flows br-int 
+NXST_FLOW reply (xid=0x4):
+ cookie=0xa132bd1e50f6ef27, duration=974057.527s, table=0, n_packets=716807, n_bytes=70185583, idle_age=0, hard_age=65534, priority=3,in_port=1,dl_vlan=1023 actions=mod_vlan_vid:2,NORMAL
+ cookie=0xa132bd1e50f6ef27, duration=974057.518s, table=0, n_packets=697433, n_bytes=65506238, idle_age=0, hard_age=65534, priority=3,in_port=2,vlan_tci=0x0000/0x1fff actions=mod_vlan_vid:1,NORMAL
+ cookie=0xa132bd1e50f6ef27, duration=718025.077s, table=0, n_packets=506478, n_bytes=49558151, idle_age=2, hard_age=65534, priority=3,in_port=1,dl_vlan=1024 actions=mod_vlan_vid:3,NORMAL
+ cookie=0xa132bd1e50f6ef27, duration=974060.039s, table=0, n_packets=19489129, n_bytes=1366509537, idle_age=0, hard_age=65534, priority=2,in_port=1 actions=drop
+ cookie=0xa132bd1e50f6ef27, duration=974059.789s, table=0, n_packets=2, n_bytes=188, idle_age=65534, hard_age=65534, priority=2,in_port=2 actions=drop
+ cookie=0xa132bd1e50f6ef27, duration=974060.307s, table=0, n_packets=2749, n_bytes=135739, idle_age=184, hard_age=65534, priority=0 actions=NORMAL
+ cookie=0xa132bd1e50f6ef27, duration=974060.305s, table=23, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
+ cookie=0xa132bd1e50f6ef27, duration=974060.303s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
+```    
+   
+作为学习测试，我们不需要通过连接控制器去生成流表项，而是使用`ovs-ofctl`去操作OVS中的流表项。`ovs-ofctl add-flow `接收多个逗号或空格分开的`field=value`型字段作为参数，其作用是添加一条流表项到指定bridge，下面具体说明OVS中的openflow flow编写规则      
+
+# OVS中的OpenFLow flow语法      
+
+flow中的每条流表项包含多个匹配字段(match fields)、以及指令集(action set)，这里先列举下常用的匹配字段，关于当前OVS版本支持的所有匹配字段，可以查看`man ovs-ofctl`中`Flow Syntax`部分     
+ 
+# OVS工作模式      
+
+OVS有多种工作模式，默认情况下使用`ovs-vsctl`创建的OVS bridge没有连接任何openflow控制器，其内部也没有openflow flow规则，此时OVS就像物理世界中的二层交换机一样(类似Linux bridge)，其数据包转发完全依靠MAC地址学习完成。当然，OVS也可以连接OpenFLow控制器作为一个SDN交换机(比如OpenStack Neutron OVS+vxlan/gre网络模式)，这是OVS比Linux Bridge强大之处，这里根据OpenStack Neutron中对OVS的使用总结一下OVS不同的工作模式                    
   
-**使用OpenFlow flows的转发策略**                
+**使用OpenFlow flows的转发策略**            
 
-- OVS连接OpenFLow控制器，控制器下发flows到OVS，OVS按照下发的flows执行数据转发。当有新的MAC地址加入(新建VM)，或者MAC地址从一个Port移到另一个Port上时(虚拟机迁移)，控制器会更新流表规则以匹配此改变，可见外部控制器决定着OVS中的流表规则，需要注意的是可以是同一个控制器管理多台计算节点上的OVS    
+- 此时OVS连接有OpenFLow控制器，控制器下发flows到OVS，OVS按照下发的flows执行数据转发。当有新的MAC地址加入(新建vm)，或者MAC地址从一个Port移到另一个Port上时(vm迁移)，控制器会更新流表规则以匹配此改变，可见OpenFLow控制器决定着OVS中的数据包转发规则，需要注意的是一个控制器可以管理多台计算节点上的OVS     
 
 - 比如openstack OVS+Vxlan网络部署模式下的`br-tun`网桥就是依据OpenFlow flows完成转发，其连接了一个OpenFlow控制器`Controller "tcp:127.0.0.1:6633"`                 
 
-- 还有一些其它话题，比如当某条流表项中的执行动作为`normal`时，OpenFlow会把匹配到这条规则的数据包丢给OVS自身处理，这些数据包就不再匹配其它的流表规则。还有当外部控制器由于网络故障无法连接时，OVS会根据`fail_mode: secure`中的设置项决定要如何处理            
+- 还有一些其它话题，比如当某条流表项中的执行动作为`normal`时，OpenFlow会把匹配到这条规则的数据包丢给OVS自身处理，这些数据包就不再匹配其它的流表规则。还有当外部控制器由于网络故障无法连接时，OVS会根据`fail_mode: secure`中的设置项决定要如何处理             
 
 **OpenFlow控制器+MAC地址学习**      
 
@@ -57,11 +82,5 @@ OVS有多种工作模式，可以是一个简单的基于MAC地址学习的二�
 上面介绍了三种工作模式，总结下就是若OVS中有openflow flow的存在，数据包就会先匹配流表规则，
 
 # OVS中flow语法        
-
-OpenFlow flow支持通配符，优先级，多表数据结构。下图是一个进入OVS的数据包(Packet)被flow处理的过程，flow定义了交换机端口之间数据包的转发规则，OVS中可以有一个或者多个流表(flow table)，每个流表包括多条流表项(Flow entrys)，每条流表项包含多个匹配字段(match fields)、匹配成功后要执行的指令集(action set)和统计信息。
-
-![openflow](/images/openstack/openstack-use-openvswitch/openvswitch-openflow-match.png)             
-
-作为测试，我们不需要通过连接控制器去生成流表项，而是使用`ovs-ofctl`去操作OVS中的流表项。`ovs-ofctl`接收多个逗号或空格分开的`field=value`型字段
 
      
