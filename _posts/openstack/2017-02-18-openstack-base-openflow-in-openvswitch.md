@@ -57,29 +57,20 @@ flow中的每条流表项包含多个匹配字段(match fields)、以及指令�
 
 **flow匹配字段**   
 
-| 表头1  | 表头2|
-| --------- | --------|
-| 表格单元  | 表格单元 |
-| 表格单元  | 表格单元 |
-
-| in_port=port	| 传递数据包的端口的 OpenFlow 端口编号 |    
-dl_vlan=vlan	数据包的 VLAN Tag 值，范围是 0-4095，0xffff 代表不包含 VLAN Tag 的数据包
-dl_src=<MAC>	匹配源或者目标的 MAC 地址
-dl_dst=<MAC>	匹配源或者目标的 MAC 地址
-
-01:00:00:00:00:00/01:00:00:00:00:00 代表广播地址
-00:00:00:00:00:00/01:00:00:00:00:00 代表单播地址
-dl_type=ethertype	匹配以太网协议类型，其中：
-dl_type=0x0800 代表 IPv4 协议
-dl_type=0x086dd 代表 IPv6 协议
-dl_type=0x0806 代表 ARP 协议
-
-完整的的类型列表可以参见以太网协议类型列表
-nw_src=ip[/netmask]
-nw_dst=ip[/netmask]	当 dl_typ=0x0800 时，匹配源或者目标的 IPv4 地址，可以使 IP 地址或者域名
-nw_proto=proto	和 dl_type 字段协同使用。
-当 dl_type=0x0800 时，匹配 IP 协议编号
-当 dl_type=0x086dd 代表 IPv6 协议编号
+| 匹配字段 | 解释 |
+| --------- | -------- |
+| in_port=port | int类型，数据包进入的端口号，`ovs-ofctl show br0`可以查看port number |    
+| dl_vlan=vlan | 0-4095,或0xffff，数据包的VLAN Tag，0xffff表示此数据包不带VLAN Tag |   
+| dl_src=<MAC> | MAC地址格式，数据包源MAC(e.g. 00:0A:E4:25:6B:B0) |      
+| dl_dst=<MAC> | MAC地址格式，数据包目的MAC(e.g. 00:0A:E4:25:6B:B0) |    
+| 01:00:00:00:00:00/01:00:00:00:00:00 | 匹配所有多播或广播数据包 |   
+| 00:00:00:00:00:00/01:00:00:00:00:00 | 匹配所有单播数据包 |   
+| dl_type=ethertype | 0到65535的长整数或者16进制表示，匹配以太网数据包类型，EX：0x0800(IPv4数据包) 0x0806(arp数据包) | 
+| nw_src=ip[/netmask] |    
+| nw_dst=ip[/netmask]	当 dl_typ=0x0800 时，匹配源或者目标的 IPv4 地址，可以使 IP 地址或者域名
+| nw_proto=proto	和 dl_type 字段协同使用。
+| 当 dl_type=0x0800 时，匹配 IP 协议编号
+| 当 dl_type=0x086dd 代表 IPv6 协议编号
 
 完整的 IP 协议编号可以参见IP 协议编号列表
 table=number	指定要使用的流表的编号，范围是 0-254。在不指定的情况下，默认值为 0。通过使用流表编号，可以创建或者修改多个 Table 中的 Flow
