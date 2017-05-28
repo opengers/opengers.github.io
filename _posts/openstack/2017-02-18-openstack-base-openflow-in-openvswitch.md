@@ -22,7 +22,8 @@ format: quote
 
 网上关于OpenFlow的介绍中经常提到`OpenFlow协议实现了控制层面和转发层面的分离`，控制层面就是指这里的OpenFlow控制器，分离就是说控制器负责控制转发规则，OVS则负责执行转发工作，他们可以通过IP网络使用OpenFlow协议连接，不需要位于同一台主机上     
 
-# OVS中的OpenFLow flow介绍    
+# OVS中的OpenFLow flow介绍      
+
 OpenFlow flow定义了交换机端口之间数据包的转发规则。下图是一个进入OVS的数据包(Packet)被flow处理的过程。OVS中可以有一个或者多个流表(flow table)，每个流表包括多条流表项(Flow entrys)，每条流表项包含多个匹配字段(match fields)、匹配成功后要执行的指令集(action set)和统计信息。            
 
 ![openflow](/images/openstack/openstack-use-openvswitch/openvswitch-openflow-match.png)      
@@ -41,7 +42,14 @@ NXST_FLOW reply (xid=0x4):
 #上面省略了部分重复流表项
 ```    
    
-上面的流表是Neutron实现的OpenFlow控制器下发到OVS中的。作为学习测试，我们不需要通过连接控制器去生成流表项，而是使用`ovs-ofctl`去操作OVS中的流表项。`ovs-ofctl add-flow `接收多个逗号或空格分开的`field=value`型字段作为参数，其作用是添加一条流表项到指定bridge，下面具体说明OVS中的openflow flow编写规则       
+上面的流表是Neutron实现的OpenFlow控制器下发到OVS中的。作为学习测试，我们不需要通过连接控制器去生成流表项，而是使用`ovs-ofctl`去操作OVS中的流表项。`ovs-ofctl add-flow `接收多个逗号或空格分开的`field=value`型字段作为参数，其作用是添加一条流表项到指定bridge，  看下面这条添加流表命令    
+
+``` shell
+ovs-ofctl add-flow br0 "priority=3,in_port=100,dl_vlan=0xffff,actions=mod_vlan_vid:101,normal"
+```
+
+解释一下就是，向网桥`br0`中添加一条流表项，这条流表项的匹配字段指定的规则为：①从port 100进入交换机`br0`(可以用)，②不包含任何VLAN tag(dl_vlan=0xffff)，若所有条件匹配，则执行action：①先给数据包打上vlan tag 101，②之后走OVS自身转发策略，不再受openflow flow影响，可以看到action可以有多个，按顺序执行，这里是先对流表有一个简单了解，下面具体说明OVS中的openflow flow语法         
+     
 
 # OVS中的OpenFLow flow语法      
 
@@ -49,6 +57,33 @@ flow中的每条流表项包含多个匹配字段(match fields)、以及指令�
 
 **flow匹配字段**   
 
+表头1  | 表头2|
+--------- | --------|
+表格单元  | 表格单元 |
+表格单元  | 表格单元 |
+
+| in_port=port	| 传递数据包的端口的 OpenFlow 端口编号 |    
+dl_vlan=vlan	数据包的 VLAN Tag 值，范围是 0-4095，0xffff 代表不包含 VLAN Tag 的数据包
+dl_src=<MAC>	匹配源或者目标的 MAC 地址
+dl_dst=<MAC>	匹配源或者目标的 MAC 地址
+
+01:00:00:00:00:00/01:00:00:00:00:00 代表广播地址
+00:00:00:00:00:00/01:00:00:00:00:00 代表单播地址
+dl_type=ethertype	匹配以太网协议类型，其中：
+dl_type=0x0800 代表 IPv4 协议
+dl_type=0x086dd 代表 IPv6 协议
+dl_type=0x0806 代表 ARP 协议
+
+完整的的类型列表可以参见以太网协议类型列表
+nw_src=ip[/netmask]
+nw_dst=ip[/netmask]	当 dl_typ=0x0800 时，匹配源或者目标的 IPv4 地址，可以使 IP 地址或者域名
+nw_proto=proto	和 dl_type 字段协同使用。
+当 dl_type=0x0800 时，匹配 IP 协议编号
+当 dl_type=0x086dd 代表 IPv6 协议编号
+
+完整的 IP 协议编号可以参见IP 协议编号列表
+table=number	指定要使用的流表的编号，范围是 0-254。在不指定的情况下，默认值为 0。通过使用流表编号，可以创建或者修改多个 Table 中的 Flow
+reg<idx>=value[/mask]	交换机中的寄存器的值。当一个数据包进入交换机时，所有的寄存器都被清零，用户可以通过 Action 的指令修改寄存器中的值
   
  
 # OVS工作模式      
