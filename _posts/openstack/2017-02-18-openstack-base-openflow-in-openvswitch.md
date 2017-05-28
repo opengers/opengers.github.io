@@ -48,35 +48,49 @@ NXST_FLOW reply (xid=0x4):
 ovs-ofctl add-flow br0 "priority=3,in_port=100,dl_vlan=0xffff,actions=mod_vlan_vid:101,normal"
 ```
 
-解释一下就是，向网桥`br0`中添加一条流表项，这条流表项的匹配字段指定的规则为：①从port 100进入交换机`br0`(可以用)，②不包含任何VLAN tag(dl_vlan=0xffff)，若所有条件匹配，则执行action：①先给数据包打上vlan tag 101，②之后走OVS自身转发策略，不再受openflow flow影响，可以看到action可以有多个，按顺序执行，这里是先对流表有一个简单了解，下面具体说明OVS中的openflow flow语法         
-     
+解释一下就是，向网桥`br0`中添加一条流表项(flow)，在这条flow所在table中其优先级为3，这条流表项的匹配字段指定的规则为：①从port 100进入交换机`br0`(可以用)，②不包含任何VLAN tag(dl_vlan=0xffff)，若所有条件匹配，则执行action：①先给数据包打上vlan tag 101，②之后走OVS自身转发策略，不再受openflow flow影响，可以看到action可以有多个，按顺序执行，这里是先对流表有一个简单了解，下面具体说明OVS中的openflow flow语法         
 
 # OVS中的OpenFLow flow语法      
 
-flow中的每条流表项包含多个匹配字段(match fields)、以及指令集(action set)，这里先列举下常用的匹配字段，关于当前OVS版本支持的所有匹配字段，可以查看`man ovs-ofctl`中`Flow Syntax`部分   
+flow中的每条流表项包含多个匹配字段(match fields)、以及指令集(action set)，这里先列举下常用的匹配字段      
 
 **flow匹配字段**   
 
 | 匹配字段 | 解释 |
 | --------- | -------- |
 | in_port=port | int类型，数据包进入的端口号，`ovs-ofctl show br0`可以查看port number |    
-| dl_vlan=vlan | 0-4095,或0xffff，数据包的VLAN Tag，0xffff表示此数据包不带VLAN Tag |   
-| dl_src=<MAC> | MAC地址格式，数据包源MAC(e.g. 00:0A:E4:25:6B:B0) |      
-| dl_dst=<MAC> | MAC地址格式，数据包目的MAC(e.g. 00:0A:E4:25:6B:B0) |    
+| dl_vlan=vlan | 0-4095,或0xffff，数据包的VLAN Tag，0xffff表示此数据包不带VLAN Tag |    
+| dl_src=xx:xx:xx:xx:xx:xx | MAC地址格式，数据包源MAC(e.g. 00:0A:E4:25:6B:B0) |      
+| dl_dst=xx:xx:xx:xx:xx:xx | MAC地址格式，数据包目的MAC(e.g. 00:0A:E4:25:6B:B0) |    
 | 01:00:00:00:00:00/01:00:00:00:00:00 | 匹配所有多播或广播数据包 |   
 | 00:00:00:00:00:00/01:00:00:00:00:00 | 匹配所有单播数据包 |   
 | dl_type=ethertype | 0到65535的长整数或者16进制表示，匹配以太网数据包类型，EX：0x0800(IPv4数据包) 0x0806(arp数据包) | 
-| nw_src=ip[/netmask] |    
-| nw_dst=ip[/netmask]	当 dl_typ=0x0800 时，匹配源或者目标的 IPv4 地址，可以使 IP 地址或者域名
-| nw_proto=proto	和 dl_type 字段协同使用。
-| 当 dl_type=0x0800 时，匹配 IP 协议编号
-| 当 dl_type=0x086dd 代表 IPv6 协议编号
+| nw_src=ip[/netmask] / nw_dst=ip[/netmask] | `dl_type`字段为IPv4数据包就匹配源或目的ip地址，为arp数据包就匹配ar_spa或ar_tpa，若dl_type字段为通配符，这两个参数会被忽略 |    
+| tcp_src=port / tcp_dst=port / udp_src=port / udp_dst=port | 匹配TCP或UDP的源或目的端口，当然，若dl_type字段为通配符或者未明确协议类型是，这些字段会忽略 |    
 
-完整的 IP 协议编号可以参见IP 协议编号列表
-table=number	指定要使用的流表的编号，范围是 0-254。在不指定的情况下，默认值为 0。通过使用流表编号，可以创建或者修改多个 Table 中的 Flow
-reg<idx>=value[/mask]	交换机中的寄存器的值。当一个数据包进入交换机时，所有的寄存器都被清零，用户可以通过 Action 的指令修改寄存器中的值
-  
- 
+这里列举了常用的几个，还有很多其它匹配字段，比如可以匹配TCP数据包flag SYN/ACK等，可以匹配ICMP协议类型，若一个数据包从tunnel(grep/vxlan)进入的，还可以匹配其`tunnel id`；关于当前OVS版本支持的所有匹配字段，可以查看`man ovs-ofctl`中`Flow Syntax`部分有很详细的解释，主要是掌握编写flow的语法，这样具体用到某字段可以很快测试出来其用法    
+
+上面提到flow支持通配符，添加flow只能指定有限的几个字段，若某字段未指定，则此字段默认为通配符匹配所有数据包，因此若所有匹配字段都为通配符，那么这条flow讲匹配所有数据包     
+
+##flow动作字段**   
+
+动作字段语法为`actions=[action][,action...]`，多个action用逗号隔开，指定匹配某条流表项的数据包要执行的指令集，要注意的是，若未指定任何action，数据包会被DROP     
+
+| 匹配字段 | 解释 |   
+| --------- | -------- |     
+| output:PORT | PORT为openflow端口号，数据包从端口PORT发出，若PORT为数据包进入端口，则不执行 |    
+| normal | 数据包交由OVS自身的转发规则完成转发，不在匹配任何openflow flow |    
+| all | 数据包从网桥上所有端口发出，除了其进入端口 |     
+| drop | 丢弃数据包，当然，drop之后不能再跟其它action |    
+| mod_vlan_vid:vlan_vid | 添加或修改数据包中的VLAN tag |     
+| strip_vlan | 移除数据包中的VLAN tag，如果有的话 |       
+| mod_dl_src:mac / mod_dl_dst:mac | 修改源或目的MAC地址 |    
+| mod_nw_src:ip / mod_nw_dst:ip | 修改源或者目的ip地址 |    
+mod_tp_src:port / mod_tp_dst:port | 修改TCP或UDP数据包的源或目的端口号(注意不是openflow端口号) |     
+| resubmit([port],[table]) | 若port指定,替换数据包in_port字段,并重新匹配,若table指定，提交数据包到指定table，并匹配 |    
+
+同样，还有很多其它的action未列出，要注意这里的`normal`需要解释,我们说`Linux Bridge`是一个简单的二层交换机，它像物理交换机那样依靠MAC地址学习在其内部生成一张MAC地址与port对应表，并依靠这张表完成数据包转发。OVS在未配置任何openflow flow的情况下，也是使用这种MAC地址方式转发。但是若OVS配置有OpenFlow flow，则进入OVS的数据包会被OpenFLow流表处理，只有当某条流表项指定action为`normal`，此时匹配此条流表项的数据包才会脱离OpenFlow的控制，交给OVS使用MAC地址学习完成转发，后面数据包如何被处理，就跟flow没关系了      
+
 # OVS工作模式      
 
 OVS有多种工作模式，默认情况下使用`ovs-vsctl`创建的OVS bridge没有连接任何openflow控制器，其内部也没有openflow flow规则，此时OVS就像物理世界中的二层交换机一样(类似Linux bridge)，其数据包转发完全依靠MAC地址学习完成。当然，OVS也可以连接OpenFLow控制器作为一个SDN交换机(比如OpenStack Neutron OVS+vxlan/gre网络模式)，这是OVS比Linux Bridge强大之处，这里根据OpenStack Neutron中对OVS的使用总结一下OVS不同的工作模式                    
