@@ -18,17 +18,21 @@ format: quote
 
 # OpenFlow概念               
 
-上篇文章已经说过，OpenFlow是一个开源的用于管理交换机流表的协议，其通过灵活强大的流(flow)规则来对进入交换机的数据包进行转发/修改或DROP。OpenFLow协议原理本身就很复杂，而其控制器的研究更为复杂。我们文中主要讨论的是其在OVS中的具体应用       
+OpenFlow技术最早由斯坦福大学提出，旨在基于现有TCP/IP技术条件，以创新的网络互联理念解决当前网络面对新业务产生的种种瓶颈，它的核心思想很简单，就是将原本完全由交换机/路由器控制的数据包转发过程，转化为由OpenFlow交换机(OpenFlow Switch)和OpenFlow控制器(Controller)分别完成的独立过程。转变背后进行的实际上是控制权的更迭：传统网络中数据包的流向是人为指定的，虽然交换机、路由器拥有控制权，却没有数据流的概念，只进行数据包级别的交换；而在OpenFlow网络中，统一的控制器取代路由，决定了所有数据包在网络中传输路径。 本段参考什么是[OpenFlow](http://network.51cto.com/art/201105/264181.htm)             
 
-网上关于OpenFlow的介绍中经常提到`OpenFlow协议实现了控制层面和转发层面的分离`，控制层面就是指这里的OpenFlow控制器，分离就是说控制器负责控制转发规则，OVS则负责执行转发工作，他们可以通过IP网络使用OpenFlow协议连接，不需要位于同一台主机上     
+现在应该能明白网上关于OpenFlow资料经常提到的一句话`OpenFlow协议实现了控制层面和转发层面的分离`，控制层面就是指OpenFlow控制器，分离就是说控制器负责控制转发规则，交换机只负责执行转发工作，他们可以通过IP网络使用OpenFlow协议连接，不需要位于同一台主机上         
 
-# OVS中的OpenFLow flow介绍      
+OpenFlow交换机会在本地维护一份从控制器获取的流表(Flow Table),如果要转发的数据包在本地流表中有对应项，则直接进行快速转发，若流表中没有此项，数据包就会被发送到控制器进行传输路径的确认，再根据下发结果进行转发。OpenFLow协议原理本身就很复杂，而其控制器的研究实现更为复杂。因此，本文关注的是OpenFLow这一协议在OVS中的具体应用              
 
-OpenFlow flow定义了交换机端口之间数据包的转发规则。下图是一个进入OVS的数据包(Packet)被flow处理的过程。OVS中可以有一个或者多个流表(flow table)，每个流表包括多条流表项(Flow entrys)，每条流表项包含多个匹配字段(match fields)、匹配成功后要执行的指令集(action set)和统计信息。            
+# OVS中的OpenFlow flow介绍       
+
+OpenFlow在OVS中被用于管理流表，其通过灵活强大的流(flow)规则来对进入OVS的数据包进行转发/修改或DROP，基于这点，OpenStack这类云平台要实现网络虚拟化，OVS是一个比`Linux Bridge`更好的选择，前一篇介绍OVS的文章说过，OVS中有多种flow存在，本文中使用的`OpenFlow flow`或者`flow`都是指由OpenFlow协议实现的flow      
+
+flow支持通配符，优先级，多表数据结构。下图是一个进入OVS的数据包(Packet)被flow处理的过程。OVS中可以有一个或者多个流表(flow table)，每个流表包括多条流表项(Flow entry)，每条流表项主要包含多个匹配字段(match fields)、匹配成功后要执行的指令集(action set)和统计信息。        
 
 ![openflow](/images/openstack/openstack-use-openvswitch/openvswitch-openflow-match.png)      
 
-flow支持通配符，优先级，多表数据结构。我们输出一个`OpenStack Neutron+Vlan`网络模式下控制节点`br-int`网桥中的流表信息，可以看到其有三个流表(table=0/23/24),流表匹配顺序是`0->n`，其中table 0有6条流表项。这6条流表项的匹配顺序是`priority`字段值越大，优先级越高。`priority`字段值相同的就按顺序匹配。要注意数据包并不总是严格按照table从小到大的顺序往下匹配，假如数据包匹配到的某条流表项动作`action`是转发到指定的table，那此时数据包就会被转发到指定的table中去。因此数据包的匹配规则是由table、priority、action共同决定的    
+我们输出一个`OpenStack Neutron+Vlan`网络模式下控制节点`br-int`网桥中的流表信息，可以看到其有三个流表(table=0/23/24),流表匹配顺序是`0->n`，其中table 0有6条流表项。这6条流表项匹配优先级是`priority`字段值越大，优先级越高。`priority`字段值相同的就按顺序匹配。要注意数据包并不总是严格按照table从小到大的顺序往下走，因为某条流表项的action部分可能改变数据包匹配流程，假如数据包匹配到的某条流表项动作`action`是转发到指定的table，那此时数据包就会被转发到指定的table中去匹配。因此数据包的匹配规则是由table、priority、action共同决定的    
 
 ``` shell
 #ovs-ofctl dump-flows br-int 
@@ -36,21 +40,21 @@ NXST_FLOW reply (xid=0x4):
  cookie=0xa132bd1e50f6ef27, duration=974057.527s, table=0, n_packets=716807, n_bytes=70185583, idle_age=0, hard_age=65534, priority=3,in_port=1,dl_vlan=1023 actions=mod_vlan_vid:2,NORMAL
  cookie=0xa132bd1e50f6ef27, duration=974057.518s, table=0, n_packets=697433, n_bytes=65506238, idle_age=0, hard_age=65534, priority=3,in_port=2,vlan_tci=0x0000/0x1fff actions=mod_vlan_vid:1,NORMAL
  cookie=0xa132bd1e50f6ef27, duration=974059.789s, table=0, n_packets=2, n_bytes=188, idle_age=65534, hard_age=65534, priority=2,in_port=2 actions=drop
- cookie=0xa132bd1e50f6ef27, duration=974060.307s, table=0, n_packets=2749, n_bytes=135739, idle_age=184, hard_age=65534, priority=0 actions=NORMAL
  cookie=0xa132bd1e50f6ef27, duration=974060.305s, table=23, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
  cookie=0xa132bd1e50f6ef27, duration=974060.303s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
-#上面省略了部分重复流表项
+#省略了部分流表项     
 ```    
    
-上面的流表是Neutron实现的OpenFlow控制器下发到OVS中的。作为学习测试，我们不需要通过连接控制器去生成流表项，而是使用`ovs-ofctl`去操作OVS中的流表项。`ovs-ofctl add-flow `接收多个逗号或空格分开的`field=value`型字段作为参数，其作用是添加一条流表项到指定bridge，  看下面这条添加流表命令    
+上面的流表是Neutron实现的OpenFlow控制器下发到OVS中的。作为学习测试，我们不需要通过连接控制器去生成流表项，可以使用`ovs-ofctl`工具去操作OVS中的流表项。`ovs-ofctl add-flow `接收多个逗号或空格分开的`field=value`型字段作为参数，其作用是添加一条流表项到OVS bridge，看下面这条添加流表命令    
 
 ``` shell
+#ovs-vsctl add-br br0
 ovs-ofctl add-flow br0 "priority=3,in_port=100,dl_vlan=0xffff,actions=mod_vlan_vid:101,normal"
 ```
 
-解释一下就是，向网桥`br0`中添加一条流表项(flow)，在这条flow所在table中其优先级为3，这条流表项的匹配字段指定的规则为：①从port 100进入交换机`br0`(可以用)，②不包含任何VLAN tag(dl_vlan=0xffff)，若所有条件匹配，则执行action：①先给数据包打上vlan tag 101，②之后走OVS自身转发策略，不再受openflow flow影响，可以看到action可以有多个，按顺序执行，这里是先对流表有一个简单了解，下面具体说明OVS中的openflow flow语法         
+解释一下就是，向网桥`br0`中添加一条流表项(Flow entry)，这条流表项在其table中优先级为3，其匹配字段指定的规则为：①数据包从port 100进入交换机`br0`(可以用ovs-ofctl show br0查看port)，②数据包不带VLAN tag(dl_vlan=0xffff)。对于这两个条件都匹配的数据包，执行如下action：①先给数据包打上vlan tag 101，②之后交给OVS自身转发，不再受openflow流表控制。可以看到action可以有多个并且按顺序执行，这里对flow有一个简单了解，下面具体说明OVS中的openflow flow语法            
 
-# OVS中的OpenFLow flow语法      
+# OVS中的OpenFlow语法      
 
 flow中的每条流表项包含多个匹配字段(match fields)、以及指令集(action set)，这里先列举下常用的匹配字段      
 
