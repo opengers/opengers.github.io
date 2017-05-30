@@ -59,7 +59,7 @@ flow中的每条流表项包含多个匹配字段(match fields)、以及指令�
 
 **flow匹配字段**   
 
-| 匹配字段 | 解释 |
+| 匹配字段 | 作用 |
 | --------- | -------- |
 | in_port=port | int类型，数据包进入的端口号，`ovs-ofctl show br0`可以查看port number |    
 | dl_vlan=vlan | 0-4095,或0xffff，数据包的VLAN Tag，0xffff表示此数据包不带VLAN Tag |    
@@ -67,36 +67,36 @@ flow中的每条流表项包含多个匹配字段(match fields)、以及指令�
 | dl_dst=xx:xx:xx:xx:xx:xx | 数据包目的MAC(e.g. 00:0A:E4:25:6B:B0) |    
 | 01:00:00:00:00:00/01:00:00:00:00:00 | 匹配所有多播或广播数据包 |   
 | 00:00:00:00:00:00/01:00:00:00:00:00 | 匹配所有单播数据包 |   
-| dl_type=ethertype | 0到65535的长整数或者16进制表示，匹配以太网数据包类型，EX：0x0800(IPv4数据包) 0x0806(arp数据包) | 
+| dl_type=ethertype | 0到65535的长整数或者16进制表示，匹配以太网数据包类型，EX：0x0800(IPv4数据包) 0x0806(arp数据包) |  
 | nw_src=ip[/netmask] nw_dst=ip[/netmask] | `dl_type`字段为`0x0800`时就匹配源或目的ip地址，为`0x0806`就匹配ar_spa或ar_tpa，若dl_type字段为通配符，这两个参数会被忽略 |    
-| tcp_src=port tcp_dst=port \n udp_src=port udp_dst=port | 匹配TCP或UDP的源或目的端口，当然，若dl_type字段为通配符或者未明确协议类型是，这些字段会忽略 |  
+| tcp_src=port tcp_dst=port udp_src=port udp_dst=port |    匹配TCP或UDP的源或目的端口，当然，若dl_type字段为通配符或者未明确协议类型时，这些字段会忽略 |   
 {:.mbtablestyle}   
 
 这里列举了常用的几个匹配字段，还有很多其它匹配字段，比如可以匹配TCP数据包flag SYN/ACK，可以匹配ICMP协议类型，若一个数据包从tunnel(gre/vxlan)进入的，还可以匹配其`tunnel id`；关于当前OVS版本支持的所有匹配字段，可以查看`man ovs-ofctl`中`Flow Syntax`部分有很详细的解释，主要是掌握编写flow的语法，这样具体用到某字段可以很快用man手册找到并测试其具体用法         
 
-上面提到flow支持通配符，添加flow只能指定有限的几个字段，对于未指定的字段则默认为通配符，因此若某条添加flow命令中所有匹配字段都为通配符，那么这条flow将匹配所有数据包        
+上面提到flow支持通配符，添加flow只能指定有限的几个字段，对于未指定的字段则默认为通配符，因此若某条添加flow命令中所有匹配字段都为通配符，那么这条flow将匹配所有数据包             
 
 **flow动作**     
 
 action字段语法为`actions=[action][,action...]`，多个action用逗号隔开，指定匹配某条流表项的数据包要执行的指令集，要注意的是，若未指定任何action，数据包会被DROP     
 
-| 匹配字段 | 解释 |   
+| action指令 | 作用 |   
 | --------- | -------- |     
-| output:PORT | PORT为openflow端口号，数据包从端口PORT发出，若PORT为数据包进入端口，则不执行 |    
-| normal | 数据包交由OVS自身的转发规则完成转发，不在匹配任何openflow flow |    
+| output:PORT | 数据包从端口PORT发出，PORT为openflow端口号，若PORT为数据包进入端口，则不执行此action |    
+| normal | 数据包交由OVS自身的转发规则完成转发，不再匹配任何openflow flow |    
 | all | 数据包从网桥上所有端口发出，除了其进入端口 |     
 | drop | 丢弃数据包，当然，drop之后不能再跟其它action |    
-| mod_vlan_vid:vlan_vid | 添加或修改数据包中的VLAN tag |     
+| mod_vlan_vid:vlan_vid | 添加或修改数据包中的VLAN tag为此处指定的tag |     
 | strip_vlan | 移除数据包中的VLAN tag，如果有的话 |       
 | mod_dl_src:mac / mod_dl_dst:mac | 修改源或目的MAC地址 |    
 | mod_nw_src:ip / mod_nw_dst:ip | 修改源或者目的ip地址 |    
 mod_tp_src:port / mod_tp_dst:port | 修改TCP或UDP数据包的源或目的端口号(注意不是openflow端口号) |     
-| resubmit([port],[table]) | 若port指定,替换数据包in_port字段,并重新匹配,若table指定，提交数据包到指定table，并匹配 |    
+| resubmit([port],[table]) | 若port指定,替换数据包in_port字段,并重新匹配；若table指定，提交数据包到指定table，并匹配 |    
 {:.mbtablestyle}      
 
-同样，还有很多其它的action未列出，这里的`normal`需要解释一下  
+同样，还有很多其它的action未列出。      
 
-**normal action解释**     
+**关于normal**     
 
 我们说`Linux Bridge`是一个简单的二层交换机，它像物理交换机那样依靠MAC地址学习在其内部生成一张MAC地址与port对应表，并依靠这张表完成数据包转发。OVS在未配置任何openflow flow的情况下，也是使用这种简单的MAC地址方式转发。但是若OVS配置有OpenFlow flow，则此时进入OVS的数据包会根据OpenFlow flow规则进行转发，只有当某条流表项指定action为`normal`，此时匹配此条流表项的数据包才会脱离OpenFlow的控制，交给OVS使用MAC地址学习完成转发(normal模式)，后面数据包如何被处理，就跟flow没关系了      
 
