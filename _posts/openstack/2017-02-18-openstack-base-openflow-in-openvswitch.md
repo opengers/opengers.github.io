@@ -92,6 +92,7 @@ action字段语法为`actions=[action][,action...]`，多个action用逗号隔�
 | mod_nw_src:ip / mod_nw_dst:ip | 修改源或者目的ip地址 |    
 mod_tp_src:port / mod_tp_dst:port | 修改TCP或UDP数据包的源或目的端口号(注意不是openflow端口号) |     
 | resubmit([port],[table]) | 若port指定,替换数据包in_port字段,并重新匹配,若table指定，提交数据包到指定table，并匹配 |    
+{:.mbtablestyle}      
 
 同样，还有很多其它的action未列出，这里的`normal`需要解释一下，我们说`Linux Bridge`是一个简单的二层交换机，它像物理交换机那样依靠MAC地址学习在其内部生成一张MAC地址与port对应表，并依靠这张表完成数据包转发。OVS在未配置任何openflow flow的情况下，也是使用这种简单的MAC地址方式转发。但是若OVS配置有OpenFlow flow，则此时进入OVS的数据包会根据OpenFlow flow规则进行转发，只有当某条流表项指定action为`normal`，此时匹配此条流表项的数据包才会脱离OpenFlow的控制，交给OVS使用MAC地址学习完成转发(normal模式)，后面数据包如何被处理，就跟flow没关系了      
 
@@ -134,19 +135,5 @@ OVS有多种工作模式，默认情况下使用`ovs-vsctl`创建的OVS bridge�
 上面介绍了三种工作模式，总结下就是若OVS中有openflow flow的存在，数据包就会先匹配流表规则      
 
 # OVS中使用vlan   
-
-
-|-----------------+------------+-----------------+----------------|
-| Default aligned |Left aligned| Center aligned  | Right aligned  |
-|-----------------|:-----------|:---------------:|---------------:|
-| First body part |Second cell | Third cell      | fourth cell    |
-| Second line     |foo         | **strong**      | baz            |
-| Third line      |quux        | baz             | bar            |
-|-----------------+------------+-----------------+----------------|
-| Second body     |            |                 |                |
-| 2 line          |            |                 |                |
-|=================+============+=================+================|
-| Footer row      |            |                 |                |
-|-----------------+------------+-----------------+----------------|
 
 
