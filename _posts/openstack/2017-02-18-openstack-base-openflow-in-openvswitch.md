@@ -8,7 +8,6 @@ tags:
   - openstack
   - openflow
   - openvswitch
-format: quote
 ---
 
 * TOC
