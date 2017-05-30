@@ -53,7 +53,7 @@ ovs-ofctl add-flow br0 "priority=3,in_port=100,dl_vlan=0xffff,actions=mod_vlan_v
 
 解释一下就是，向网桥`br0`中添加一条流表项(Flow entry)，这条流表项在其table中优先级为3，其匹配字段指定的规则为：①数据包从port 100进入交换机`br0`(可以用ovs-ofctl show br0查看port)，②数据包不带VLAN tag(dl_vlan=0xffff)。对于这两个条件都匹配的数据包，执行如下action：①先给数据包打上vlan tag 101，②之后交给OVS自身转发，不再受openflow流表控制。可以看到action可以有多个并且按顺序执行，这里对flow有一个简单了解，下面具体说明OVS中的openflow flow语法            
 
-# OVS中的flow语法          
+# OVS中的添加flow语法          
 
 flow中的每条流表项包含多个匹配字段(match fields)、以及指令集(action set)，先总结下常用的匹配字段      
 
@@ -61,7 +61,7 @@ flow中的每条流表项包含多个匹配字段(match fields)、以及指令�
 
 | 匹配字段 | 作用 |
 | --------- | -------- |
-| in_port=port | int类型，数据包进入的端口号，`ovs-ofctl show br0`可以查看port number |    
+| in_port=port | int类型，数据包进入的openflow端口号，`ovs-ofctl show br0`可以查看port number |    
 | dl_vlan=vlan | 0-4095,或0xffff，数据包的VLAN Tag，0xffff表示此数据包不带VLAN Tag |    
 | dl_src=xx:xx:xx:xx:xx:xx | 数据包源MAC(e.g. 00:0A:E4:25:6B:B0) |      
 | dl_dst=xx:xx:xx:xx:xx:xx | 数据包目的MAC(e.g. 00:0A:E4:25:6B:B0) |    
@@ -74,7 +74,22 @@ flow中的每条流表项包含多个匹配字段(match fields)、以及指令�
 
 这里列举了常用的几个匹配字段，还有很多其它匹配字段，比如可以匹配TCP数据包flag SYN/ACK，可以匹配ICMP协议类型，若一个数据包从tunnel(gre/vxlan)进入的，还可以匹配其`tunnel id`；关于当前OVS版本支持的所有匹配字段，可以查看`man ovs-ofctl`中`Flow Syntax`部分有很详细的解释，主要是掌握编写flow的语法，这样具体用到某字段可以很快用man手册找到并测试其具体用法         
 
-上面提到flow支持通配符，添加flow只能指定有限的几个字段，对于未指定的字段则默认为通配符，因此若某条添加flow命令中所有匹配字段都为通配符，那么这条flow将匹配所有数据包             
+上面提到flow支持通配符，添加flow只能指定有限的几个字段，对于未指定的字段则默认为通配符，因此若某条添加flow命令中所有匹配字段都为通配符，那么这条flow将匹配所有数据包，下面新建一个`br-test`测试一下                  
+
+``` shell
+#添加br-test
+ovs-vsctl add-br br-test
+```
+
+然后查看`br-test`中的默认flow    
+
+``` shell  
+#ovs-ofctl dump-flows br-test
+NXST_FLOW reply (xid=0x4):
+ cookie=0x0, duration=403.569s, table=0, n_packets=28, n_bytes=1800, idle_age=208, priority=0 actions=NORMAL
+```
+
+可以看到新创建的`br-test`中默认只有一条flow，而且此flow中没有匹配字段(priority不是)，因此这条默认添加的flow将匹配所有进入`br-test`的数据包，而其动作NORMAL表明数据包完全按照MAC地址学习方式完成转发       
 
 **flow动作**     
 
@@ -96,9 +111,41 @@ mod_tp_src:port / mod_tp_dst:port | 修改TCP或UDP数据包的源或目的端�
 
 同样，还有很多其它的action未列出。      
 
-**关于normal**     
+**关于NORMAL**     
 
 我们说`Linux Bridge`是一个简单的二层交换机，它像物理交换机那样依靠MAC地址学习在其内部生成一张MAC地址与port对应表，并依靠这张表完成数据包转发。OVS在未配置任何openflow flow的情况下，也是使用这种简单的MAC地址方式转发。但是若OVS配置有OpenFlow flow，则此时进入OVS的数据包会根据OpenFlow flow规则进行转发，只有当某条流表项指定action为`normal`，此时匹配此条流表项的数据包才会脱离OpenFlow的控制，交给OVS使用MAC地址学习完成转发(normal模式)，后面数据包如何被处理，就跟flow没关系了      
+
+上面新建的`br-test`中那条默认flow其action部分就是NORMAL，这也说明新建的OVS网桥默认是被当做一个普通的二层交换机          
+
+# 添加flow        
+
+新建两台虚拟机test1和test2，桥接到上面新建的网桥`br-test`，然后通过抓包来验证我们添加的flow是否生效，虚拟机信息如下       
+
+| 虚拟机 | interface | OpenFlow端口号 | IP地址 |    
+| --------- | -------- | ----- | -------- | 
+| test1 | vnet12 | 7 | 172.16.1.11 |
+| test2 | vnet13 | 8 | 172.16.1.12 |
+{:.mbtablestyle}  
+
+首先在test1内发送一条
+"table=0, dl_src=01:00:00:00:00:00/01:00:00:00:00:00, actions=drop"
+
+
+#查看br-tun中OpenFlow flows
+ovs-ofctl dump-flows br-tun
+#查看br-tun端口信息   
+ovs-ofctl show br-tun
+#添加新的flow：对于从端口p0进入交换机的数据包，如果它不包含任何VLAN tag，则自动为它添加VLAN tag 101
+ovs-ofctl add-flow br0 "priority=3,in_port=100,dl_vlan=0xffff,actions=mod_vlan_vid:101,normal"
+#对于从端口3进入的数据包，若其vlan tag为100，去掉其vlan tag，并从端口1发出 
+ovs-ofctl add-flow br0 in_port=3,dl_vlan=101,actions=strip_vlan,output:1
+#添加新的flow: 修改从端口p1收到的数据包的源地址为9.181.137.1,show 查看p1端口ID为100   
+ovs-ofctl add-flow br0 "priority=1 idle_timeout=0,in_port=100,actions=mod_nw_src:9.181.137.1,normal"
+#添加新的flow: 重定向所有的ICMP数据包到端口 p2
+ovs-ofctl add-flow br0 idle_timeout=0,dl_type=0x0800,nw_proto=1,actions=output:102
+#删除编号为 100 的端口上的所有流表项   
+ovs-ofctl del-flows br0 "in_port=100"    
+
 
 # OVS中的控制器      
 
