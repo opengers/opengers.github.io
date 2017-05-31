@@ -53,7 +53,7 @@ ovs-ofctl add-flow br0 "priority=3,in_port=100,dl_vlan=0xffff,actions=mod_vlan_v
 
 解释一下就是，向网桥`br0`中添加一条流表项(Flow entry)，这条流表项在其table中优先级为3，其匹配字段指定的规则为：①数据包从port 100进入交换机`br0`(可以用ovs-ofctl show br0查看port)，②数据包不带VLAN tag(dl_vlan=0xffff)。对于这两个条件都匹配的数据包，执行如下action：①先给数据包打上vlan tag 101，②之后交给OVS自身转发，不再受openflow流表控制。可以看到action可以有多个并且按顺序执行，这里对flow有一个简单了解，下面具体说明OVS中的openflow flow语法            
 
-# OVS中的flow语法          
+# flow语法          
 
 flow中的每条流表项包含多个匹配字段(match fields)、以及指令集(action set)，先总结下常用的匹配字段      
 
@@ -71,6 +71,8 @@ flow中的每条流表项包含多个匹配字段(match fields)、以及指令�
 | nw_src=ip[/netmask] nw_dst=ip[/netmask] | `dl_type`字段为`0x0800`时就匹配源或目的ip地址，为`0x0806`就匹配ar_spa或ar_tpa，若dl_type字段为通配符，这两个参数会被忽略 |    
 | tcp_src=port tcp_dst=port udp_src=port udp_dst=port |    匹配TCP或UDP的源或目的端口，当然，若dl_type字段为通配符或者未明确协议类型时，这些字段会忽略 |   
 {:.mbtablestyle}   
+
+<br />
 
 这里列举了常用的几个匹配字段，还有很多其它匹配字段，比如可以匹配TCP数据包flag SYN/ACK，可以匹配ICMP协议类型，若一个数据包从tunnel(gre/vxlan)进入的，还可以匹配其`tunnel id`；关于当前OVS版本支持的所有匹配字段，可以查看`man ovs-ofctl`中`Flow Syntax`部分有很详细的解释，主要是掌握编写flow的语法，这样具体用到某字段可以很快用man手册找到并测试其具体用法         
 
