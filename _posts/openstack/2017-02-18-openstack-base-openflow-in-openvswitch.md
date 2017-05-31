@@ -21,17 +21,17 @@ OpenFlow技术最早由斯坦福大学提出，旨在基于现有TCP/IP技术条
 
 现在应该能明白网上关于OpenFlow资料经常提到的一句话`OpenFlow协议实现了控制层面和转发层面的分离`，控制层面就是指OpenFlow控制器，分离就是说控制器负责控制转发规则，交换机只负责执行转发工作，他们可以通过IP网络使用OpenFlow协议连接，不需要位于同一台主机上         
 
-OpenFlow交换机会在本地维护一份从控制器获取的流表(Flow Table),如果要转发的数据包在本地流表中有对应项，则直接进行快速转发，若流表中没有此项，数据包就会被发送到控制器进行传输路径的确认，再根据下发结果进行转发。OpenFLow协议原理本身就很复杂，而其控制器的研究实现更为复杂。因此，本文关注的是OpenFLow这一协议在OVS中的具体应用              
+OpenFlow交换机会在本地维护一份从控制器获取的流表(Flow Table),如果要转发的数据包在本地流表中有对应项，则直接进行快速转发，若流表中没有此项，数据包就会被发送到控制器进行传输路径的确认，再根据下发结果进行转发。OpenFlow协议原理本身就很复杂，而其控制器的研究实现更为复杂。因此，本文关注的是OpenFlow这一协议在OVS中的具体应用              
 
 # OVS中的OpenFlow           
 
-OpenFlow在OVS中被用于管理流表，其通过灵活强大的流(flow)规则来对进入OVS的数据包进行转发/修改或DROP，基于这点，OpenStack这类云平台要实现网络虚拟化，OVS是一个比`Linux Bridge`更好的选择，前一篇介绍OVS的文章说过，OVS中有多种flow存在，本文中使用的`OpenFlow flow`或者`flow`都是指由OpenFlow协议实现的flow      
+OVS支持OpenFlow协议，OVS可以通过连接OpenFlow控制器获取流表，也可以使用其提供的命令行工具`ovs-ofctl`手动添加流表项。流表控制着OVS中数据包的转发/修改或DROP。基于这点，OpenStack这类云平台要实现网络虚拟化，OVS是一个比`Linux Bridge`更好的选择，前一篇介绍OVS的文章说过，OVS中有多种flow存在，本文中使用的`OpenFlow flow`或者`flow`都是指由OpenFlow协议实现的flow      
 
-flow支持通配符，优先级，多表数据结构。下图是一个进入OVS的数据包(Packet)被flow处理的过程。OVS中可以有一个或者多个流表(flow table)，每个流表包括多条流表项(Flow entry)，每条流表项主要包含多个匹配字段(match fields)、匹配成功后要执行的指令集(action set)和统计信息。        
+下图是一个进入OVS的数据包(Packet)被流表处理的过程。OVS中可以有一个或者多个流表(flow table)，每个流表包括多条流表项(Flow entry)，每条流表项主要包含多个匹配字段(match fields)、匹配成功后要执行的指令集(action set)和统计信息。        
 
 ![openflow](/images/openstack/openstack-use-openvswitch/openvswitch-openflow-match.png)      
 
-我们输出一个`OpenStack Neutron+Vlan`网络模式下控制节点`br-int`网桥中的流表信息，可以看到其有三个流表(table=0/23/24),流表匹配顺序是`0->n`，其中table 0有6条流表项。这6条流表项匹配优先级是`priority`字段值越大，优先级越高。`priority`字段值相同的就按顺序匹配。要注意数据包并不总是严格按照table从小到大的顺序往下走，因为某条流表项的action部分可能改变数据包匹配流程，假如数据包匹配到的某条流表项动作`action`是转发到指定的table，那此时数据包就会被转发到指定的table中去匹配。因此数据包的匹配规则是由table、priority、action共同决定的    
+flow支持通配符，优先级，多表数据结构。我们输出一个`OpenStack Neutron+vlan`网络模式下控制节点`br-int`网桥中的流表信息，可以看到其有三个流表(table=0/23/24),流表匹配顺序是从`0->n`，其中table 0有6条流表项。这6条流表项匹配优先级是`priority`字段值越大，优先级越高。`priority`字段值相同的就按顺序匹配。要注意数据包并不总是严格按照table从小到大的顺序往下走，因为某条流表项的action部分可能改变数据包匹配流程，例如数据包匹配到的某条流表项动作`action`是转发到指定的table，那此时数据包就会被转发到指定的table中去匹配。因此数据包的匹配规则是由table、priority、action共同决定的     
 
 ``` shell
 #ovs-ofctl dump-flows br-int 
@@ -44,7 +44,7 @@ NXST_FLOW reply (xid=0x4):
 #省略了部分流表项     
 ```    
    
-上面的流表是Neutron实现的OpenFlow控制器下发到OVS中的。作为学习测试，我们不需要通过连接控制器去生成流表项，可以使用`ovs-ofctl`工具去操作OVS中的流表项。`ovs-ofctl add-flow `接收多个逗号或空格分开的`field=value`型字段作为参数，其作用是添加一条流表项到OVS bridge，看下面这条添加流表命令    
+上面的流表是Neutron实现的OpenFlow控制器下发到OVS中的。作为学习测试，我们不需要连接控制器去生成流表项，可以使用`ovs-ofctl`工具去操作OVS中的流表项。`ovs-ofctl add-flow`接收多个逗号或空格分开的`field=value`型字段作为参数，其作用是添加一条流表项到OVS bridge，看下面这条添加流表命令    
 
 ``` shell
 #ovs-vsctl add-br br0
@@ -74,9 +74,9 @@ flow中的每条流表项包含多个匹配字段(match fields)、以及指令�
 
 <br />
 
-这里列举了常用的几个匹配字段，还有很多其它匹配字段，比如可以匹配TCP数据包flag SYN/ACK，可以匹配ICMP协议类型，若一个数据包从tunnel(gre/vxlan)进入的，还可以匹配其`tunnel id`；关于当前OVS版本支持的所有匹配字段，可以查看`man ovs-ofctl`中`Flow Syntax`部分有很详细的解释，主要是掌握编写flow的语法，这样具体用到某字段可以很快用man手册找到并测试其具体用法         
+这里列举了常用的匹配字段，还有很多其它匹配字段，比如可以匹配TCP数据包flag SYN/ACK，可以匹配ICMP协议类型，若一个数据包从tunnel(gre/vxlan)进入的，还可以匹配其`tunnel id`；关于当前OVS版本支持的所有匹配字段，可以查看`man ovs-ofctl`中`Flow Syntax`部分有很详细的解释，主要是掌握编写flow的语法，这样具体用到某字段可以很快用man手册找到并测试其具体用法         
 
-上面提到flow支持通配符，添加flow只能指定有限的几个字段，对于未指定的字段则默认为通配符，因此若某条添加flow命令中所有匹配字段都为通配符，那么这条flow将匹配所有数据包，下面新建一个`br-test`测试一下                  
+上面提到flow支持通配符，添加流表项时只能指定有限的几个字段，对于未指定的字段则默认为通配符，因此若某条添加flow命令中所有匹配字段都为通配符，那么这条flow将匹配所有数据包，下面新建一个网桥`br-test`测试一下                  
 
 ``` shell
 #添加br-test
@@ -91,7 +91,7 @@ NXST_FLOW reply (xid=0x4):
  cookie=0x0, duration=403.569s, table=0, n_packets=28, n_bytes=1800, idle_age=208, priority=0 actions=NORMAL
 ```
 
-可以看到新创建的`br-test`中默认只有一条flow，而且此flow中没有匹配字段(priority不是)，因此这条默认添加的flow将匹配所有进入`br-test`的数据包，而其动作NORMAL表明数据包完全按照MAC地址学习方式完成转发       
+可以看到新创建的`br-test`中默认只有一条flow，也未连接任何控制器，而且此flow中没有匹配字段(priority不是)，因此这条默认添加的flow将匹配所有进入`br-test`的数据包，而其动作NORMAL表明数据包完全按照MAC地址学习方式完成转发        
 
 **flow动作**     
 
@@ -111,7 +111,7 @@ mod_tp_src:port / mod_tp_dst:port | 修改TCP或UDP数据包的源或目的端�
 | resubmit([port],[table]) | 若port指定,替换数据包in_port字段,并重新匹配；若table指定，提交数据包到指定table，并匹配 |    
 {:.mbtablestyle}      
 
-同样，还有很多其它的action未列出。      
+同样，还有很多其它的action未列出，这里需要注意NORMAL这一action。       
 
 **关于NORMAL**     
 
@@ -121,7 +121,7 @@ mod_tp_src:port / mod_tp_dst:port | 修改TCP或UDP数据包的源或目的端�
 
 # 添加flow测试             
 
-新建两台虚拟机test1和test2，桥接到上面新建的网桥`br-test`，然后通过抓包来验证我们添加的flow是否生效，虚拟机信息如下       
+这里用几个实例说明下添加flow的命令以及验证方法。为了后续测试方便，可以使用文件格式磁盘快速新建两台虚拟机test1和test2，桥接到上面新建的网桥`br-test`上，然后通过抓包来验证我们添加的flow是否生效，虚拟机信息如下       
 
 | 虚拟机 | interface | OpenFlow端口号 | IP地址 |    
 | --------- | -------- | ----- | -------- | 
@@ -129,28 +129,32 @@ mod_tp_src:port / mod_tp_dst:port | 修改TCP或UDP数据包的源或目的端�
 | test2 | vnet13 | 8 | 172.16.1.12 |
 {:.mbtablestyle}  
 
+test1的虚拟网卡为vnet12，vnet12挂载到OVS Port `vnet12`上，这个Port的OpenFlow端口号为7       
+
 <br />
 
-**屏蔽`br-test`中的广播包**           
+**屏蔽广播包**     
+
+添加一条flow：屏蔽进入`br-test`中的所有广播包            
 
 ``` shell
-ovs-ofctl add-flow "table=0, dl_dst=01:00:00:00:00:00/01:00:00:00:00:00, actions=drop"     
+ovs-ofctl add-flow br-test "table=0, dl_dst=01:00:00:00:00:00/01:00:00:00:00:00, actions=drop"   
 ```
 
-添加flow之后，在test1中ping一个不存在的IP，比如172.16.1.13，test1会发送arp广播以获取172.16.1.13的MAC地址，arp广播包从test1网卡vnet12离开进入`br-test`后会匹配此条flow，之后就被DROP，因此test2中抓不到广播包。 作为验证可以再删除这条flow          
+添加flow之后，在test1中ping一个不存在的IP，比如172.16.1.13，test1会发送arp广播包以获取172.16.1.13的MAC地址，arp广播包从test1网卡vnet12进入`br-test`后会匹配到此条flow，之后就被DROP，因此test2中抓不到广播包。 作为验证可以再删除这条flow          
 
 ``` shell
 ovs-ofctl del-flows br-test "dl_src=01:00:00:00:00:00/01:00:00:00:00:00"
 ```
 
-删除之后test2中马上就可以收到test1发出的arp广播包       
+可以看到，删除之后test2中马上就可以收到test1发出的arp广播包         
 
 **添加vlan tag**          
 
-添加一条flow：对于从test1发出的数据包，添加vlan tag 11，然后再正常转发       
+添加一条flow：对于从test1的数据包，添加vlan tag 11，然后再正常转发       
 
 ``` shell
-#test1中添加flow
+#也就是从vnet12网卡进入    
 ovs-ofctl add-flow br-test "in_port=7,dl_vlan=0xffff,actions=mod_vlan_vid:11,normal"
 
 #test1中ping test2 IP
@@ -161,18 +165,16 @@ ping 172.16.1.12
 
 ``` shell
 tcpdump -i eth0 -e
-tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
 listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes
 08:00:47.338428 52:54:00:4d:db:39 (oui Unknown) > Broadcast, ethertype 802.1Q (0x8100), length 46: vlan 101, p 0, ethertype ARP, Request who-has test2 tell 172.16.1.11, length 28
-08:00:48.338837 52:54:00:4d:db:39 (oui Unknown) > Broadcast, ethertype 802.1Q (0x8100), length 46: vlan 101, p 0, ethertype ARP, Request who-has test2 tell 172.16.1.11, length 28
 ```
 
-**修改数据包源IP地址**          
+**修改数据包源IP地址**            
 
 添加一条flow：修改从test1进入的数据包的源IP地址为172.16.1.111,并转发到test2     
 
 ``` shell   
-#先删除上一条添加vlan flow
+#先删除上一条添加的vlan flow
 ovs-ofctl del-flows br-test "vlan_tci=0x0000"
 
 #test1对应vnet12网卡，vnet12网卡挂载到OpenFlow端口7上
