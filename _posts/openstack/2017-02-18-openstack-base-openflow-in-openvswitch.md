@@ -15,7 +15,7 @@ tags:
 
 [上篇文章](http://www.isjian.com/openstack/openstack-base-use-openvswitch/) 介绍了OVS和OpenFlow一些基础知识，本篇主要介绍下OVS中的OpenFlow语法，以及分析下openstack Neutron+OVS网络模式下的流表项             
 
-# OpenFlow概念               
+# 什么是OpenFlow               
 
 OpenFlow技术最早由斯坦福大学提出，旨在基于现有TCP/IP技术条件，以创新的网络互联理念解决当前网络面对新业务产生的种种瓶颈，它的核心思想很简单，就是将原本完全由交换机/路由器控制的数据包转发过程，转化为由OpenFlow交换机(OpenFlow Switch)和OpenFlow控制器(Controller)分别完成的独立过程。转变背后进行的实际上是控制权的更迭：传统网络中数据包的流向是人为指定的，虽然交换机、路由器拥有控制权，却没有数据流的概念，只进行数据包级别的交换；而在OpenFlow网络中，统一的控制器取代路由，决定了所有数据包在网络中传输路径。 本段参考[什么是OpenFlow](http://network.51cto.com/art/201105/264181.htm)             
 
@@ -23,7 +23,7 @@ OpenFlow技术最早由斯坦福大学提出，旨在基于现有TCP/IP技术条
 
 OpenFlow交换机会在本地维护一份从控制器获取的流表(Flow Table),如果要转发的数据包在本地流表中有对应项，则直接进行快速转发，若流表中没有此项，数据包就会被发送到控制器进行传输路径的确认，再根据下发结果进行转发。OpenFLow协议原理本身就很复杂，而其控制器的研究实现更为复杂。因此，本文关注的是OpenFLow这一协议在OVS中的具体应用              
 
-# OVS中的OpenFlow flow介绍       
+# OVS中的OpenFlow           
 
 OpenFlow在OVS中被用于管理流表，其通过灵活强大的流(flow)规则来对进入OVS的数据包进行转发/修改或DROP，基于这点，OpenStack这类云平台要实现网络虚拟化，OVS是一个比`Linux Bridge`更好的选择，前一篇介绍OVS的文章说过，OVS中有多种flow存在，本文中使用的`OpenFlow flow`或者`flow`都是指由OpenFlow协议实现的flow      
 
@@ -53,7 +53,7 @@ ovs-ofctl add-flow br0 "priority=3,in_port=100,dl_vlan=0xffff,actions=mod_vlan_v
 
 解释一下就是，向网桥`br0`中添加一条流表项(Flow entry)，这条流表项在其table中优先级为3，其匹配字段指定的规则为：①数据包从port 100进入交换机`br0`(可以用ovs-ofctl show br0查看port)，②数据包不带VLAN tag(dl_vlan=0xffff)。对于这两个条件都匹配的数据包，执行如下action：①先给数据包打上vlan tag 101，②之后交给OVS自身转发，不再受openflow流表控制。可以看到action可以有多个并且按顺序执行，这里对flow有一个简单了解，下面具体说明OVS中的openflow flow语法            
 
-# OVS中的添加flow语法          
+# OVS中的flow语法          
 
 flow中的每条流表项包含多个匹配字段(match fields)、以及指令集(action set)，先总结下常用的匹配字段      
 
@@ -127,25 +127,63 @@ mod_tp_src:port / mod_tp_dst:port | 修改TCP或UDP数据包的源或目的端�
 | test2 | vnet13 | 8 | 172.16.1.12 |
 {:.mbtablestyle}  
 
-首先在test1内发送一条
-"table=0, dl_src=01:00:00:00:00:00/01:00:00:00:00:00, actions=drop"
+屏蔽`br-test`中的广播包      
 
+``` shell
+ovs-ofctl add-flow "table=0, dl_dst=01:00:00:00:00:00/01:00:00:00:00:00, actions=drop"     
+```
 
-#查看br-tun中OpenFlow flows
-ovs-ofctl dump-flows br-tun
-#查看br-tun端口信息   
-ovs-ofctl show br-tun
-#添加新的flow：对于从端口p0进入交换机的数据包，如果它不包含任何VLAN tag，则自动为它添加VLAN tag 101
-ovs-ofctl add-flow br0 "priority=3,in_port=100,dl_vlan=0xffff,actions=mod_vlan_vid:101,normal"
-#对于从端口3进入的数据包，若其vlan tag为100，去掉其vlan tag，并从端口1发出 
-ovs-ofctl add-flow br0 in_port=3,dl_vlan=101,actions=strip_vlan,output:1
-#添加新的flow: 修改从端口p1收到的数据包的源地址为9.181.137.1,show 查看p1端口ID为100   
-ovs-ofctl add-flow br0 "priority=1 idle_timeout=0,in_port=100,actions=mod_nw_src:9.181.137.1,normal"
-#添加新的flow: 重定向所有的ICMP数据包到端口 p2
-ovs-ofctl add-flow br0 idle_timeout=0,dl_type=0x0800,nw_proto=1,actions=output:102
-#删除编号为 100 的端口上的所有流表项   
-ovs-ofctl del-flows br0 "in_port=100"    
+添加flow之后，在test1中ping一个不存在的IP，比如172.16.1.13，test1会发送arp广播以获取172.16.1.13的MAC地址，arp广播包从test1网卡vnet12离开进入`br-test`后会匹配此条flow，之后就被DROP，因此test2中抓不到广播包。 作为验证可以再删除这条flow          
 
+``` shell
+ovs-ofctl del-flows br-test "dl_src=01:00:00:00:00:00/01:00:00:00:00:00"
+```
+
+删除之后test2中马上就可以收到test1发出的arp广播包       
+
+添加vlan tag   
+
+添加一条flow：对于从test1发出的数据包，添加vlan tag 11，然后再正常转发       
+
+``` shell
+#test1中添加flow
+ovs-ofctl add-flow br-test "in_port=7,dl_vlan=0xffff,actions=mod_vlan_vid:11,normal"
+
+#test1中ping test2 IP
+ping 172.16.1.12
+```
+
+之后在test2中抓包，抓到的数据包都带有`vlan 101`，test2无法replay是因为test2会丢弃带有vlan tag的数据包       
+
+``` shell
+tcpdump -i eth0 -e
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes
+08:00:47.338428 52:54:00:4d:db:39 (oui Unknown) > Broadcast, ethertype 802.1Q (0x8100), length 46: vlan 101, p 0, ethertype ARP, Request who-has test2 tell 172.16.1.11, length 28
+08:00:48.338837 52:54:00:4d:db:39 (oui Unknown) > Broadcast, ethertype 802.1Q (0x8100), length 46: vlan 101, p 0, ethertype ARP, Request who-has test2 tell 172.16.1.11, length 28
+```
+
+修改数据包源IP地址    
+
+添加一条flow：修改从test1进入的数据包的源IP地址为172.16.1.111,并转发到test2     
+
+``` shell   
+#先删除上一条添加vlan flow
+ovs-ofctl del-flows br-test "vlan_tci=0x0000"
+
+#test1对应vnet12网卡，vnet12网卡挂载到OpenFlow端口7上
+ovs-ofctl add-flow br-test "in_port=7,actions=mod_nw_src:172.16.1.111,output=8"
+```
+
+在test2中抓包可以清楚看到，源IP已变为172.16.1.111     
+
+``` shell
+#tcpdump -i eth0 -e
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes
+08:12:17.815841 52:54:00:4d:db:39 (oui Unknown) > 52:54:00:f3:bc:d5 (oui Unknown), ethertype IPv4 (0x0800), length 98: 172.16.1.111 > test2: ICMP echo request, id 3003, seq 3, length 64
+08:12:17.820427 52:54:00:f3:bc:d5 (oui Unknown) > Broadcast, ethertype ARP (0x0806), length 42: Request who-has 172.16.1.111 tell test2, length 28
+```
 
 # OVS中的控制器      
 
