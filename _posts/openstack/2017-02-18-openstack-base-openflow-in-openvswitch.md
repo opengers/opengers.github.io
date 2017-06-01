@@ -1,5 +1,5 @@
 ---
-title: openstack底层技术-openflow在OVS中的应用   
+title: openstack底层技术-openflow在OVS中的应用     
 author: opengers
 layout: post
 permalink: /openstack/openstack-base-openflow-in-openvswitch/
@@ -13,7 +13,7 @@ tags:
 * TOC
 {:toc}    
 
-[上篇文章](http://www.isjian.com/openstack/openstack-base-use-openvswitch/) 介绍了OVS和OpenFlow一些基础知识，本篇主要介绍下OVS中的OpenFlow语法，以及分析下openstack Neutron+OVS网络模式下的流表项             
+[上篇文章](http://www.isjian.com/openstack/openstack-base-use-openvswitch/) 介绍了OVS架构和主要概念，本篇主要介绍下OpenFlow在OVS中的应用，以及分析下openstack Neutron+OVS网络模式下的流表项             
 
 # 什么是OpenFlow               
 
@@ -51,7 +51,43 @@ NXST_FLOW reply (xid=0x4):
 ovs-ofctl add-flow br0 "priority=3,in_port=100,dl_vlan=0xffff,actions=mod_vlan_vid:101,normal"
 ```
 
-解释一下就是，向网桥`br0`中添加一条流表项(Flow entry)，这条流表项在其table中优先级为3，其匹配字段指定的规则为：①数据包从port 100进入交换机`br0`(可以用ovs-ofctl show br0查看port)，②数据包不带VLAN tag(dl_vlan=0xffff)。对于这两个条件都匹配的数据包，执行如下action：①先给数据包打上vlan tag 101，②之后交给OVS自身转发，不再受openflow流表控制。可以看到action可以有多个并且按顺序执行，这里对flow有一个简单了解，下面具体说明OVS中的openflow flow语法            
+解释一下就是，向网桥`br0`中添加一条流表项(Flow entry)，这条流表项在其table中优先级为3，其匹配字段指定的规则为：①数据包从port 100进入交换机`br0`(可以用ovs-ofctl show br0查看port)，②数据包不带VLAN tag(dl_vlan=0xffff)。对于这两个条件都匹配的数据包，执行如下action：①先给数据包打上vlan tag 101，②之后交给OVS自身转发，不再受openflow流表控制。可以看到action可以有多个并且按顺序执行，这里对flow有一个简单了解，下面具体说明OVS中的openflow flow语法       
+
+# OVS几种工作模式          
+
+先来看下Linux系统自带的`Linux Bridge`是怎样完成数据转发的。它类似物理交换机那样是一个普通的MAC地址学习交换机，其内部维护一张MAC地址和端口映射表，并依靠MAC地址学习方式不断更新此映射关系，`Linux Bridge`就是靠这张映射表完成数据转发。默认使用`ovs-vsctl`创建的bridge没有连接任何openflow控制器，其内部也没有流表存在，此时OVS也是使用这种简单的MAC地址学习方式转发数据包。但是若OVS连接有OpenFlow控制器或OVS中配置有流表，则此时OVS数据转发策略就完全由流表来决定。只有当某条流表项指定action为`normal`，此时匹配此条流表项的数据包才会脱离OpenFlow的控制，由OVS根据MAC地址学习方式完成后续转发，后面数据包如何被处理就跟flow没关系了  
+
+因此OVS可以有多种不同工作模式，这里根据OpenStack Neutron中对OVS的使用总结一下OVS不同的工作模式      
+  
+**使用流表的OpenFlow交换机**            
+
+- 此时OVS连接有OpenFlow控制器，控制器下发流表到OVS，OVS按照下发的flow执行数据转发。当有新的MAC地址加入(新建vm)，或者MAC地址从一个Port移到另一个Port上时(vm迁移)，控制器会更新流表以匹配此改变，需要注意的是一个控制器可以管理多台计算节点上的OVS     
+
+- 比如openstack OVS+Vxlan网络部署模式下的`br-tun`网桥就是一个OpenFlow交换机，其连接了一个OpenFlow控制器`Controller "tcp:127.0.0.1:6633"`                 
+
+- 当外部控制器由于网络故障无法连接时，OVS会根据`fail_mode: secure`中的设置项决定要如何处理，后面会提到           
+
+**OpenFlow交换机+MAC地址学习**      
+
+- 这种模式就是先用流表对数据包做必要的调整，之后再把数据包交给OVS依靠MAC地址学习完成转发。流表中的aciton:`normal`给数据包提供了一种脱离流表控制的方法         
+
+- openstack OVS+Vxlan网络部署模式下的网桥`br-int / br-ext`就是这种模式，其连接了Neutron实现的OpenFlow控制器，也使用了`normal`这一action。           
+
+- 跟上种模式一个明显的区别是OpenFlow只对数据包做必要的干预，干预后的数据包可以交由OVS自身处理     
+         
+**普通MAC地址学习交换机**               
+
+- 没有流表的存在，类似Linux Bridge，只是简单的基于MAC地址完成转发     
+
+- 再来解释下MAC地址学习，考虑第一个数据包进入OVS的情况，由于之前没有任何数据包进入，OVS无法知道第一个数据包应该从哪个端口发出，此时只能依靠MAC地址学习喽，OVS会把数据包转发到除了进入Port之外的所有Port，然后记录应答数据包的进入Port及其MAC。这样一条映射关系就建立了           
+
+- 物理设备中有带vlan功能的交换机和不带vlan功能的交换机。在虚拟机交换机中，Linux Bridge不支持设置Vlan，OVS支持设置vlan，关于OVS中使用vlan，下一篇文章会单独介绍           
+
+**普通MAC地址学习交换机+手动添加流表**               
+
+- 前面提到`ovs-ofctl`工具可以配置OVS中的flow，那我们就自己`add-br`一个网桥，然后建立一些流表项观察数据包转发规则，测试或学习OpenFlow协议时可以这么干    
+
+上面介绍了四种工作模式，几种模式并不是互斥的，实际使用是很灵活的。         
 
 # flow语法          
 
@@ -70,8 +106,7 @@ flow中的每条流表项包含多个匹配字段(match fields)、以及指令�
 | dl_type=ethertype | 0到65535的长整数或者16进制表示，匹配以太网数据包类型，EX：0x0800(IPv4数据包) 0x0806(arp数据包) |  
 | nw_src=ip[/netmask] nw_dst=ip[/netmask] | `dl_type`字段为`0x0800`时就匹配源或目的ip地址，为`0x0806`就匹配ar_spa或ar_tpa，若dl_type字段为通配符，这两个参数会被忽略 |    
 | tcp_src=port tcp_dst=port udp_src=port udp_dst=port |    匹配TCP或UDP的源或目的端口，当然，若dl_type字段为通配符或者未明确协议类型时，这些字段会忽略 |   
-{:.mbtablestyle}   
-
+{:.mbtablestyle}       
 <br />
 
 这里列举了常用的匹配字段，还有很多其它匹配字段，比如可以匹配TCP数据包flag SYN/ACK，可以匹配ICMP协议类型，若一个数据包从tunnel(gre/vxlan)进入的，还可以匹配其`tunnel id`；关于当前OVS版本支持的所有匹配字段，可以查看`man ovs-ofctl`中`Flow Syntax`部分有很详细的解释，主要是掌握编写flow的语法，这样具体用到某字段可以很快用man手册找到并测试其具体用法         
@@ -105,21 +140,15 @@ action字段语法为`actions=[action][,action...]`，多个action用逗号隔�
 | drop | 丢弃数据包，当然，drop之后不能再跟其它action |    
 | mod_vlan_vid:vlan_vid | 添加或修改数据包中的VLAN tag为此处指定的tag |     
 | strip_vlan | 移除数据包中的VLAN tag，如果有的话 |       
-| mod_dl_src:mac / mod_dl_dst:mac | 修改源或目的MAC地址 |    
-| mod_nw_src:ip / mod_nw_dst:ip | 修改源或者目的ip地址 |    
-mod_tp_src:port / mod_tp_dst:port | 修改TCP或UDP数据包的源或目的端口号(注意不是openflow端口号) |     
+| mod_dl_src:mac mod_dl_dst:mac | 修改源或目的MAC地址 |    
+| mod_nw_src:ip mod_nw_dst:ip | 修改源或者目的ip地址 |    
+mod_tp_src:port mod_tp_dst:port | 修改TCP或UDP数据包的源或目的端口号(注意不是openflow端口号) |     
 | resubmit([port],[table]) | 若port指定,替换数据包in_port字段,并重新匹配；若table指定，提交数据包到指定table，并匹配 |    
 {:.mbtablestyle}      
 
-同样，还有很多其它的action未列出，这里需要注意NORMAL这一action。       
+同样，还有很多其它的action未列出，这里需要注意NORMAL这一action。上面新建的`br-test`中那条默认flow其action部分就是NORMAL，这也说明新建的OVS网桥默认是被当做一个普通的二层交换机            
 
-**关于NORMAL**     
-
-我们说`Linux Bridge`是一个简单的二层交换机，它像物理交换机那样依靠MAC地址学习在其内部生成一张MAC地址与port对应表，并依靠这张表完成数据包转发。OVS在未配置任何openflow flow的情况下，也是使用这种简单的MAC地址方式转发。但是若OVS配置有OpenFlow flow，则此时进入OVS的数据包会根据OpenFlow flow规则进行转发，只有当某条流表项指定action为`normal`，此时匹配此条流表项的数据包才会脱离OpenFlow的控制，交给OVS使用MAC地址学习完成转发(normal模式)，后面数据包如何被处理，就跟flow没关系了      
-
-上面新建的`br-test`中那条默认flow其action部分就是NORMAL，这也说明新建的OVS网桥默认是被当做一个普通的二层交换机          
-
-# 添加flow测试             
+# 添加flow实例                 
 
 这里用几个实例说明下添加flow的命令以及验证方法。为了后续测试方便，可以使用文件格式磁盘快速新建两台虚拟机test1和test2，桥接到上面新建的网桥`br-test`上，然后通过抓包来验证我们添加的flow是否生效，虚拟机信息如下       
 
@@ -130,8 +159,7 @@ mod_tp_src:port / mod_tp_dst:port | 修改TCP或UDP数据包的源或目的端�
 {:.mbtablestyle}  
 
 test1的虚拟网卡为vnet12，vnet12挂载到OVS Port `vnet12`上，这个Port的OpenFlow端口号为7       
-
-<br />
+<br />     
 
 **屏蔽广播包**     
 
@@ -191,44 +219,67 @@ listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes
 08:12:17.820427 52:54:00:f3:bc:d5 (oui Unknown) > Broadcast, ethertype ARP (0x0806), length 42: Request who-has 172.16.1.111 tell test2, length 28
 ```
 
-# OVS中的控制器      
+# Neutron实现的OpenFlow控制器           
+
+对于新建的bridge，默认是没有控制器存在的。但OVS可以连接OpenFlow控制器配置为一个SDN交换机。OpenStack Neutron中实现了一个OpenFlow控制器来管理OVS，在每一个运行`neutron-openvswitch-agent`的计算节点上，Neutron默认都建立了一个本地控制器`Controller "tcp:127.0.0.1:6633"`，该节点上的所有Bridge `br-int/br-tun/br-ext`等都连接到此Controller上，相关配置参考`/etc/neutron/plugins/ml2/openvswitch_agent.ini`中`[OVS]`      
+
+``` shell
+cat /etc/neutron/plugins/ml2/openvswitch_agent.ini
+[ovs]
+...
+# Address to listen on for OpenFlow connections. Used only for 'native' driver.
+# (IP address value)
+#of_listen_address = 127.0.0.1
+
+# Port to listen on for OpenFlow connections. Used only for 'native' driver.
+# (port value)
+# Minimum value: 0
+# Maximum value: 65535
+#of_listen_port = 6633
+...
+```   
+
+比如在运行`neutron-openvswitch-agent`的计算节点中，可以看到`br-tun`连接了一个控制器`tcp:127.0.0.1:6633`，`is_connected: true`表示控制器处于连接状态。            
+
+``` shell
+ovs-vsctl show
+a9fc1666-0bb4-48a6-8f5c-1c8b92431ef6
+    Manager "ptcp:6640:127.0.0.1"
+        is_connected: true
+    Bridge br-tun
+        Controller "tcp:127.0.0.1:6633"
+            is_connected: true
+        fail_mode: secure
+        Port "vxlan-080058ca"
+            Interface "vxlan-080058ca"
+                type: vxlan
+                options: {df_default="true", in_key=flow, local_ip="8.0.88.204", out_key=flow, remote_ip="8.0.88.202"}
+...
+```        
+
+当控制器处于连接状态时，OVS中的所有流表(当然是指OpenFlow flow)都由控制器下发和维护，这没问题。但如果OVS到控制器的连接中断了，OVS中的流表无法得到更新，此时OVS该如何处理呢，这就是`fail_mode: secure`配置的作用，这个参数决定了OVS在连接控制器异常时该如何操作，可选值为`standalone`,或`secure`   
+
+-  standalone   
+
+OVS每隔`inactivity_probe`秒尝试连接一次控制器，重试三次，三次仍失败之后，OVS会转变为一个普通的MAC地址学习交换机。但是OVS仍会在后台尝试连接Controller，一旦连接成功，就会重新转变为OpenFlow交换机，依靠流表完成转发    
+
+- secure      
 
 pass
 
-# OVS工作模式      
+下面是设置Controller命令     
 
-OVS有多种工作模式，默认情况下使用`ovs-vsctl`创建的OVS bridge没有连接任何openflow控制器，其内部也没有openflow flow规则，此时OVS就像物理世界中的二层交换机一样(类似Linux bridge)，其数据包转发完全依靠MAC地址学习完成。当然，OVS也可以连接OpenFLow控制器作为一个SDN交换机(比如OpenStack Neutron OVS+vxlan/gre网络模式)，这是OVS比Linux Bridge强大之处，这里根据OpenStack Neutron中对OVS的使用总结一下OVS不同的工作模式                    
-  
-**使用OpenFlow flows的转发策略**            
+``` shell
+#获取br0网桥Controller 
+ovs-vsctl get-controller br0
+#设置OpenFlow控制器,控制器地址为192.168.1.10，端口为6633
+ovs-vsctl set-controller br0 tcp:192.168.1.10:6633
+#删除controller
+ovs-vsctl del-controller br0
+```       
 
-- 此时OVS连接有OpenFLow控制器，控制器下发flows到OVS，OVS按照下发的flows执行数据转发。当有新的MAC地址加入(新建vm)，或者MAC地址从一个Port移到另一个Port上时(vm迁移)，控制器会更新流表规则以匹配此改变，可见OpenFLow控制器决定着OVS中的数据包转发规则，需要注意的是一个控制器可以管理多台计算节点上的OVS     
+关于OVS中vlan的使用，下篇文章会单独介绍(本文完)    
 
-- 比如openstack OVS+Vxlan网络部署模式下的`br-tun`网桥就是依据OpenFlow flows完成转发，其连接了一个OpenFlow控制器`Controller "tcp:127.0.0.1:6633"`                 
 
-- 还有一些其它话题，比如当某条流表项中的执行动作为`normal`时，OpenFlow会把匹配到这条规则的数据包丢给OVS自身处理，这些数据包就不再匹配其它的流表规则。还有当外部控制器由于网络故障无法连接时，OVS会根据`fail_mode: secure`中的设置项决定要如何处理             
-
-**OpenFlow控制器+MAC地址学习**      
-
-- OpenFlow flows中执行动作action可以为`NORMAL`，`NORMAL`意思是丢给OVS自身完成转发，不再匹配flows。也即匹配到此flow的数据包之后会脱离flow，走正常的MAC学习转发策略。    
-
-- openstack OVS+Vxlan网络部署模式下的网桥`br-int`，`br-ext`就是这种模式，其连接了Neutron实现的OpenFlow控制器，也用到了`NORMAL`指令    
-
-- OVS自身就支持MAC学习的转发策略，跟上种模式一个明显的区别是OpenFlow只做必要的干预，干预后的数据包通过`NORMAL`使OVS对此数据包做后续的转发   
-         
-**基于MAC地址学习的转发策略**               
-
-- 此种模式下没有OpenFlow的参与，类似Linux Bridge，只是简单的基于MAC地址完成转发   
-
-- 考虑第一个数据包进入OVS的情况，由于之前没有任何数据包进入，也没有flows规则，OVS无法知道第一个数据包应该从哪个端口发出，此时只能依靠学习喽，OVS会把数据包转发到除了进入Port之外的所有Port，然后根据应答数据包的进入Port来学习MAC地址对应的Port，就像Linux Bridge那样。这种情况下OVS依然可以为Port设置Vlan tag，Linux Bridge不支持设置Vlan    
-
-- 使用ovs-vsctl新建的网桥，默认是没有控制器存在的，是一个简单的二层交换机        
-
-**手动建立流表规则**             
-
-- 前面提到`ovs-ofctl`工具可以通过OpenFlow协议配置OVS中的flows，那我们就自己`add-br`一个网桥，然后建立一些流表项观察数据包转发规则，测试或学习OpenFlow协议时可以这么干    
-
-上面介绍了三种工作模式，总结下就是若OVS中有openflow flow的存在，数据包就会先匹配流表规则      
-
-# OVS中使用vlan   
 
 

@@ -456,45 +456,7 @@ ovs-ofctl add-flow br0 idle_timeout=0,dl_type=0x0800,nw_proto=1,actions=output:1
 ovs-ofctl del-flows br0 "in_port=100"    
 ```      
 
-`ovs-vsctl`是一个综合的配置管理工具，`ovsdb-client`倾向于从数据库中查询某些信息，而`ovsdb-tool`是维护数据库文件工具       
-
-# Neutron实现的OpenFLow控制器             
-
-OpenStack Neutron中实现了一个OpenFlow控制器，来管理OVS和其上的VMs，在每一个运行`neutron-openvswitch-agent`的计算节点上，Neutron默认都建立了一个本地控制器`Controller "tcp:127.0.0.1:6633"`，该节点上的所有Bridge `br-int/br-tun/br-ext`等都连接到此Controller上，相关配置参考`/etc/neutron/plugins/ml2/openvswitch_agent.ini`中`[OVS]`      
-
-``` shell
-cat /etc/neutron/plugins/ml2/openvswitch_agent.ini
-[ovs]
-...
-# Address to listen on for OpenFlow connections. Used only for 'native' driver.
-# (IP address value)
-#of_listen_address = 127.0.0.1
-
-# Port to listen on for OpenFlow connections. Used only for 'native' driver.
-# (port value)
-# Minimum value: 0
-# Maximum value: 65535
-#of_listen_port = 6633
-...
-```   
-
-运行`neutron-openvswitch-agent`的计算节点中网桥`br-tun`上连接的控制器       
-
-``` shell
-ovs-vsctl show
-a9fc1666-0bb4-48a6-8f5c-1c8b92431ef6
-    Manager "ptcp:6640:127.0.0.1"
-        is_connected: true
-    Bridge br-tun
-        Controller "tcp:127.0.0.1:6633"
-            is_connected: true
-        fail_mode: secure
-        Port "vxlan-080058ca"
-            Interface "vxlan-080058ca"
-                type: vxlan
-                options: {df_default="true", in_key=flow, local_ip="8.0.88.204", out_key=flow, remote_ip="8.0.88.202"}
-...
-```  
+`ovs-vsctl`是一个综合的配置管理工具，`ovsdb-client`倾向于从数据库中查询某些信息，而`ovsdb-tool`是维护数据库文件工具         
 
 文章地址http://www.isjian.com/openstack/openstack-base-use-openvswitch/     
 
