@@ -257,15 +257,17 @@ a9fc1666-0bb4-48a6-8f5c-1c8b92431ef6
 ...
 ```        
 
-当控制器处于连接状态时，OVS中的所有流表(当然是指OpenFlow flow)都由控制器下发和维护，这没问题。但如果OVS到控制器的连接中断了，OVS中的流表无法得到更新，此时OVS该如何处理呢，这就是`fail_mode: secure`配置的作用，这个参数决定了OVS在连接控制器异常时该如何操作，可选值为`standalone`,或`secure`   
+当控制器处于连接状态时，OVS中的所有流表(当然是指OpenFlow flow)都由控制器下发和维护，这没问题。但如果OVS到控制器的连接中断了，OVS中的流表无法得到更新，此时OVS该如何处理呢，这就是`fail_mode: secure`配置的作用，这个参数决定了OVS在连接控制器异常时该如何操作，可选值为`standalone`,或`secure`      
 
 -  standalone   
 
-OVS每隔`inactivity_probe`秒尝试连接一次控制器，重试三次，三次仍失败之后，OVS会转变为一个普通的MAC地址学习交换机。但是OVS仍会在后台尝试连接Controller，一旦连接成功，就会重新转变为OpenFlow交换机，依靠流表完成转发    
+OVS每隔`inactivity_probe`秒尝试连接一次控制器，重试三次，三次仍失败之后，OVS会转变为一个普通的MAC地址学习交换机(上面提到的OVS工作模式)。但是OVS仍会在后台尝试连接Controller，一旦连接成功，就会重新转变为OpenFlow交换机，依靠流表完成转发    
 
 - secure      
 
-pass
+当Controller连接失败或没配置Controller时，OVS自身不会设置任何flow，它只会尝试重连Controller        
+
+`fail_mode`的默认值为standalone，当配置有多个Controller时，只有所有的Controller都连接失败，此参数才会起作用     
 
 下面是设置Controller命令     
 
@@ -278,8 +280,6 @@ ovs-vsctl set-controller br0 tcp:192.168.1.10:6633
 ovs-vsctl del-controller br0
 ```       
 
-关于OVS中vlan的使用，下篇文章会单独介绍(本文完)    
-
-
+关于OVS中vlan的使用，下篇文章会单独介绍(本文完)      
 
 
