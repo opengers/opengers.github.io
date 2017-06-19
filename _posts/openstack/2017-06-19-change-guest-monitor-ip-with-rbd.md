@@ -136,3 +136,6 @@ ok，在线迁移没问题，接下来，我们先更改虚拟机xml文件中mon
  7     rbdguest                       running
 ```
 
+# 更改monitor ip原理分析      
+
+待续...
