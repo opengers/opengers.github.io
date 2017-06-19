@@ -2,8 +2,8 @@
 title: "openstack底层技术-实例磁盘扩容及格式转换"
 author: opengers
 layout: post
-permalink: /virtualization/openstack-instance-disk-resize-and-convert/
-categories: virtualization
+permalink: /openstack/openstack-instance-disk-resize-and-convert/
+categories: openstack
 tags:
   - openstack
   - kvm
