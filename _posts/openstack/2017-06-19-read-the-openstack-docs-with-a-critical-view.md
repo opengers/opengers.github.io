@@ -1,5 +1,5 @@
 ---
-title: "不要尽信openstack官方文档"
+title: "openstack官方文档中的一些多余配置"
 author: opengers
 layout: post
 permalink: /openstack/read-the-openstack-docs-with-a-critical-view/
