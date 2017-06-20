@@ -11,7 +11,7 @@ tags:
 format: quote
 ---
 
-><small>使用rbd块设备的虚拟机其xml文件中配置有monitor ip，本文介绍如何在虚拟机不重启条件下处理其monitor ip</small>     
+><small>使用rbd块设备的虚拟机其xml文件中配置有monitor ip，本文讨论下在ceph集群monitor ip更改之后，是否需要更改虚拟机xml中的monitor ip</small>     
 
 * TOC
 {:toc}
@@ -34,7 +34,7 @@ Ceph中使用最广泛最成熟的应该是RBD块设备，Ceph提供了librbd库
     </disk>
 ```
 
-可以看到此虚拟机磁盘连接的rbd块设备为`vms/centos7-20689`，其配置有一台monitor 172.16.200.117，monitor端口为默认的6789。那么，假如我们的ceph集群添加或删除monitor或者某台monitor挂掉，总之就是ceph集群的`monmap`地址需要改变，那怎么处理虚拟机中已经设置的monitor ip呢，虚拟机上可能已运行有业务，不能重启               
+可以看到此虚拟机磁盘连接的rbd块设备为`vms/centos7-20689`，其配置有一台monitor 172.16.200.117，monitor端口为默认的6789。那么，假如我们的ceph集群添加或删除monitor或者某台monitor挂掉，总之就是ceph集群的`monmap`地址改变了，那怎么处理虚拟机中已经设置的monitor ip呢，虚拟机上可能已运行有业务，不能重启               
 
 # 查看虚拟机当前连接的monitor ip          
 
@@ -114,7 +114,7 @@ tcp        0      0 172.16.200.116:27739    172.16.200.116:6789     ESTABLISHED 
 
 # 总结      
 
-因此，其实根本就不用去更改虚拟机设置的monitor ip，当你更改集群的`monmap`，虚拟机会同步更新其自身保存的`monmap`,从而使用更新后的ip连接monitor，而连接monitor之后，就能获取集群的`osdmap`，从而连接rbd设备    
+因此，结论是不用更改虚拟机设置的monitor ip，当你更改集群的`monmap`，虚拟机会同步更新其自身保存的`monmap`,从而使用更新后的ip连接monitor，而连接monitor之后，就能获取集群的`osdmap`，从而连接rbd设备    
 
 当然，为了永久生效，还是应该使用`virsh edit`更改下xml中配置的monitor，仅仅是为了下次虚拟机关机再开机之后，能够正常连接ceph获取monmap       
 (本文完)    
