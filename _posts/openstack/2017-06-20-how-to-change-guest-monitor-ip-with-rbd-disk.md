@@ -1,5 +1,5 @@
 ---
-title: "如何更改使用rbd磁盘的虚拟机的monitor ip"
+title: "如何更改基于rbd块设备的虚机的monitor ip"    
 author: opengers
 layout: post
 permalink: /openstack/how-to-change-guest-monitor-ip-with-rbd-disk/
@@ -36,7 +36,7 @@ Ceph中使用最广泛最成熟的应该是RBD块设备，Ceph提供了librbd库
 
 可以看到此虚拟机磁盘连接的rbd块设备为`vms/centos7-20689`，其配置有一台monitor 172.16.200.117，monitor端口为默认的6789。那么，假如我们的ceph集群添加或删除monitor或者某台monitor挂掉，总之就是ceph集群的`monmap`地址需要改变，那怎么处理虚拟机中已经设置的monitor ip呢，虚拟机上可能已运行有业务，不能重启               
 
-# 虚拟机是如何连接monitor的     
+# 查看虚拟机当前连接的monitor ip          
 
 我们先来做个测试    
 
@@ -97,7 +97,7 @@ tcp        0      0 172.16.200.116:27739    172.16.200.116:6789     ESTABLISHED 
 
 现在问题是，我们虚拟机xml中配置的monitor是172.16.200.117，之前查看`qemu-kvm`进程其设置的也只有`mon_host=172.16.200.117\:6789`，那当monitor 172.16.200.117挂掉之后，虚拟机是如何切换到 monitor 172.16.200.116上的呢          
 
-# 连接monitor原理分析         
+# 虚拟机连接rbd磁盘过程分析             
 
 原因在于虚拟机进程`qemu-kvm`选择连接哪个monitor是依靠其获取的`monmap`来决定的，而不是仅仅连接其xml中配置的那个monitor，我们从头来分析下虚拟机启动连接rbd磁盘流程           
 
