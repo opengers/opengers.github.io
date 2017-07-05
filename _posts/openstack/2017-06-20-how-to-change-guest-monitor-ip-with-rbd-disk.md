@@ -8,7 +8,6 @@ tags:
   - openstack
   - libvirt
   - rbd
-format: quote
 ---
 
 ><small>使用rbd块设备的虚拟机其xml文件中配置有monitor ip，本文讨论下在ceph集群monitor ip更改之后，是否需要更改虚拟机xml中的monitor ip</small>     
