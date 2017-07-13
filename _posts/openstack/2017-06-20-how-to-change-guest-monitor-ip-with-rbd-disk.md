@@ -2,6 +2,7 @@
 title: "如何更改基于rbd块设备的虚机的monitor ip"    
 author: opengers
 layout: post
+comments: true
 permalink: /openstack/how-to-change-guest-monitor-ip-with-rbd-disk/
 categories: openstack
 tags:

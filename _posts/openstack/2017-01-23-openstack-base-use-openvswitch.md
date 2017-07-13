@@ -41,7 +41,7 @@ OVS支持以下[features](http://openvswitch.org/features/)
 ``` shell
 centos7
 openvswitch 2.5
-OpenFlow 1.4`
+OpenFlow 1.4
 ```  
 
 # OVS架构      
@@ -312,14 +312,13 @@ OpenFlow控制器。OVS可以同时接受一个或者多个OpenFlow控制器的�
 
 ### datapath       
 
-OVS内核模块，负责执行数据交换。其内部有作为缓存使用的flows，关于datapath，下面会细说        
+OVS内核模块，负责执行数据交换。其内部有作为缓存使用的flows，上面已经介绍过        
 
-### 流(flows)         
+# OVS中的各种流(flows)           
 
 flows是OVS进行数据转发策略控制的核心数据结构，区别于Linux Bridge是个单纯基于MAC地址学习的二层交换机，flows的存在使OVS作为一款SDN交换机成为云平台网络虚拟机化主要组件          
 
 OVS中有多种flows存在，用于不同目的，但最主要的还是OpenFlow flows这种，文中未明确说明的flows都是指OpenFlow flows                    
-
 - **OpenFlow flows**          
    
 OVS中最重要的一种flows，Controller控制器下发的就是这种flows，OVS架构部分已经简单介绍过，关于openflow的具体使用，会在另一篇文章中说明   
