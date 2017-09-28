@@ -133,7 +133,7 @@ ONBOOT=yes
 VLAN=yes
 
 #查看eth1.101，可以看到，其driver为VALN
-[root@test1 ~]# ethtool -i eth1.101
+#ethtool -i eth1.101
 driver: 802.1Q VLAN Support
 version: 1.8
 ...
@@ -154,7 +154,7 @@ br100         8000.525400315e23       no              eth1.100
 br101         8000.525400315e23       no              eth1.101
 ```
 
-VLAN设备的作用是建立一个个带不同vlan tag的子设备，它并不能建立多个可以交换转发数据的接口，因此需要借助于Bridge，把VLAN建立的子设备例如eth1.100桥接到网桥br100上，这样凡是桥接到br100上的接口就自动加入了vlan 100子网。对比下一台带有两个vlan 100，101网络的物理交换机，这里br100所连接的接口相当于物理交换机上那些划分到vlan 100的端口，而br101所连接的接口相当于物理交换机上那些划分到vlan 101的端口。因此Bridge加VLAN能在功能层面完整模拟现实世界里的802.1.q交换机。     
+VLAN设备的作用是建立一个个带不同vlan tag的子设备，它并不能建立多个可以交换转发数据的接口，因此需要借助于Bridge，把VLAN建立的子设备例如eth1.100桥接到网桥br100上，这样凡是桥接到br100上的接口就自动加入了vlan 100子网。对比一台带有两个vlan 100，101的物理交换机，这里br100所连接的接口相当于物理交换机上那些划分到vlan 100的端口，而br101所连接的接口相当于物理交换机上那些划分到vlan 101的端口。因此Bridge加VLAN能在功能层面完整模拟现实世界里的802.1.q交换机。     
 
 下面，我们从网桥br100上vnet1接口角度，来看下具体的数据收发流程：  
 
@@ -166,15 +166,83 @@ vnet1发送数据到br100-->br100把数据从eth1.100发出-->母设备收到eth
 
 eth1从所连接的交换机收到tag 100的数据-->eth1发现此数据带有tag 100,移除数据包中tag-->不带tag的数据发给eth1.100-->br100收到从eth1.100进入的数据包-->br100转发数据到vnet1            
 
-上面忽略了对于数据包是否带tag，以及数据包所带tag的子设备是否存在的检查。     
+上面忽略了对于数据包是否带tag，以及数据包所带tag的子设备是否存在的检查。这些属于vlan基础知识      
 
-**openstack中的vlan**    
+**openstack中的vlan设置**    
 
+openstack网络使用VLAN模式的话，就会用到VLAN设备。openstack中配置vlan+bridge如下
 
+``` shell
+#neutron-server节点(网络节点)配置 
+#cat /etc/neutron/plugins/ml2/ml2_conf.ini
+[ml2]
+#neutron-server启动时，加载flat，vlan两种网络类型驱动   
+type_drivers = flat,vlan
+#vlan模式不需要tenant_network，留空    
+tenant_network_types =
+#neutron-server启动时加载linuxbridge和openvswitch网桥驱动    
+mechanism_drivers = linuxbridge,openvswitch
 
+[ml2_type_flat]
+#在命令行或控制台新建flat类型网络时需要指定的名称，此名称会配置映射到计算节点上某块做外网的网卡，下面会设置
+flat_networks = proext
 
+[ml2_type_vlan]
+#在命令行或控制台新建vlan类型网络时需要指定的名称，此名称会配置映射到计算节点上某块做vlan网络的网卡，下面会设置
+network_vlan_ranges = provlan
 
+#重启neutron-server服务  
 
+#使用Bridge+vlan网络模式的nova-compute节点(计算节点)配置 
+#cat /etc/neutron/plugins/ml2/linuxbridge_agent.ini
+[linux_bridge]
+#provlan名称映射到此计算节点eth2网卡，因为使用vlan模式，eth2需要设置为trunk
+#proext名称映射到此计算节点eth3网卡，eth3网卡为虚拟机外网网络接口       
+physical_interface_mappings = provlan:eth2,proext:eth3
+
+#重启此计算节点nova-compute服务   
+#配置中只需要指定vlan要用的母设备eth2，后续控制台新建带tag的网络时，neutron会自动建立eth2.{TAG}子设备并加入到网桥    
+```    
+
+在控制台新建一个vlan tag为1023的虚拟机网络subvlan-1023，使用此subvlan-1023网络新建几台虚拟机，看下计算节点上网桥配置       
+
+``` shell
+[root@compute03 neutron]# brctl show
+bridge name     bridge id               STP enabled     interfaces
+brq82405415-7a          8000.52540048b1a9       no              eth2.1023
+                                                        tap10f15e45-aa
+                                                        tapa659a214-b1
+brqf5808b72-44          8000.5254001ac83d       no              eth3
+                                                        tapd3388a60-ae
+                                              
+[root@compute03 neutron]# virsh domiflist instance-00000145
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+tapa659a214-b1 bridge     brq82405415-7a virtio      fa:16:3e:bc:c9:e0
+```
+
+虚拟机`instance-00000145`网卡`tapa659a214-b1`桥接到`brq82405415-7a`。跟上面介绍的类似，桥接到`brq82405415-7a`上的接口设备就自动加入了vlan 1023子网，因此虚拟机`instance-00000145`属于vlan 1023子网。   
+
+假如在控制台或命令行再新建一个tag为1024的子网，则网桥配置如下    
+
+``` shell
+[root@compute03 neutron]# brctl show
+bridge name     bridge id               STP enabled     interfaces
+brq82405415-7a          8000.52540048b1a9       no              eth2.1023
+                                                        tap10f15e45-aa
+                                                        tapa659a214-b1
+brq7d59440b-cc          8000.525400aabbcc       no              eth2.1024
+                                                        tap20ffafb2-1b
+brqf5808b72-44          8000.5254001ac83d       no              eth3
+                                                        tapd3388a60-ae
+                                                        
+[root@compute03 neutron]# virsh domiflist instance-00000147
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+tap20ffafb2-1b bridge     brq7d59440b-cc virtio      fa:16:3e:bd:12:40
+```  
+
+虚拟机`instance-00000147`网卡`tap20ffafb2-1b`桥接到`brq7d59440b-cc`,虚拟机`instance-00000147`属于vlan 1024子网,因此虚拟机`instance-00000145`与`instance-00000147`将不互通，他们分属不同子网    
 
 
 # TUN/TAP      
