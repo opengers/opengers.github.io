@@ -1,8 +1,8 @@
 ---
-title: openstack底层技术-使用虚拟网络设备
+title: openstack底层技术-linux上虚拟网络设备的应用一(Bridge+VLAN)
 author: opengers
 layout: post
-permalink: /openstack/openstack-base-virtual-network-devices/
+permalink: /openstack/openstack-base-virtual-network-devices-part1-bridge-and-vlan/
 categories: openstack
 tags:
   - openstack
@@ -244,6 +244,77 @@ tap20ffafb2-1b bridge     brq7d59440b-cc virtio      fa:16:3e:bd:12:40
 
 虚拟机`instance-00000147`网卡`tap20ffafb2-1b`桥接到`brq7d59440b-cc`,虚拟机`instance-00000147`属于vlan 1024子网,因此虚拟机`instance-00000145`与`instance-00000147`将不互通，他们分属不同子网    
 
+感谢Bridge和VLAN设备，他们让openstack配置vlan网络成了可能，BUT!, Bridge+VLAN不是唯一的选择，openstack也支持OVS，OVS中是靠给不同instance接口打不同tag来实现instance的多vlan环境，OVS模式除了配置部分跟Bridge+VLAN不同之外，使用上并没有什么区别，这里的设置`mechanism_drivers = linuxbridge,openvswitch`加载相应驱动，屏蔽掉了底层操作的差别   
+
+与Bridge中`provlan，proext`映射到计算节点网卡的配置不同，OVS配置文件中映射关系为vlan类型网络`provlan`映射到网桥`br-vlan`，flat类型网络`proext`映射到网桥`br-ext`。至于`br-vlan`桥接eth2网卡，`br-ext`桥接eth3网卡则需要预先手动配置好，来看一个使用OVS的计算节点网桥     
+ 
+``` shell
+[root@compute01 neutron]# ovs-vsctl show
+dd7ccaae-6a24-4d28-8577-9e5e6b5dfbd3
+    Manager "ptcp:6640:127.0.0.1"
+        is_connected: true
+    Bridge br-ext
+        Controller "tcp:127.0.0.1:6633"
+            is_connected: true
+        fail_mode: secure
+        Port phy-br-ext
+            Interface phy-br-ext
+                type: patch
+                options: {peer=int-br-ext}
+        Port br-ext
+            Interface br-ext
+                type: internal
+        Port "eth3"
+            Interface "eth3"
+    Bridge br-vlan
+        Controller "tcp:127.0.0.1:6633"
+            is_connected: true
+        fail_mode: secure
+        Port br-vlan
+            Interface br-vlan
+                type: internal
+        Port phy-br-vlan
+            Interface phy-br-vlan
+                type: patch
+                options: {peer=int-br-vlan}
+        Port "eth2"
+            Interface "eth2"
+    Bridge br-int
+        Controller "tcp:127.0.0.1:6633"
+            is_connected: true
+        fail_mode: secure
+        Port int-br-ext
+            Interface int-br-ext
+                type: patch
+                options: {peer=phy-br-ext}
+        Port br-int
+            Interface br-int
+                type: internal
+        Port int-br-vlan
+            Interface int-br-vlan
+                type: patch
+                options: {peer=phy-br-vlan}
+        Port "qvo7d59440b-cc"
+            tag: 1
+            Interface "qvo7d59440b-cc"
+    ovs_version: "2.5.0"
+[root@compute01 neutron]# brctl show
+bridge name     bridge id               STP enabled     interfaces
+qbr7d59440b-cc          8000.26d03016fcf6       no              qvb7d59440b-cc
+                                                        tap7d59440b-cc
+                                                        
+#查看虚拟机网卡
+[root@compute01 neutron]# virsh domiflist instance-00000149
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+tap7d59440b-cc bridge     qbr7d59440b-cc virtio      fa:16:3e:12:ba:e6
+``` 
+
+`instance-00000149`出数据流向为`tap7d59440b-cc --> qbr7d59440b-cc --> qvo7d59440b-cc(tag 1) --> br-int --> br-vlan --> eth2` qbr7d59440b-cc 与 qvo7d59440b-cc为一对veth设备    
+
+这其中牵涉OVS流表和OVS内外部tag转换问题，又足够写一篇文章来介绍了，本文暂不继续介绍。还有一点，在使用OVS做网桥的同时又开启安全组功能时，会多出一个Bridge网桥用于设置安全组，如上面的`qbr7d59440b-cc`, 因为目前iptables不支持OVS，只能在虚拟机与OVS网桥之间加进一个Bridge网桥用于设置iptables规则          
+
+感谢Bridge和VLAN设备!      
 
 # TUN/TAP      
 
