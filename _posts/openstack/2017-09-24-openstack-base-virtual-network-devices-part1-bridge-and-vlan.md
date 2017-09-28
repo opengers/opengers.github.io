@@ -6,8 +6,8 @@ permalink: /openstack/openstack-base-virtual-network-devices-part1-bridge-and-vl
 categories: openstack
 tags:
   - openstack
-  - tun/tap
-  - veth
+  - bridge
+  - vlan
 ---
 
 * TOC
@@ -47,8 +47,8 @@ Bridge是Linux上工作在内核协议栈二层的虚拟交换机，它可以绑
 - 单播&&存在于MAC端口映射表，查表直接转发到对应接口(vnet1)          
 - 单播&&不存在于MAC端口映射表，泛洪到Bridge连接的所有接口           
 - 数据包目的地址接口不是网桥接口，桥不处理，交给上层协议栈           
-
-*Bridge设置防火墙*        
+ 
+### Bridge与防火墙               
 
 Linux防火墙是通过`netfiler`这个内核框架实现，`netfiler`用于管理网络数据包。不仅具有网络地址转换(NAT)的功能，也具备数据包内容修改、以及数据包过滤等防火墙功能。利用运作于用户空间的应用软件，如iptables等来控制`netfilter`。Netfilter在内核协议栈中指定了五个处理数据包的钩子(hook)，分别是PRE_ROUTING、INPUT、OUTPUT、FORWARD与POST_ROUTING，通过iptables/ebtables等用户层工具向这些hook点注入一些数据包处理函数来实现包过滤等功能。iptables工作在IP层，只能过滤IP数据包；ebtables工作在数据链路层，只能过滤以太网帧(比如匹配源目的MAC地址)。Bridge的出现使Linux上设置防火墙变得复杂。没有Bridge存在时，Linux主机从某个网卡收到的数据包当然都是发往本机的，数据包会依次经过...,链路层(ebtables)，IP层(iptables),...解封装最后到达应用层，这样当数据到达IP层时可以很方便用iptables过滤。但是若Bridge存在时，可以参考上图，Bridge上的接口vnet0从外部收到二层数据包，关键在于此数据包不一定是发往本机，可能是发往Bridge上的另一个接口`vnet1`(tap设备，连接用户层程序，比如`qemu-kvm`)，此时`bridging decision`之后，数据包会经过链路层防火墙规则之后被转发到连接`vnet1`的vm(此时数据包进入虚拟机内部)。可以看出来，整个过程此数据包不会进入主机内核协议栈IP层(上图中向上的箭头路径)，因此位于主机IP层的iptables根本无法过滤从vnet0到vnet1的数据包。如果从防火墙角度看，在`bridging decision`之后，数据包会走链路层防火墙ebtables的`forward`链(上图中蓝色方框的`filter-forward`)，但是ebtables只能过滤数据包的二层地址。   
 
@@ -95,15 +95,17 @@ br1             8000.f8bc1212c3a0       no              em1
 ...
 ```
  
-Bridge+netfilter内容很多，下次会专门用一篇文章介绍OpenStack中的安全组实现，关键字有 `iptables+bridge+netfilter+conntrack`        
+Bridge+netfilter内容很多，下次会专门用一篇文章介绍OpenStack中的安全组实现，关键字 `iptables+bridge+netfilter+conntrack`        
 
-Linux上与Bridge类似都可以作为虚拟交换机的是OVS，主要区别是OVS支持vlan tag以及流表(例如openflow)等一些高级特性，Bridge只是单纯二层交换机也不支持vlan tag，OVS具体介绍参考这里[openstack底层技术-使用openvswitch](http://www.isjian.com/openstack/openstack-base-use-openvswitch/)         
+Linux上还有一款虚拟交换机OVS，主要区别是OVS支持vlan tag以及流表(例如openflow)等一些高级特性，Bridge只是单纯二层交换机也不支持vlan tag，OVS具体介绍参考这里[openstack底层技术-使用openvswitch](http://www.isjian.com/openstack/openstack-base-use-openvswitch/)         
 
 # VLAN       
 
-这部分先介绍VLAN设备原理及配置，然后介绍VLAN在openstack中的应用    
+上面简单介绍过Bridge和OVS区别，要在Linux上实现一个带VLAN功能的虚拟交换机，OVS可以通过给不同port打不同tag实现vlan功能，而Bridge需要结合VLAN设备才能实现。     
 
-上面简单介绍过Bridge和OVS区别，要在Linux上实现一个带VLAN功能的虚拟交换机，OVS可以通过给不同port打不同tag实现vlan功能，而Bridge需要结合VLAN设备才能实现。   
+这部分先介绍VLAN设备原理及配置，然后介绍VLAN在openstack中的应用      
+
+### VLAN设备原理及配置    
 
 VLAN又称虚拟网络，其基本原理是在二层协议里插入额外的VLAN协议数据（称为 802.1.q VLAN Tag)，同时保持和传统二层设备的兼容性。Linux 里的VLAN设备是对 802.1.q 协议的一种内部软件实现，模拟现实世界中的 802.1.q 交换机。详细介绍参考文章开头给出的IBM文章中"VLAN device for 802.1.q"部分，这里不再重复    
 
@@ -162,15 +164,15 @@ VLAN设备的作用是建立一个个带不同vlan tag的子设备，它并不�
 
 - vnet1发送数据      
 
-vnet1发送数据到br100 --> br100把数据从eth1.100发出 --> 母设备收到eth1.100发来的数据 --> 母设备eth1给数据打上100的vlan tag --> eth1将带有100 tag的数据发出 --> eth1连接的交换机收到数据(trunk口)        
+`vnet1发送数据到br100 --> br100把数据从eth1.100发出 --> 母设备收到eth1.100发来的数据 --> 母设备eth1给数据打上100的vlan tag --> eth1将带有100 tag的数据发出 --> eth1连接的交换机收到数据(trunk口)`           
 
 - vnet1接收数据
 
-eth1从所连接的交换机收到tag 100的数据 --> eth1发现此数据带有tag 100,移除数据包中tag --> 不带tag的数据发给eth1.100 --> br100收到从eth1.100进入的数据包 --> br100转发数据到vnet1            
+`eth1从所连接的交换机收到tag 100的数据 --> eth1发现此数据带有tag 100,移除数据包中tag --> 不带tag的数据发给eth1.100 --> br100收到从eth1.100进入的数据包 --> br100转发数据到vnet1`                 
 
-上面忽略了对于数据包是否带tag，以及数据包所带tag的子设备是否存在的检查。这些属于vlan基础知识      
+上面忽略了对于数据包是否带tag，以及数据包所带tag的子设备是否存在的检查。这些属于vlan基础知识         
 
-**openstack中的vlan设置**    
+### VLAN在openstack中的应用           
 
 openstack中虚拟机网络使用VLAN模式的话，就会用到VLAN设备。openstack中配置vlan+bridge模式如下
 
@@ -314,6 +316,6 @@ tap7d59440b-cc bridge     qbr7d59440b-cc virtio      fa:16:3e:12:ba:e6
 
 `instance-00000149`出数据流向为`tap7d59440b-cc --> qbr7d59440b-cc --> qvo7d59440b-cc(tag 1) --> br-int --> br-vlan --> eth2`。qbr7d59440b-cc 与 qvo7d59440b-cc 为一对veth设备    
 
-这其中牵涉OVS流表和OVS内外部tag转换问题，又足够写一篇文章来介绍了，本文暂不继续介绍。还有一点，在使用OVS做网桥的同时又开启安全组功能时，会多出一个Bridge网桥用于设置安全组，如上面的`qbr7d59440b-cc`, 因为目前iptables不支持OVS，只能在虚拟机与OVS网桥之间加进一个Bridge网桥用于设置iptables规则      
+这其中牵涉OVS流表和OVS内外部tag转换问题，又足够写一篇文章来介绍了，本文暂不继续介绍。还有一点，在使用OVS做网桥的同时又开启安全组功能时，会多出一个Bridge网桥用于设置安全组，如上面的`qbr7d59440b-cc`, 因为目前iptables不支持OVS，只能在虚拟机与OVS网桥之间加进一个Bridge网桥用于设置iptables规则        
 
-其它网络设备会在另一篇文章介绍，本文完     
+其它网络设备会在另一篇文章part2介绍，本文完      
