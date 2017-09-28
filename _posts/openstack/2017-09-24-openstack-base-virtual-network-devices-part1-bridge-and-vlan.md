@@ -1,5 +1,5 @@
 ---
-title: openstack底层技术-linux上虚拟网络设备的应用一(Bridge+VLAN)
+title: openstack底层技术-各种虚拟网络设备之一(Bridge,VLAN)
 author: opengers
 layout: post
 permalink: /openstack/openstack-base-virtual-network-devices-part1-bridge-and-vlan/
@@ -314,8 +314,6 @@ tap7d59440b-cc bridge     qbr7d59440b-cc virtio      fa:16:3e:12:ba:e6
 
 `instance-00000149`出数据流向为`tap7d59440b-cc --> qbr7d59440b-cc --> qvo7d59440b-cc(tag 1) --> br-int --> br-vlan --> eth2`。qbr7d59440b-cc 与 qvo7d59440b-cc 为一对veth设备    
 
-这其中牵涉OVS流表和OVS内外部tag转换问题，又足够写一篇文章来介绍了，本文暂不继续介绍。还有一点，在使用OVS做网桥的同时又开启安全组功能时，会多出一个Bridge网桥用于设置安全组，如上面的`qbr7d59440b-cc`, 因为目前iptables不支持OVS，只能在虚拟机与OVS网桥之间加进一个Bridge网桥用于设置iptables规则          
+这其中牵涉OVS流表和OVS内外部tag转换问题，又足够写一篇文章来介绍了，本文暂不继续介绍。还有一点，在使用OVS做网桥的同时又开启安全组功能时，会多出一个Bridge网桥用于设置安全组，如上面的`qbr7d59440b-cc`, 因为目前iptables不支持OVS，只能在虚拟机与OVS网桥之间加进一个Bridge网桥用于设置iptables规则      
 
-感谢Bridge和VLAN设备!      
-
-其它网络设备会在另一篇文章介绍，本文完    
+其它网络设备会在另一篇文章介绍，本文完     
