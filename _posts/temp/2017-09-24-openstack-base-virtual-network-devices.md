@@ -40,9 +40,9 @@ Bridge是Linux上一款工作在数据链路层的虚拟交换机，它可以绑
 
 ![bridge](/images/openstack/openstack-virtual-devices/bridge.png)  
 
-当Bridge从某个接口(vnet0)收到数据包后，对数据包的处理有如下几种，也就是上图中的`bridging decision`位置：   
+上图网桥`br0`有`vnet0`,`vnet1`两个接口，数据从`vnet0`发往`vnet1`所连接的vm，首先`vnet0`把收到的数据发给Bridge处理(主机网络协议栈中的数据链路层)，经过`bridging decision`以及防火墙(若设置有防火墙)，数据最后从`vnet1`发出，此时vm的eth0网卡收到数据包。`bridging decision`中Bridge对数据包的处理，有以下几种：     
 
-- 包目的MAC为Bridge本身MAC地址，就是收到发往主机自身的数据包，交给上层协议栈(`br0 本机`)，当然无需转发给其它接口     
+- 包目的MAC为Bridge本身MAC地址，就是收到发往主机自身的数据包，交给上层协议栈(图中向上箭头)，当然无需转发给其它接口       
 - 广播包，转发到Bridge上的所有接口      
 - 单播&&存在于MAC端口映射表，查表直接转发到对应接口(vnet1)          
 - 单播&&不存在于MAC端口映射表，泛洪到Bridge连接的所有接口           
@@ -50,15 +50,14 @@ Bridge是Linux上一款工作在数据链路层的虚拟交换机，它可以绑
 
 *Bridge设置防火墙*        
 
-Linux上防火墙是通过`netfiler`这个内核框架实现，用户层工具则是iptables/ebtables等。iptables工作在IP层，只能过滤IP数据包；ebtables则工作在数据链路层，只能过滤以太网帧(比如匹配源目的MAC地址)。Bridge的出现使Linux上设置防火墙变得复杂，没有Bridge存在时，Linux主机从某个网卡收到的数据包都是发往本机的，数据包会依次经过...,链路层(ebtables)，IP层(iptables),...解封装最后到达应用层，这样当数据到达IP层时可以很方便用iptables过滤。但是若Bridge存在时，可以参考上图，Bridge上的接口vnet0从外部收到二层数据帧，关键在于此数据包不一定是发往本机，可能是发往Bridge上的另一个设备接口vnet1(tap设备，连接用户层程序，比如虚拟机网卡)，此时经过`bridging decision`之后，数据包会被转发到vnet1，结果是连接vnet1的虚拟机网卡eth0收到数据包(此时数据包已进入虚拟机内部)。可以看出来，整个过程此数据包不会进入主机内核协议栈上层(上图中向上的箭头路径)，因此位于主机IP层的iptables根本无法过滤此数据包(当然可以选择在虚拟机内部使用iptables过滤)。如果从防火墙角度看，在`bridging decision`之后，数据包会走链路层防火墙ebtables的`forward`链(上图中蓝色方框的`filter-forward`)        
+Linux上防火墙是通过`netfiler`这个内核框架实现，用户层工具则是iptables/ebtables等。iptables工作在IP层，只能过滤IP数据包；ebtables工作在数据链路层，只能过滤以太网帧(比如匹配源目的MAC地址)。Bridge的出现使Linux上设置防火墙变得复杂。没有Bridge存在时，Linux主机从某个网卡收到的数据包当然都是发往本机的，数据包会依次经过...,链路层(ebtables)，IP层(iptables),...解封装最后到达应用层，这样当数据到达IP层时可以很方便用iptables过滤。但是若Bridge存在时，可以参考上图，Bridge上的接口vnet0从外部收到二层数据包，关键在于此数据包不一定是发往本机，可能是发往Bridge上的另一个接口`vnet1`(tap设备，连接用户层程序，比如`qemu-kvm`)，此时`bridging decision`之后，数据包会经过链路层防火墙规则之后被转发到连接`vnet1`的vm(此时数据包进入虚拟机内部)。可以看出来，整个过程此数据包不会进入主机内核协议栈IP层(上图中向上的箭头路径)，因此位于主机IP层的iptables根本无法过滤从vnet0到vnet1的数据包。如果从防火墙角度看，在`bridging decision`之后，数据包会走链路层防火墙ebtables的`forward`链(上图中蓝色方框的`filter-forward`)，但是ebtables只能过滤数据包的二层地址。   
 
-><small>What is bridge-nf?       
-	
-It is the infrastructure that enables {ip,ip6,arp}tables to see bridged IPv4, resp. IPv6, resp. ARP packets. Thanks to bridge-nf, you can use these tools to filter bridged packets, letting you make a transparant firewall. Note that bridge-nf is also referred to as bridge-netfilter and br-nf, the term bridge-nf should be preferred.<small>    
+><small>What is bridge-nf?          
+It is the infrastructure that enables {ip,ip6,arp}tables to see bridged IPv4, resp. IPv6, resp. ARP packets. Thanks to bridge-nf, you can use these tools to filter bridged packets, letting you make a transparant firewall. Note that bridge-nf is also referred to as bridge-netfilter and br-nf, the term bridge-nf should be preferred.<small>      
   
 来自：[Bridge-nf Frequently Asked Questions](http://ebtables.netfilter.org/misc/brnf-faq.html)     
 
-为了解决以上问题，Linux内核引入了`bridge_netfilter`，简称`bridge_nf`。还是参考上图说明，它使得主机IP层防火墙工具{ip,ip6,arp}tables能够"看见"Bridge中二层数据包(Link Layer)，从而我们能够在主机上使用iptables过滤指定的数据包，不管此数据包是发给主机本身，还是通过Bridge转发给某台虚拟机。上图中绿色方框的`managle-forward`和`filter-forward`即是iptables插入到链路层的链。因此完整的说，在`bridging decision`之后，数据包会依次经过链路层防火墙ebtables的`forward`链(上图中蓝色方框的`filter-forward`)，iptables的`managle-forward`和`filter-forward`链，之后被送入`vnet1`接口     
+为了解决以上问题，Linux内核引入了`bridge_netfilter`，简称`bridge_nf`。还是参考上图说明，它使得主机IP层防火墙工具{ip,ip6,arp}tables能够"看见"Bridge中二层数据包(Link Layer)，从而我们能够在主机上使用iptables过滤Bridge中的数据包，不管此数据包是发给主机本身，还是通过Bridge转发给某台虚拟机。上图中右侧绿色方框的`managle-forward`和`filter-forward`即是iptables插入到链路层的链。因此完整的说，在`bridging decision`之后，数据包会依次经过链路层防火墙ebtables的`forward`链(蓝色方框的`filter-forward`)，iptables的`managle-forward`和`filter-forward`链，之后被送入`vnet1`接口     
 
 从Linux 2.6.1内核开始，可以通过设置内核参数开启`bridge_netfilter`机制。看名字就很容易知道具体作用       
 
@@ -86,7 +85,7 @@ br1             8000.f8bc1212c3a0       no              em1
 #ptables -t raw -A PREROUTING -m physdev --physdev-in vnet1  -j NOTRACK    
 ```
 
-在OpenStack部署中，若使用Bridge实现虚拟网络，其安全组功能就是依靠`bridge_nf`实现，计算节点上iptables才能"看见"并过滤发往其上所有instance的数据包，如下是OpenStack计算节点上部分iptables规则    
+在OpenStack部署中，若使用Bridge实现虚拟网络，其安全组功能就是依靠`bridge_nf`实现，计算节点上iptables才能"看见"并过滤发往其上所有instance的数据包，如下是OpenStack计算节点上部分iptables规则，当启用安全组时，OpenStack会自动设置`net.bridge.bridge-nf-call-iptables = 1`等内核参数，我们不用再明确设置。 `tap10f15e45-aa`为该计算节点上某instance网卡(就是上图中vnet0，vnet1之类的tap设备)     
 
 ``` shell
 ...
@@ -102,11 +101,80 @@ Linux上与Bridge类似都可以作为虚拟交换机的是OVS，主要区别是
 
 # VLAN       
 
-上面简单介绍过Bridge和OVS区别，要在Linux上实现一个带VLAN功能的虚拟交换机，OVS可以通过给不同port打不同tag实现vlan功能，而Bridge需要结合VLAN设备才能实现。VLAN又称虚拟网络，其基本原理是在二层协议里插入额外的VLAN协议数据（称为 802.1.q VLAN Tag)，同时保持和传统二层设备的兼容性。Linux 里的VLAN设备是对 802.1.q 协议的一种内部软件实现，模拟现实世界中的 802.1.q 交换机。详细介绍参考IBM文章中"VLAN device for 802.1.q"部分，这里不再重复，总结几点   
+上面简单介绍过Bridge和OVS区别，要在Linux上实现一个带VLAN功能的虚拟交换机，OVS可以通过给不同port打不同tag实现vlan功能，而Bridge需要结合VLAN设备才能实现。   
 
--     
+VLAN又称虚拟网络，其基本原理是在二层协议里插入额外的VLAN协议数据（称为 802.1.q VLAN Tag)，同时保持和传统二层设备的兼容性。Linux 里的VLAN设备是对 802.1.q 协议的一种内部软件实现，模拟现实世界中的 802.1.q 交换机。详细介绍参考文章开头给出的IBM文章中"VLAN device for 802.1.q"部分，这里不再重复    
 
-  
+主机上有一块网卡设备eth1，不管eth1为物理网卡或虚拟网卡，eth1所连接的交换机端口都必须设置为trunk。下面使用使用VLAN结合Bridge新建两个网桥。最终的效果是，桥接到br100上的接口将属于vlan 100，桥接到br101上的接口属于vlan 101。                      
+
+``` shell
+#网卡eth1
+#cat /etc/sysconfig/network-scripts/ifcfg-eth1
+TYPE=Ethernet
+BOOTPROTO=none
+IPV4_FAILURE_FATAL=no
+NAME=eth1
+UUID=4f2cfd28-ba78-4f25-afa1-xxxxxxxxxxxxx
+DEVICE=eth1
+ONBOOT=yes
+
+#vlan子设备eth1.100
+#cat /etc/sysconfig/network-scripts/ifcfg-eth1.100
+DEVICE=eth1.100
+BOOTPROTO=static
+ONBOOT=yes
+VLAN=yes
+
+#vlan子设备eth1.101
+#cat /etc/sysconfig/network-scripts/ifcfg-eth1.101
+DEVICE=eth1.101
+BOOTPROTO=static
+ONBOOT=yes
+VLAN=yes
+
+#查看eth1.101，可以看到，其driver为VALN
+[root@test1 ~]# ethtool -i eth1.101
+driver: 802.1Q VLAN Support
+version: 1.8
+...
+
+#重启网卡
+#/etc/init.d/network restart
+
+#设置网桥
+#brctl addbr br100
+#brctl addbr br101
+#brctl addif br100 eth1.100
+#brctl addif br100 vnet1
+#brctl addif br101 eth1.101
+#brctl show
+bridge name     bridge id               STP enabled     interfaces
+br100         8000.525400315e23       no              eth1.100   
+													  vnet1
+br101         8000.525400315e23       no              eth1.101
+```
+
+VLAN设备的作用是建立一个个带不同vlan tag的子设备，它并不能建立多个可以交换转发数据的接口，因此需要借助于Bridge，把VLAN建立的子设备例如eth1.100桥接到网桥br100上，这样凡是桥接到br100上的接口就自动加入了vlan 100子网。对比下一台带有两个vlan 100，101网络的物理交换机，这里br100所连接的接口相当于物理交换机上那些划分到vlan 100的端口，而br101所连接的接口相当于物理交换机上那些划分到vlan 101的端口。因此Bridge加VLAN能在功能层面完整模拟现实世界里的802.1.q交换机。     
+
+下面，我们从网桥br100上vnet1接口角度，来看下具体的数据收发流程：  
+
+- vnet1发送数据      
+
+vnet1发送数据到br100-->br100把数据从eth1.100发出-->母设备收到eth1.100发来的数据-->母设备eth1给数据打上100的vlan tag-->eth1将带有100 tag的数据发出-->eth1连接的交换机收到数据(trunk口)        
+
+- vnet1接收数据
+
+eth1从所连接的交换机收到tag 100的数据-->eth1发现此数据带有tag 100,移除数据包中tag-->不带tag的数据发给eth1.100-->br100收到从eth1.100进入的数据包-->br100转发数据到vnet1            
+
+上面忽略了对于数据包是否带tag，以及数据包所带tag的子设备是否存在的检查。     
+
+**openstack中的vlan**    
+
+
+
+
+
+
 
 
 # TUN/TAP      
