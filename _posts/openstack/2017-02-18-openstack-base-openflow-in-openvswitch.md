@@ -219,9 +219,15 @@ listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes
 08:12:17.820427 52:54:00:f3:bc:d5 (oui Unknown) > Broadcast, ethertype ARP (0x0806), length 42: Request who-has 172.16.1.111 tell test2, length 28
 ```
 
-# Neutron实现的OpenFlow控制器           
+# Neutron实现的OpenFlow控制器
 
-对于新建的bridge，默认是没有控制器存在的。但OVS可以连接OpenFlow控制器配置为一个SDN交换机。OpenStack Neutron中实现了一个OpenFlow控制器来管理OVS，在每一个运行`neutron-openvswitch-agent`的计算节点上，Neutron默认都建立了一个本地控制器`Controller "tcp:127.0.0.1:6633"`，该节点上的所有Bridge `br-int/br-tun/br-ext`等都连接到此Controller上，相关配置参考`/etc/neutron/plugins/ml2/openvswitch_agent.ini`中`[OVS]`      
+本例子中网络模式为`OVS + VLAN`                
+
+默认使用命令创建的Bridge是没有控制器存在的，OVS仅仅作为一个普通二层交换机，前面已经具体说过。在Neutron中实现了一个OpenFlow控制器来连接OVS，从而实现在网络资源变化时刷入相应flow到OVS(比如tag转换)。其相关实现代码位于ML2 plugin `openvswitch` driver中。`openvswitch` driver可以通过设置`mechanism_drivers = openvswitch`来启用         
+
+![neutron-openflow](/images/openstack/openstack-use-openvswitch/neutron_flow.png)    
+
+计算节点上的`neutron-openvswitch-agent`在启动时，会加载`neutron.plugins.ml2.drivers.openvswitch`并且建立一个本地openflow控制器`Controller "tcp:127.0.0.1:6633"`。该节点上的所有Bridge `br-int/br-tun/br-ext`等都连接到此Controller上，相关配置参考`/etc/neutron/plugins/ml2/openvswitch_agent.ini`中`[OVS]`      
 
 ``` shell
 cat /etc/neutron/plugins/ml2/openvswitch_agent.ini
@@ -239,7 +245,7 @@ cat /etc/neutron/plugins/ml2/openvswitch_agent.ini
 ...
 ```   
 
-比如在运行`neutron-openvswitch-agent`的计算节点中，可以看到`br-tun`连接了一个控制器`tcp:127.0.0.1:6633`，`is_connected: true`表示控制器处于连接状态。            
+可以看到`br-tun`连接了一个控制器`tcp:127.0.0.1:6633`，`is_connected: true`表示控制器处于连接状态。             
 
 ``` shell
 ovs-vsctl show
@@ -280,6 +286,8 @@ ovs-vsctl set-controller br0 tcp:192.168.1.10:6633
 ovs-vsctl del-controller br0
 ```       
 
-关于OVS中vlan的使用，下篇文章会单独介绍(本文完)      
+当OVS中openflow flow由于某种原因被修改时(比如使用`ovs-ofctl del-flow ...`)，可能造成虚拟机网络异常。此时可以重启当前计算节点上`neutron-openvswitch-agent`来重置flow使虚拟机网络恢复正常。既然这种方式可以重置flow，那反过来，我们也无法使用`ovs-ofctl`等工具手动修改OVS中flow，因为所有的修改在`neutron-openvswitch-agent`重启后都会被还原                 
+
+关于OVS中vlan的使用，下篇文章会单独介绍(本文完)          
 
 
