@@ -225,7 +225,7 @@ listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes
 
 默认使用命令创建的Bridge是没有控制器存在的，OVS仅仅作为一个普通二层交换机，前面已经具体说过。在Neutron中实现了一个OpenFlow控制器来连接OVS，从而实现在网络资源变化时刷入相应flow到OVS(比如tag转换)。其相关实现代码位于ML2 plugin `openvswitch` driver中。`openvswitch` driver可以通过设置`mechanism_drivers = openvswitch`来启用         
 
-![neutron-openflow](/images/openstack/openstack-use-openvswitch/neutron_flow.png)    
+![neutron-openflow](/images/openstack/openstack-use-openvswitch/neutron-flow.png)      
 
 计算节点上的`neutron-openvswitch-agent`在启动时，会加载`neutron.plugins.ml2.drivers.openvswitch`并且建立一个本地openflow控制器`Controller "tcp:127.0.0.1:6633"`。该节点上的所有Bridge `br-int/br-tun/br-ext`等都连接到此Controller上，相关配置参考`/etc/neutron/plugins/ml2/openvswitch_agent.ini`中`[OVS]`      
 
