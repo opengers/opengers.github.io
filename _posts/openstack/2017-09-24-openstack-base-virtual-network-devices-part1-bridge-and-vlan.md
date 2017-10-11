@@ -26,7 +26,7 @@ Linux controller 3.10.0-514.16.1.el7.x86_64 #1 SMP Wed Apr 12 15:04:24 UTC 2017 
 OpenStack社区版 Newton
 ```   
 
-# Linux Bridge   
+# Linux Bridge     
 
 内核模块`bridge`     
 
@@ -37,29 +37,27 @@ filename:       /lib/modules/3.10.0-514.16.1.el7.x86_64/kernel/net/bridge/bridge
 
 Bridge是Linux上工作在内核协议栈二层的虚拟交换机，虽然是虚拟的，但它与普通的二层物理交换机功能一样。它可以绑定若干个网络设备(em1,eth0,tap,..)，一旦某个网络设备被桥接到Bridge上作为Bridge的一个接口，这个网络设备就被设置为只接受二层数据帧并且转发所有收到的数据包到Bridge中(bridge内核模块)，在Bridge中会进行一个类似物理交换机的查MAC端口映射表，转发，更新MAC端口映射表这样的处理逻辑。从而数据包可以被转发到另一个接口/丢弃/广播/发往上层协议栈。由此Bridge实现了数据交换的功能。如果使用`tcpdump`在Bridge接口上抓包，是可以抓到桥上所有接口进出的包              
 
-跟物理交换机不同的是，运行Bridge的是一个Linux主机，Linux主机本身也需要IP地址与其它设备通信。但被添加到Bridge上的接口设备是不能配置IP地址的，其接口设备被设置为接收二层数据包，对路由系统不可见。不过Bridge本身可以设置IP地址，可以认为当使用`brctl addbr br0`新建一个`br0`网桥时，系统自动创建了一个同名的隐藏`br0`网络设备，因此我们给`br0`设置IP地址，Bridge收到目的地址为此IP的数据包会直接将数据包发往主机协议栈上层(下图)，也即从MAC地址这一层看，主机收到了发往自身的数据包。                   
+跟物理交换机不同的是，运行Bridge的是一个Linux主机，Linux主机本身也需要IP地址与其它设备通信。但被添加到Bridge上的接口设备是不能配置IP地址的，其接口设备被设置为接收二层数据包，对路由系统不可见。不过Bridge本身可以设置IP地址，可以认为当使用`brctl addbr br0`新建一个`br0`网桥时，系统自动创建了一个同名的隐藏`br0`网络设备。`br0`一旦设置IP地址，就意味着`br0`可以作为路由接口设备，参与IP层的路由选择(可以使用`route -n`查看最后一列`Iface`)。因此只有当`br0`设置IP地址时，Bridge才有可能将数据包发往上层协议栈。                       
 
-![bridge](/images/openstack/openstack-virtual-devices/bridge.png)     
+![bridge](/images/openstack/openstack-virtual-devices/bridge.png)       
 
-上图主机有em1和em2两块网卡，有网桥`br0`。运行有app1，app2等普通应用程序，还运行有OpenVPN进程以及一台kvm虚拟机P2(一台kvm虚拟机实现为主机上的一个qemu-kvm进程)。此主机上使用到了多种虚拟网络设备，在具体介绍某个虚拟网络设备时，我们可以忽略其它网络设备工作细节。接下来具体分析网桥`br0`,`br0`有N个`tap`类型接口(名称可能不同，例如`tap45400fa0-9c`或`vnet*`)，隐藏的`br0`接口(可设置IP)，以及物理网卡em2的一个VLAN子设备`em2.100`(这里简单看做一个物理设备接口即可，VLAN下面会讲)，他们都工作在链路层(Link Layer)。       
+上图主机有em1和em2两块网卡，运行网桥`br0`。用户空间进程有app1，app2等普通应用，还有OpenVPN进程P1，以及一台kvm虚拟机P2(kvm虚拟机实现为主机上的一个`qemu-kvm`进程，下文用`qemu-kvm`进程表示虚拟机)。此主机上使用到了多种虚拟网络设备，在具体介绍某个虚拟网络设备时，我们可以忽略其它网络设备工作细节，只专注于当前网络设备。接下来具体分析网桥`br0`,图中可以看到`br0`有N个`tap`类型接口(名称可能不同，例如`tap45400fa0-9c`或`vnet*`)，一个"隐藏"的`br0`接口(可设置IP)，以及物理网卡em2的一个VLAN子设备`em2.100`(这里简单看做有一个网络设备桥接到br0上即可，VLAN下面会讲)，他们都工作在链路层(Link Layer)。       
 
-来看数据从外部网络(A)发往虚拟机(P2)`qemu-kvm`这一过程，首先数据包从em2网卡进入，经过`Bridge check`发现`em2.100`属于网桥接口设备，因此数据包不会发往协议栈上层(T),而是进入bridge代码处理逻辑，从而数据包从`em2.100`接口进入`br0`，经过`Bridging decision`发现数据包应当从`tap0`接口发出，此时数据包离开主机网络协议栈，发往被用户空间进程`qemu-kvm`(虚拟机P2)打开的字符设备`/dev/net/tun`,虚拟机P2执行系统调用`read()`从字符设备读取数据(此时虚拟机网卡收到数据)       
+来看数据从外部网络(A)发往虚拟机(P2)`qemu-kvm`这一过程，首先数据包从em2(B)网卡进入，经过`Bridge check`(L)发现`em2.100`属于网桥接口设备，因此数据包不会发往协议栈上层(T),而是进入bridge代码处理逻辑，从而数据包从`em2.100`接口(C)进入`br0`，经过`Bridging decision`(D)发现数据包应当从`tap0`(E)接口发出，此时数据包离开主机网络协议栈(G)，发往被用户空间进程`qemu-kvm`打开的字符设备`/dev/net/tun`(N),`qemu-kvm`进程执行系统调用`read(fd,...)`从字符设备读取数据(即此时虚拟机P2收到数据包)         
 
-作为对比，如果是从网卡em1进入主机的数据包，经过`Bridge check`后，发现em1非网桥接口，则数据包会直接发往协议栈IP层进入`Routing decision`(T->K)          
+作为网桥的对比，如果是从网卡em1(M)进入主机的数据包，经过`Bridge check`(L)后，发现em1非网桥接口，则数据包会直接发往(T)协议栈IP层,从而在`Routing decision`环节决定数据包的去向(A --> M --> T --> K)             
 
-根据数据包目的MAC的不同，网桥中`Bridging decision`环节对数据包的处理有以下几种：      
+根据数据包目的MAC的不同，网桥中`Bridging decision`环节(D)对数据包的处理有以下几种：      
 
-- 包目的MAC为Bridge本身MAC地址，收到发往主机自身的数据包，交给上层协议栈(从br0接口发往Network Layer层)          
+- 包目的MAC为Bridge本身MAC地址(在`br0`设置有IP地址时)，从MAC地址这一层来看，收到发往主机自身的数据包，交给上层协议栈(D --> J)             
 - 广播包，转发到Bridge上的所有接口(br0,tap0,tap1,tap...)         
-- 单播&&存在于MAC端口映射表，查表直接转发到对应接口(tap1)          
-- 单播&&不存在于MAC端口映射表，泛洪到Bridge连接的所有接口(br0,tap0,tap1,tap...)                   
-- 数据包目的地址接口不是网桥接口，桥不处理，交给上层协议栈(从br0接口发往Network Layer层)             
+- 单播&&存在于MAC端口映射表，查表直接转发到对应接口(D --> E)              
+- 单播&&不存在于MAC端口映射表，泛洪到Bridge连接的所有接口(br0,tap0,tap1,tap...)                     
+- 数据包目的地址接口不是网桥接口，桥不处理，交给上层协议栈(D --> J)               
  
-### Bridge与防火墙               
+# Bridge与防火墙                 
 
-Linux防火墙是通过`netfiler`这个内核框架实现，`netfiler`用于管理网络数据包。不仅具有网络地址转换(NAT)的功能，也具备数据包内容修改、以及数据包过滤等防火墙功能。利用运作于用户空间的应用软件，如iptables等来控制`netfilter`。Netfilter在内核协议栈中指定了五个处理数据包的钩子(hook)，分别是PRE_ROUTING、INPUT、OUTPUT、FORWARD与POST_ROUTING，通过iptables/ebtables等用户层工具向这些hook点注入一些数据包处理函数来实现包过滤等功能。iptables工作在IP层，只能过滤IP数据包；ebtables工作在数据链路层，只能过滤以太网帧(比如匹配源目的MAC地址)     
-
-![netfilter](/images/openstack/openstack-virtual-devices/netfilter.png)       
+Linux防火墙是通过`netfiler`这个内核框架实现，`netfiler`用于管理网络数据包。不仅具有网络地址转换(NAT)的功能，也具备数据包内容修改、以及数据包过滤等防火墙功能。利用运作于用户空间的应用软件，如iptables等来控制`netfilter`。Netfilter在内核协议栈中指定了五个处理数据包的钩子(hook)，分别是PRE_ROUTING、INPUT、OUTPUT、FORWARD与POST_ROUTING，通过iptables/ebtables等用户层工具向这些hook点注入一些数据包处理函数来实现包过滤等功能。iptables工作在IP层，只能过滤IP数据包；ebtables工作在数据链路层，只能过滤以太网帧(比如匹配源目的MAC地址)           
 
 Bridge的出现使Linux上设置防火墙变得复杂。没有Bridge存在时，Linux主机从某个网卡收到的数据包当然都是发往本机的，数据包会依次经过...,链路层(ebtables)，IP层(iptables),...解封装最后到达应用层，这样当数据到达IP层时可以很方便用iptables过滤。但是若Bridge存在时，可以参考上图，Bridge上的接口vnet0从外部收到二层数据包，关键在于此数据包不一定是发往本机，可能是发往Bridge上的另一个接口`vnet1`(tap设备，连接用户层程序，比如`qemu-kvm`)，此时`bridging decision`之后，数据包会经过链路层防火墙规则之后被转发到连接`vnet1`的vm(此时数据包进入虚拟机内部)。可以看出来，整个过程此数据包不会进入主机内核协议栈IP层(上图中向上的箭头路径)，因此位于主机IP层的iptables根本无法过滤从vnet0到vnet1的数据包。如果从防火墙角度看，在`bridging decision`之后，数据包会走链路层防火墙ebtables的`forward`链(上图中蓝色方框的`filter-forward`)，但是ebtables只能过滤数据包的二层地址。   
 
@@ -68,6 +66,8 @@ It is the infrastructure that enables {ip,ip6,arp}tables to see bridged IPv4, re
   
 来自：[Bridge-nf Frequently Asked Questions](http://ebtables.netfilter.org/misc/brnf-faq.html)     
 
+![netfilter](/images/openstack/openstack-virtual-devices/netfilter.png)     
+ 
 为了解决以上问题，Linux内核引入了`bridge_netfilter`，简称`bridge_nf`。还是参考上图说明，它使得主机IP层防火墙工具{ip,ip6,arp}tables能够"看见"Bridge中的数据包，从而我们能够在主机上使用iptables过滤Bridge中的数据包，不管此数据包是发给主机本身，还是通过Bridge转发给某台虚拟机。上图中右侧绿色方框的`managle-forward`和`filter-forward`即是iptables插入到链路层的chain。因此完整的说，在`bridging decision`之后，数据包会依次经过链路层防火墙ebtables的`forward`链(蓝色方框的`filter-forward`)，iptables的`managle-forward`和`filter-forward`链，之后被送入`vnet1`接口     
 
 从Linux 2.6.1内核开始，可以通过设置内核参数开启`bridge_netfilter`机制。看名字就很容易知道具体作用       
