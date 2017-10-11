@@ -39,7 +39,7 @@ Bridge是Linux上工作在内核协议栈二层的虚拟交换机，虽然是虚
 
 跟物理交换机不同的是，运行Bridge的是一个Linux主机，Linux主机本身也需要IP地址与其它设备通信。但被添加到Bridge上的接口设备是不能配置IP地址的，其接口设备被设置为接收二层数据包，对路由系统不可见。不过Bridge本身可以设置IP地址，可以认为当使用`brctl addbr br0`新建一个`br0`网桥时，系统自动创建了一个同名的隐藏`br0`网络设备，因此我们给`br0`设置IP地址，Bridge收到目的地址为此IP的数据包会直接将数据包发往主机协议栈上层(下图)，也即从MAC地址这一层看，主机收到了发往自身的数据包。                   
 
-![bridge](/images/openstack/openstack-virtual-devices/bridge.svg)     
+![bridge](/images/openstack/openstack-virtual-devices/bridge.png)     
 
 上图主机有em1和em2两块网卡，有网桥`br0`。运行有app1，app2等普通应用程序，还运行有OpenVPN进程以及一台kvm虚拟机P2(一台kvm虚拟机实现为主机上的一个qemu-kvm进程)。此主机上使用到了多种虚拟网络设备，在具体介绍某个虚拟网络设备时，我们可以忽略其它网络设备工作细节。接下来具体分析网桥`br0`,`br0`有N个`tap`类型接口(名称可能不同，例如`tap45400fa0-9c`或`vnet*`)，隐藏的`br0`接口(可设置IP)，以及物理网卡em2的一个VLAN子设备`em2.100`(这里简单看做一个物理设备接口即可，VLAN下面会讲)，他们都工作在链路层(Link Layer)。       
 
