@@ -181,68 +181,94 @@ Linux上还有一款虚拟交换机OVS，主要区别是OVS支持vlan tag以及�
 
 ### VLAN设备原理及配置    
 
-VLAN又称虚拟网络，其基本原理是在二层协议里插入额外的VLAN协议数据（称为 802.1.q VLAN Tag)，同时保持和传统二层设备的兼容性。Linux 里的VLAN设备是对 802.1.q 协议的一种内部软件实现，模拟现实世界中的 802.1.q 交换机。详细介绍参考文章开头给出的IBM文章中"VLAN device for 802.1.q"部分，这里不再重复    
+VLAN又称虚拟网络，其基本原理是在二层协议里插入额外的VLAN协议数据（称为 802.1.q VLAN Tag)，同时保持和传统二层设备的兼容性。Linux里的VLAN设备是对 802.1.q 协议的一种内部软件实现，模拟现实世界中的 802.1.q 交换机。详细介绍参考文章开头给出的IBM文章中"VLAN device for 802.1.q"部分，这里不再重复    
 
-下面使用使用VLAN结合Bridge新建两个网桥。最终的效果是，桥接到br100上的接口将属于vlan 100，桥接到br101上的接口属于vlan 101。前提是此主机上有一块网卡设备比如eth1，不管eth1为物理网卡或虚拟网卡，eth1所连接的交换机端口都必须设置为trunk。                        
+下面使用VLAN结合Bridge实现文中第一张图上的多个VLAN子设备`VLAN 100, VLAN X, VLAN Y, ...`以及多个网桥`br0, brX, brY, ...`(X Y都是小于2048的正整数)。前提是此主机上有一块网卡设备比如em2，不管em2为物理网卡或虚拟网卡，em2所连接的交换机端口必须设置为trunk。                         
+
+添加VLAN子设备`VLAN 100, VLAN X, VLAN Y, ...`         
 
 ``` shell
-#网卡eth1
-#cat /etc/sysconfig/network-scripts/ifcfg-eth1
+#cat /etc/sysconfig/network-scripts/ifcfg-em2
 TYPE=Ethernet
 BOOTPROTO=none
 IPV4_FAILURE_FATAL=no
-NAME=eth1
+NAME=em2
 UUID=4f2cfd28-ba78-4f25-afa1-xxxxxxxxxxxxx
-DEVICE=eth1
+DEVICE=em2
 ONBOOT=yes
 
-#vlan子设备eth1.100
-#cat /etc/sysconfig/network-scripts/ifcfg-eth1.100
-DEVICE=eth1.100
+#添加vlan子设备em2.100
+#cat /etc/sysconfig/network-scripts/ifcfg-em2.100
+DEVICE=em2.100
 BOOTPROTO=static
 ONBOOT=yes
 VLAN=yes
 
-#vlan子设备eth1.101
-#cat /etc/sysconfig/network-scripts/ifcfg-eth1.101
-DEVICE=eth1.101
-BOOTPROTO=static
-ONBOOT=yes
-VLAN=yes
+#可以继续添加多个带不同vlan tag的子设备,比如VLAN X, VLAN Y, VLAN ...    
+#vlan子设备em2.X
+#cat /etc/sysconfig/network-scripts/ifcfg-em2.X
+#DEVICE=em2.X
+#BOOTPROTO=static
+#ONBOOT=yes
+#VLAN=yes
 
-#查看eth1.101，可以看到，其driver为VALN
+#vlan子设备em2.Y
+#cat /etc/sysconfig/network-scripts/ifcfg-em2.Y
+#DEVICE=em2.Y
+#BOOTPROTO=static
+#ONBOOT=yes
+#VLAN=yes
+
+#...
+
+#重启网络
+service network restart
+```  
+
+查看子设备em2.100，可以看到，其driver为VALN     
+
+``` shell
 #ethtool -i eth1.101
 driver: 802.1Q VLAN Support
 version: 1.8
 ...
-
-#重启网卡
-#/etc/init.d/network restart
-
-#设置网桥
-#brctl addbr br100
-#brctl addbr br101
-#brctl addif br100 eth1.100
-#brctl addif br100 vnet1
-#brctl addif br101 eth1.101
-#brctl show
-bridge name     bridge id               STP enabled     interfaces
-br100         8000.525400315e23       no              eth1.100   
-													  vnet1
-br101         8000.525400315e23       no              eth1.101
 ```
 
-VLAN设备的作用是建立一个个带不同vlan tag的子设备，它并不能建立多个可以交换转发数据的接口，因此需要借助于Bridge，把VLAN建立的子设备例如eth1.100桥接到网桥br100上，这样凡是桥接到br100上的接口就自动加入了vlan 100子网。对比一台带有两个vlan 100，101的物理交换机，这里br100所连接的接口相当于物理交换机上那些划分到vlan 100的端口，而br101所连接的接口相当于物理交换机上那些划分到vlan 101的端口。因此Bridge加VLAN能在功能层面完整模拟现实世界里的802.1.q交换机。     
+添加网桥`br0, brX, brY, ...`     
 
-下面，我们从网桥br100上vnet1接口角度，来看下具体的数据收发流程：  
+``` shell
+#添加br0网桥
+brctl addbr br0
+#br0添加em2.100子设备 凡是桥接到br0上的数据包都会带上tag 100
+brctl addif br0 em2.100
 
-- vnet1发送数据      
+#可以继续添加多个网桥brX, brY, ...
+#brctl addbr brX
+#凡是桥接到brX上的数据包都会带上tag X
+#brctl addif brX em2.X
 
-`vnet1发送数据到br100 --> br100把数据从eth1.100发出 --> 母设备收到eth1.100发来的数据 --> 母设备eth1给数据打上100的vlan tag --> eth1将带有100 tag的数据发出 --> eth1连接的交换机收到数据(trunk口)`           
+#brctl addbr brY
+#brctl addif brY em2.Y
 
-- vnet1接收数据
+#...
 
-`eth1从所连接的交换机收到tag 100的数据 --> eth1发现此数据带有tag 100,移除数据包中tag --> 不带tag的数据发给eth1.100 --> br100收到从eth1.100进入的数据包 --> br100转发数据到vnet1`                 
+#brctl show
+bridge name     bridge id               STP enabled     interfaces
+br0         8000.525400315e23       no                em2.100   
+													  tap0
+```
+
+VLAN设备的作用是建立一个个带不同vlan tag的子设备，它并不能建立多个可以交换转发数据的接口，因此需要借助于Bridge，把VLAN建立的子设备例如em2.100桥接到网桥例如br0上，这样凡是桥接到br0上的设备就自动加入了vlan 100子网。对比一台带有两个vlan 100，X的物理交换机，这里br0网桥上所连接的接口相当于物理交换机上那些划分到vlan 100的端口，而brX所连接的接口相当于物理交换机上那些划分到vlan X的端口。因此Bridge加VLAN能在功能层面完整模拟现实世界里的802.1.q交换机。             
+
+参考文中第一张图，我们从网桥br0上tap0接口(E)角度，来看下具体的数据收发流程：  
+
+- 数据从tap0接口进入，发往外部网络A                 
+
+`tap0收到的数据被发送给br0(E) --> D --> br0把数据从em2.100接口发出(C) --> 母设备em2收到em2.100发来的数据(B) --> 母设备em2给数据打上100的vlan tag(因为来自em2.100) --> em2将带有100 tag的数据发出到外部网络(A) --> em2所连接的交换机收到数据(trunk口)`                 
+
+- 数据从em2网卡进入，发往tap0       
+
+`em2从所连接的交换机收到tag 100的数据 --> em2发现此数据带有tag 100,移除数据包中tag --> 不带tag的数据发给em2.100子设备 --> br0收到从em2.100进入的数据包 --> D --> br0转发数据到tap0`       
 
 上面忽略了对于数据包是否带tag，以及数据包所带tag的子设备是否存在的检查。这些属于vlan基础知识         
 
@@ -257,16 +283,16 @@ openstack中虚拟机网络使用VLAN模式的话，就会用到VLAN设备。ope
 #neutron-server启动时，加载flat，vlan两种网络类型驱动   
 type_drivers = flat,vlan
 #vlan模式不需要tenant_network，留空    
-tenant_network_types =
+tenant_network_types =        
 #neutron-server启动时加载linuxbridge和openvswitch网桥驱动    
 mechanism_drivers = linuxbridge,openvswitch
 
 [ml2_type_flat]
-#在命令行或控制台新建flat类型网络时需要指定的名称，此名称会配置映射到计算节点上某块做外网的网卡，下面会设置
+#在命令行或控制台新建flat类型网络时需要指定的名称，此名称会配置映射到计算节点上某块网卡，下面会设置
 flat_networks = proext
 
 [ml2_type_vlan]
-#在命令行或控制台新建vlan类型网络时需要指定的名称，此名称会配置映射到计算节点上某块做vlan网络的网卡，下面会设置
+#在命令行或控制台新建vlan类型网络时需要指定的名称，此名称会配置映射到计算节点上某块网卡，下面会设置
 network_vlan_ranges = provlan
 
 #重启neutron-server服务  
@@ -275,14 +301,14 @@ network_vlan_ranges = provlan
 #cat /etc/neutron/plugins/ml2/linuxbridge_agent.ini
 [linux_bridge]
 #provlan名称映射到此计算节点eth2网卡，因为使用vlan模式，eth2需要设置为trunk
-#proext名称映射到此计算节点eth3网卡，eth3网卡为虚拟机外网网络接口       
+#proext名称映射到此计算节点eth3网卡，我这个环境下eth3网卡为虚拟机连接外网接口               
 physical_interface_mappings = provlan:eth2,proext:eth3
 
 #重启此计算节点nova-compute服务   
 #配置中只需要指定vlan要用的母设备eth2，后续控制台新建带tag的网络时，neutron会自动建立eth2.{TAG}子设备并加入到网桥    
 ```    
 
-在控制台新建一个vlan tag为1023的虚拟机网络subvlan-1023，使用此subvlan-1023网络新建几台虚拟机，看下计算节点上网桥配置       
+在控制台新建一个vlan tag为1023的Provider network: subvlan-1023，使用此subvlan-1023网络新建几台虚拟机，看下计算节点上网桥配置       
 
 ``` shell
 [root@compute03 neutron]# brctl show
@@ -299,7 +325,7 @@ Interface  Type       Source     Model       MAC
 tapa659a214-b1 bridge     brq82405415-7a virtio      fa:16:3e:bc:c9:e0
 ```
 
-虚拟机`instance-00000145`的网卡`tapa659a214-b1`桥接到`brq82405415-7a`。跟上面介绍的类似，桥接到`brq82405415-7a`上的接口设备就自动加入了vlan 1023子网，因此`instance-00000145`属于vlan 1023子网。   
+虚拟机`instance-00000145`的网卡`tapa659a214-b1`桥接到`brq82405415-7a`。跟上面介绍的类似，桥接到`brq82405415-7a`上的接口设备就自动加入了vlan 1023子网，因此从`instance-00000145`发出的数据包会带有tag 1023(eth2.1023的母设备eth2负责添加或移除tag)         
 
 假如在控制台或命令行再新建一个tag为1024的子网，则网桥配置如下    
 
@@ -320,7 +346,7 @@ Interface  Type       Source     Model       MAC
 tap20ffafb2-1b bridge     brq7d59440b-cc virtio      fa:16:3e:bd:12:40
 ```  
 
-虚拟机`instance-00000147`的网卡`tap20ffafb2-1b`桥接到`brq7d59440b-cc`,`instance-00000147`属于vlan 1024子网,这就实现了属于不同vlan子网的`instance-00000145`与`instance-00000147`的隔离性。         
+虚拟机`instance-00000147`的网卡`tap20ffafb2-1b`桥接到`brq7d59440b-cc`,`instance-00000147`属于vlan 1024子网,这就实现了属于不同vlan子网的`instance-00000145`与`instance-00000147`的隔离性。他们虽然在同一台计算节点上，但彼此不互通，除非设置为两个VLAN可以互通                    
 
 感谢Bridge和VLAN设备，他们让openstack配置vlan网络成了可能，BUT!, Bridge+VLAN不是唯一的选择，openstack也支持OVS，OVS中是靠给不同instance接口打不同tag来实现instance的多vlan环境，OVS模式除了配置部分跟Bridge+VLAN不同之外，使用上并没有什么区别，这里的设置`mechanism_drivers = linuxbridge,openvswitch`加载相应驱动，屏蔽掉了底层操作的差别   
 
@@ -392,4 +418,4 @@ tap7d59440b-cc bridge     qbr7d59440b-cc virtio      fa:16:3e:12:ba:e6
 
 这其中牵涉OVS流表和OVS内外部tag转换问题，又足够写一篇文章来介绍了，本文暂不继续介绍。还有一点，在使用OVS做网桥的同时又开启安全组功能时，会多出一个Bridge网桥用于设置安全组，如上面的`qbr7d59440b-cc`, 因为目前iptables不支持OVS，只能在虚拟机与OVS网桥之间加进一个Bridge网桥用于设置iptables规则        
 
-其它网络设备会在另一篇文章part2介绍，本文完      
+其它网络设备会在另一篇文章介绍，本文完      
