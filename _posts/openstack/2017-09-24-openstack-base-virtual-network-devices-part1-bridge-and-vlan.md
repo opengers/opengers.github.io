@@ -45,11 +45,14 @@ Bridge是Linux上工作在内核协议栈二层的虚拟交换机，虽然是虚
 
 上图主机有em1和em2两块网卡，有网桥`br0`。用户空间进程有app1，app2等普通网络应用，还有OpenVPN进程P1，以及一台或多台kvm虚拟机P2(kvm虚拟机实现为主机上的一个`qemu-kvm`进程，下文用`qemu-kvm`进程表示虚拟机)。此主机上使用到了多种虚拟网络设备，在具体介绍某个虚拟网络设备时，我们可以忽略其它网络设备工作细节，只专注于当前网络设备。下面来具体分析网桥`br0`   
 
+**Bridge处理数据包流程**    
+
 图中可以看到`br0`有N个`tap`类型接口(tap0,..,tapN)，tap设备名称可能不同，例如`tap45400fa0-9c`或`vnet*`，但都是tap设备。一个"隐藏"的`br0`接口(可设置IP)，以及物理网卡em2的一个VLAN子设备`em2.100`(这里简单看作有一个网卡桥接到br0上即可，VLAN下面会讲)，他们都工作在链路层(Link Layer)。           
 
 来看数据从外部网络(A)发往虚拟机(P2)`qemu-kvm`这一过程，首先数据包从em2(B)物理网卡进入，之后em2将数据包转发给其vlan子设备em2.100，经过`Bridge check`(L)发现子设备`em2.100`属于网桥接口设备，因此数据包不会发往协议栈上层(T),而是进入bridge代码处理逻辑，从而数据包从`em2.100`接口(C)进入`br0`，经过`Bridging decision`(D)发现数据包应当从`tap0`(E)接口发出，此时数据包离开主机网络协议栈(G)，发往被用户空间进程`qemu-kvm`打开的字符设备`/dev/net/tun`(N)，`qemu-kvm`进程执行系统调用`read(fd,...)`从字符设备读取数据。 这个过程中，外部网络A发出的数据包是不会也没必要进入主机上层协议栈的，因为A是与主机上的P2虚拟机通信，主机只是起到一个网桥转发的作用                             
 
 作为网桥的对比，如果是从网卡em1(M)进入主机的数据包，经过`Bridge check`(L)后，发现em1非网桥接口，则数据包会直接发往(T)协议栈IP层,从而在`Routing decision`环节决定数据包的去向(A --> M --> T --> K)             
+**Bridging decision**    
 
 上图中网桥`br0`收到数据包后，根据数据包目的MAC的不同，`Bridging decision`环节(D)对数据包的处理有以下几种：      
 
@@ -414,7 +417,7 @@ Interface  Type       Source     Model       MAC
 tap7d59440b-cc bridge     qbr7d59440b-cc virtio      fa:16:3e:12:ba:e6
 ``` 
 
-`instance-00000149`出数据流向为`tap7d59440b-cc --> qbr7d59440b-cc --> qvo7d59440b-cc(tag 1) --> br-int --> br-vlan --> eth2`。qbr7d59440b-cc 与 qvo7d59440b-cc 为一对veth设备    
+`instance-00000149`出数据流向为`tap7d59440b-cc --> qbr7d59440b-cc --> qvo7d59440b-cc(tag 1) --> br-int --> br-vlan --> eth2`。qvb7d59440b-cc 与 qvo7d59440b-cc 为一对veth设备    
 
 这其中牵涉OVS流表和OVS内外部tag转换问题，又足够写一篇文章来介绍了，本文暂不继续介绍。还有一点，在使用OVS做网桥的同时又开启安全组功能时，会多出一个Bridge网桥用于设置安全组，如上面的`qbr7d59440b-cc`, 因为目前iptables不支持OVS，只能在虚拟机与OVS网桥之间加进一个Bridge网桥用于设置iptables规则        
 
