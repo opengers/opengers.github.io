@@ -17,7 +17,7 @@ tags:
 
 OpenStack一般分为计算，存储，网络三部分。考虑构建一个灵活的可扩展的云网络环境，而物理网络架构一般是固定和难于扩展的，因此虚拟网络设备将更有优势。Linux平台上实现了各种不同功能的虚拟网络设备，包括`Bridge,Vlan,tun/tap,veth pair,vxlan/gre，...`，这些虚拟设备就像一个个积木块一样，被OpenStack组合用于构建虚拟网络。 还有火热的Docker，容器间隔离技术实现脱胎于Linux平台上的`namspace`,以及更早的`chroot`。    
 
-文中会牵涉虚拟机，所以用名词"主机"明确表示一台物理机，"接口"指挂载到网桥上的网络设备，环境如下：             
+文中会牵涉虚拟机，所以文中出现的"主机"一词明确表示一台物理机，"接口"指挂载到网桥上的网络设备，环境如下：             
 
 ``` shell
 CentOS Linux release 7.3.1611 (Core) 
@@ -61,20 +61,26 @@ Bridge是Linux上工作在内核协议栈二层的虚拟交换机，虽然是虚
  
 # Bridge与防火墙                 
 
-Linux防火墙是通过`netfiler`这个内核框架实现，`netfiler`用于管理网络数据包。不仅具有网络地址转换(NAT)的功能，也具备数据包内容修改、以及数据包过滤等防火墙功能。利用运作于用户空间的应用软件，如iptables/firewalld等来控制`netfilter`。Netfilter在内核协议栈中指定了五个处理数据包的钩子(hook)，分别是PRE_ROUTING、INPUT、OUTPUT、FORWARD与POST_ROUTING，通过iptables/firewalld/ebtables等用户层工具向这些hook点注入一些数据包处理函数，这样当数据包经过相应的hook时，处理函数就被调用，从而实现包过滤功能。这些用户层工具中，iptables工作在IP层，只能过滤IP数据包；ebtables工作在数据链路层，只能过滤以太网帧(比如匹配源目的MAC地址)           
+Linux防火墙是通过`netfiler`这个内核框架实现，`netfiler`用于管理网络数据包。不仅具有网络地址转换(NAT)的功能，也具备数据包内容修改、以及数据包过滤等防火墙功能。利用运作于用户空间的应用软件，如iptables/firewalld/ebtables等来控制`netfilter`。Netfilter在内核协议栈中指定了五个处理数据包的钩子(hook)，分别是PRE_ROUTING、INPUT、OUTPUT、FORWARD与POST_ROUTING，通过iptables/firewalld/ebtables等用户层工具向这些hook点注入一些数据包处理函数，这样当数据包经过相应的hook时，处理函数就被调用，从而实现包过滤功能。这些用户层工具中，iptables工作在IP层，只能过滤IP数据包；ebtables工作在数据链路层，只能过滤以太网帧(比如更改源或目的MAC地址)           
 
-Bridge的出现使Linux上设置防火墙变得复杂。没有Bridge存在时，Linux主机从某个网卡收到的数据包当然都是发往本机的，数据包会依次经过网卡,链路层(ebtables)，IP层(iptables),...解封装最后到达应用层，这样当数据到达IP层时可以很方便用iptables过滤。  
+当主机上没有Bridge存在时，从网卡进入主机的数据包会依次穿过主机内核协议栈，最后到达应用层交给某个应用程序处理。这样我们可以很方便的使用iptables设置本主机的防火墙规则。进入数据包流向对应下图路径`A --> L --> T --> ...`           
 
-但是若Bridge存在时，Linux主机从某个网卡收到的数据包可能是发往其上运行的一台虚拟机。下图是上面介绍的`数据从外部网络(A)发往虚拟机(P2)qemu-kvm`这一过程中数据包所经过的防火墙链(可以对比两张图来看)。网桥br0接口em2.100从外部网络A收到二层数据包，经过`bridge check`后穿越一系列防火墙链`L --> D --> E`，最终从Bridge上的另一个接口`tap0`发出。整个过程中数据包不会进入主机内核协议栈IP层(下图中向上的箭头J)，因此位于主机IP层的iptables根本无法过滤`L --> D --> E`这一路径的数据包。当然ebtables可以过滤二层数据包，但是其功能有限，比如无法过滤数据包源或目的端口。     
+![netfilter](/images/openstack/openstack-virtual-devices/netfilter.png)     
+
+Bridge的出现使Linux上设置防火墙变得复杂，因为此时从网卡进入主机的数据包目的地可能是其上运行的一台虚拟机。上图是上面介绍的`数据从外部网络(A)发往虚拟机(P2)`这一过程中数据包所经过的防火墙链(文中的两张图可以对比来看)。物理网卡em2子设备em2.100从外部网络A收到二层数据包，经过`bridge check`后进入br0并穿越一系列防火墙链`L --> D --> E`，最终从Bridge上的另一个接口`tap0`发出。上图红色导向线可以很清楚看到整个过程中数据包是没有进入主机内核协议栈的，因此位于主机IP层(Network Layer)的iptables根本无法过滤`L --> D --> E`这一路径的数据包。 那该如何解决呢？       
+
+- ebtables只可以简单过滤二层以太网帧，其无法过滤ipv4数据包。     
+
+- 当然也可以在虚拟机内使用iptables来设置此虚拟机的防火墙规则，但是一般不会这么玩，特别是在云平台环境。 一个原因是如果一台主机上运行有10台虚拟机，那就需要在这10台虚拟机内都设置iptables规则，而且这么做意味着云平台必须要能够登录虚拟机来设置iptables规则。 OpenStack中安全组也是iptables实现，我们在虚拟机内部并没有发现有iptables规则存在。   
+
+- 解决办法就是下文要讲的`bridge_netfilter`         
 
 ><small>What is bridge-nf?          
 It is the infrastructure that enables {ip,ip6,arp}tables to see bridged IPv4, resp. IPv6, resp. ARP packets. Thanks to bridge-nf, you can use these tools to filter bridged packets, letting you make a transparant firewall. Note that bridge-nf is also referred to as bridge-netfilter and br-nf, the term bridge-nf should be preferred.<small>      
   
 来自：[Bridge-nf Frequently Asked Questions](http://ebtables.netfilter.org/misc/brnf-faq.html)     
-
-![netfilter](/images/openstack/openstack-virtual-devices/netfilter.png)     
  
-为了解决以上问题，Linux内核引入了`bridge_netfilter`，简称`bridge_nf`。`bridge_netfilter`在链路层Bridge代码中插入了几个能够被iptables调用的钩子函数，Bridge中数据包在经过这些钩子函数时，iptables规则被执行(上图中最下层Link Layer中的绿色方框即是iptables插入到链路层的chain,蓝色方框为ebtables chain)。这就像{ip,ip6,arp}tables能够"看见"Bridge中的IPv4,ARP等数据包。这样不管此数据包是发给主机本身，还是通过Bridge转发给虚拟机，iptables都能完成过滤。            
+为了解决以上问题，Linux内核引入了`bridge_netfilter`，简称`bridge_nf`。`bridge_netfilter`在链路层Bridge代码中插入了几个能够被iptables调用的钩子函数，Bridge中数据包在经过这些钩子函数时，iptables规则被执行(上图中最下层Link Layer中的绿色方框即是iptables插入到链路层的chain,蓝色方框为ebtables chain)。这就像{ip,ip6,arp}tables能够"看见"Bridge中的IPv4,ARP等数据包。这样不管此数据包是发给主机本身，还是通过Bridge转发给虚拟机，iptables都能完成过滤。              
 
 从Linux 2.6.1内核开始，可以通过设置内核参数开启`bridge_netfilter`机制。看名字就很容易知道具体作用       
 
@@ -86,21 +92,28 @@ net.bridge.bridge-nf-call-iptables = 1
 ...
 ``` 
 
-然后在iptables中使用`-m physdev`引入相应模块，比如下面iptables规则：不跟踪从网桥`br1`的`vnet1`接口进入的数据包      
+然后在iptables中使用`-m physdev`引入相应模块，比如文中第一张图上的虚拟机P2使用的虚拟网卡为`tap0`，桥接在网桥br0上。我们设置如下iptables规则：丢弃从网桥`br0`的`tap0`接口进入的数据包      
 
 ``` shell
 #网桥
 #brctl show
 bridge name     bridge id               STP enabled     interfaces
-br1             8000.f8bc1212c3a0       no              em1
-                                                        vnet1
-                                                        vnet3
-#查看help
+br0             8000.f8bc1212c3a0       no              em1
+                                                        tap
+#查看虚拟机P2使用的虚拟网卡
+#virsh domiflist P2
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+tap0       bridge     br0        virtio      fa:16:3e:c0:b6:64
+                                                        
+#查看physdev模块help
 #iptables -m physdev -h
 ...
                              
-#ptables -t raw -A PREROUTING -m physdev --physdev-in vnet1  -j NOTRACK    
+#ptables -t raw -A PREROUTING -m physdev --physdev-in tap0  -j DROP   
 ```
+
+需要注意一点，这条命令是在主机上执行的，从主机角度看，网桥br0收到从`tap0`接口进入的数据包，因此使用`--physdev-in`。但是从虚拟机P2角度来看，它发出了数据包，发给主机上的网桥br0。因此上面这条iptables命令实际的作用是丢弃从虚拟机P2发出的数据包，也就是禁止虚拟机P2访问外网。方向要分清，后面讲到/tun/tap设备时会细说          
 
 在OpenStack部署中，若使用Bridge实现虚拟网络，其安全组功能就是依靠`bridge_nf`实现，计算节点上iptables才能"看见"并过滤发往其上所有instance的数据包，如下是OpenStack计算节点上部分iptables规则，当启用安全组时，OpenStack会自动设置`net.bridge.bridge-nf-call-iptables = 1`等内核参数，我们不用再明确设置。 `tap10f15e45-aa`为该计算节点上某instance网卡(就是上图中vnet0，vnet1之类的tap设备)     
 
