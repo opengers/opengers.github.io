@@ -17,28 +17,77 @@ tags:
 * TOC
 {:toc}    
 
-上文介绍了Bridgge和VLAN设备，本文继续介绍tun/tap，vxlan/gre等设备，很多时候这些设备不是独立使用的，下文会看到     
+上文介绍了Bridgge和VLAN设备，本文继续介绍tun/tap，vxlan/gre等设备，很多时候这些设备不是独立使用的，下文会看到         
 
-# tun/tap   
+我们知道KVM虚拟化中单个虚拟机是主机上的一个普通qemu进程，虚拟机当然也需要网卡，提供虚拟网卡的就是主机上的tap设备(当然可以直接使用物理网卡)。那从主机的角度看，这个`qemu-kvm`进程是如何使用tap设备作为其网卡呢，先介绍下`tun/tap`设备概念                        
 
-为了理解`tun/tap`具体是做什么的，先来考虑这个问题，KVM虚拟化中虚拟机实现为主机中一个标准进程，跟其它普通进程一样接受Linux进程调度器管理，像下面这样`instance-00000145`实际上为主机中的一个`qemu-kvm`进程   
+# tun/tap     
+
+`tun/tap`设备是操作系统内核中的虚拟网络设备，他们为用户层程序提供数据的接收与传输。`tun/tap`设备使用内核模块为`tun`，其模块介绍为`Universal TUN/TAP device driver`，该模块输出了一个设备接口文件`/dev/net/tun`供用户层程序读写       
 
 ``` shell
-[root@compute03 ~]# virsh list --all
- Id    Name                           State
-----------------------------------------------------
- 23    instance-00000145              running
- 
-[root@compute03 ~]# ps -ef |grep instance-00000145
-qemu     30792     1  0 Sep26 ?        00:21:23 /usr/libexec/qemu-kvm -name guest=instance-00000145 ...
+[root@compute01 ~]# modinfo tun
+filename:       /lib/modules/3.10.0-514.16.1.el7.x86_64/kernel/drivers/net/tun.ko
+alias:          devname:net/tun
+...
+description:    Universal TUN/TAP device driver
+...
+
+[root@compute01 ~]# ls /dev/net/tun 
+/dev/net/tun
 ```
 
-那么这样一个用户空间进程
+为了使用该模块，用户层程序需要打开`/dev/net/tun`设备文件获得一个file descriptor(FD)，并且调用ioctl()向内核注册一个TUN或TAP设备，设备的名字可能是tunXX，tapXX这种。用户层程序通过对该文件的读写来向内核协议栈接收数据或向内核协议栈注入数据。当用户层程序关闭文件描述符后，其注册的TUN或TAP设备以及路由表相关条目(使用tun设备可能会产生路由表条目，比如openvpn)都会被内核释放。可以把tun/tap看成数据管道，它一端连接主机协议栈，另一端连接用户程序。  
 
-TUN/TAP设备为用户空间程序提供数据接收与传输，
+TUN和TAP设备区别在于他们所在的协议栈层次不同，TAP等同于一个以太网设备，用户层程序向tap设备读写的是二层数据包如以太网数据帧，tap设备最常用的就是作为虚拟机网卡。TUN则模拟了网络层设备，操作第三层数据包比如IP数据包，`openvpn`就是使用的TUN设备             
 
-在计算机网络中，TUN与TAP是操作系统内核中的虚拟网络设备。不同于普通靠硬件网路板卡实现的设备，这些虚拟的网络设备全部用软件实现，并向运行于操作系统上的软件提供与硬件的网络设备完全相同的功能。
-TAP 等同于一个以太网设备，它操作第二层数据包如以太网数据帧。TUN模拟了网络层设备，操作第三层数据包比如IP数据封包。
-操作系统通过TUN/TAP设备向绑定该设备的用户空间的程序发送数据，反之，用户空间的程序也可以像操作硬件网络设备那样，通过TUN/TAP设备发送数据。在后种情况下，TUN/TAP设备向操作系统的网络栈投递（或“注入”）数据包，从而模拟从外部接受数据的过程。
+可以看到`tun/tap`设备与主机上物理网卡有所不同，物理网卡收到的数据来自物理网络，而`tun/tap`设备收到的数据来自绑定该设备的用户空间程序，反之从物理网卡发送的数据会进入物理网络，而从`tun/tap`设备发送的数据会进入绑定该设备的用户空间程序。下面结合实例分别解释下TAP和TUN设备工作原理     
 
-可以把tun/tap看成数据管道，它一端连接主机协议栈，另一端连接用户程序   
+# tap设备作为虚拟机网卡     
+
+本部分具体分析下虚拟机使用tap设备与其所在主机或外部主机通信数据流走向                            
+
+本文依然使用下面这张图作为参考                                    
+
+![bridge](/images/openstack/openstack-virtual-devices/bridge.png)     
+
+如下，用户空间程序`qemu-kvm`(虚拟机P2)使用`tap0`虚拟网卡，`tap0`桥接在br0网桥上                      
+
+``` shell
+#virsh list --all
+ Id    Name                           State
+----------------------------------------------------
+ 23    P2                             running
+
+#virsh domiflist 9
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+tap0       bridge     br0        virtio      fa:16:3e:b1:70:52
+...
+```
+
+查看此虚拟机进程    
+
+``` shell
+#ps -ef |grep P2
+qemu      7748     1  0 Nov07 ?        00:22:09 /usr/libexec/qemu-kvm -name guest=P2 ... -netdev tap,fd=26,id=hostnet0,vhost=on,vhostfd=28 ...      
+```
+
+进程PID为7748，其网络部分参数中，`-netdev tap,fd=26` 表示连接主机上的tap设备，`fd=26`表示使用文件描述符`26`来读写`/dev/net/tun`设备文件。我们可以使用`lsof -p 7748`来验证该进程使用的文件描述符    
+
+``` shell
+# lsof -p 7748
+COMMAND    PID USER   FD      TYPE             DEVICE    SIZE/OFF     NODE NAME
+...
+qemu-kvm 24571 qemu   26u      CHR             10,200         0t0    17439 /dev/net/tun
+...
+
+#PID为24571的进程打开了文件/dev/net/tun，分配的文件描述符为26，打开设备文件类型为CHR             
+```
+
+因此，在虚拟机P2启动时，其打开了设备文件`/dev/net/tun`并获得了读写该文件的文件描述符(FD)26，同时向内核注册了一个tap设备`tap0`作为其网卡，`tap0`与FD 26关联。  
+
+
+# openvpn中使用的tun设备                
+
+
