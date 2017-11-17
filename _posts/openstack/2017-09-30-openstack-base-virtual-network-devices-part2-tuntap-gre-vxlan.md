@@ -1,5 +1,5 @@
 ---
-title: openstack底层技术-各种虚拟网络设备之二(tun/tap,veth,vxlan/grep)      
+title: openstack底层技术-各种虚拟网络设备二(tun/tap,veth,vxlan/grep)      
 author: opengers
 layout: post
 permalink: /openstack/openstack-base-virtual-network-devices-part2-tuntap-gre-vxlan/
