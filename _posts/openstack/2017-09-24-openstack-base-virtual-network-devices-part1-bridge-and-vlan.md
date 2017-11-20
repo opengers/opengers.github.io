@@ -1,14 +1,17 @@
 ---
-title: openstack底层技术-各种虚拟网络设备一(Bridge,VLAN)
+title: openstack底层技术-虚拟网络设备(Bridge,VLAN)            
 author: opengers
 layout: post
-permalink: /openstack/openstack-base-virtual-network-devices-part1-bridge-and-vlan/
+permalink: /openstack/openstack-base-virtual-network-devices-bridge-and-vlan/
 categories: openstack
 tags:
   - openstack
   - bridge
   - vlan
 ---
+
+[openstack底层技术-各种虚拟网络设备一(Bridge,VLAN)](http://www.isjian.com/openstack/openstack-base-virtual-network-devices-bridge-and-vlan/)       
+[openstack底层技术-各种虚拟网络设备二(tun/tap,veth,vxlan/grep)](http://www.isjian.com/openstack/openstack-base-virtual-network-devices-tuntap-veth-gre-vxlan/)        
 
 * TOC
 {:toc}    

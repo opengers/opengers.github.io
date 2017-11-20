@@ -1,8 +1,8 @@
 ---
-title: openstack底层技术-各种虚拟网络设备二(tun/tap,veth,vxlan/grep)      
+title: openstack底层技术-虚拟网络设备(tun/tap,veth,vxlan/grep)          
 author: opengers
 layout: post
-permalink: /openstack/openstack-base-virtual-network-devices-part2-tuntap-gre-vxlan/
+permalink: /openstack/openstack-base-virtual-network-devices-tuntap-veth-gre-vxlan/
 categories: openstack
 tags:
   - openstack
@@ -11,19 +11,19 @@ tags:
   - vxlan/gre
 ---
 
-[openstack底层技术-各种虚拟网络设备一(Bridge,VLAN)](http://www.isjian.com/openstack/openstack-base-virtual-network-devices-part1-bridge-and-vlan/)     
-[openstack底层技术-各种虚拟网络设备二(tun/tap,veth,vxlan/grep)](http://www.isjian.com/openstack/openstack-base-virtual-network-devices-part2-tuntap-gre-vxlan/)     
+[openstack底层技术-各种虚拟网络设备一(Bridge,VLAN)](http://www.isjian.com/openstack/openstack-base-virtual-network-devices-bridge-and-vlan/)     
+[openstack底层技术-各种虚拟网络设备二(tun/tap,veth,vxlan/grep)](http://www.isjian.com/openstack/openstack-base-virtual-network-devices-tuntap-veth-gre-vxlan/)     
 
-><small>第一篇文章介绍了Bridgge和VLAN设备，本文继续介绍tun/tap，veth，vxlan/gre等设备，很多时候这些设备不是独立使用的，下文会看到</small>      
+><small>第一篇文章介绍了Bridge和VLAN，本文继续介绍tun/tap，veth，vxlan/gre等虚拟设备，除了tun，其它设备都能在openstack中找到应用，这些各种各样的虚拟网络设备使网络虚拟化成为了可能</small>      
 
 * TOC
 {:toc}    
 
-我们知道KVM虚拟化中单个虚拟机是主机上的一个普通`qemu-kvm`进程，虚拟机当然也需要网卡，最常见的虚拟网卡就是使用主机上的tap设备。那从主机的角度看，这个`qemu-kvm`进程是如何使用tap设备呢，下面先介绍下`tun/tap`设备概念，然后分别用一个实例来解释`tun/tap`的具体用途                              
-
 # tun/tap     
 
-`tun/tap`设备是操作系统内核中的虚拟网络设备，他们为用户层程序提供数据的接收与传输。`tun/tap`设备使用内核模块为`tun`，其模块介绍为`Universal TUN/TAP device driver`，该模块提供了一个设备接口`/dev/net/tun`供用户层程序读写，用户层程序通过读写`/dev/net/tun`接口来向主机内核协议栈注入数据或接收来自主机内核协议栈的数据。**可以把tun/tap看成数据管道，它一端连接主机协议栈，另一端连接用户程序** **                
+我们知道KVM虚拟化中单个虚拟机是主机上的一个普通`qemu-kvm`进程，虚拟机当然也需要网卡，最常见的虚拟网卡就是使用主机上的tap设备。那从主机的角度看，这个`qemu-kvm`进程是如何使用tap设备呢，下面先介绍下`tun/tap`设备概念，然后分别用一个实例来解释`tun/tap`的具体用途       
+
+`tun/tap`是操作系统内核中的虚拟网络设备，他们为用户层程序提供数据的接收与传输。实现`tun/tap`设备的内核模块为`tun`，其模块介绍为`Universal TUN/TAP device driver`，该模块提供了一个设备接口`/dev/net/tun`供用户层程序读写，用户层程序通过读写`/dev/net/tun`来向主机内核协议栈注入数据或接收来自主机内核协议栈的数据，**可以把tun/tap看成数据管道，它一端连接主机协议栈，另一端连接用户程序**                    
 
 ``` shell
 [root@compute01 ~]# modinfo tun
