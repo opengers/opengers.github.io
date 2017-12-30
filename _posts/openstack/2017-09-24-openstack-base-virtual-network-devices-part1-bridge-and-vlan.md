@@ -11,7 +11,7 @@ tags:
 ---
 
 [openstack底层技术-各种虚拟网络设备一(Bridge,VLAN)](http://www.isjian.com/openstack/openstack-base-virtual-network-devices-bridge-and-vlan/)       
-[openstack底层技术-各种虚拟网络设备二(tun/tap,veth,vxlan/grep)](http://www.isjian.com/openstack/openstack-base-virtual-network-devices-tuntap-veth-gre-vxlan/)        
+[openstack底层技术-各种虚拟网络设备二(tun/tap,veth)](http://www.isjian.com/openstack/openstack-base-virtual-network-devices-tuntap-veth/)         
 
 * TOC
 {:toc}    

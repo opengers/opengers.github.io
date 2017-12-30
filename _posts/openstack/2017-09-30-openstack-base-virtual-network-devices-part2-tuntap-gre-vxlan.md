@@ -43,22 +43,16 @@ TUN和TAP设备区别在于他们工作的协议栈层次不同，TAP等同于�
 
 # tap设备作为虚拟机网卡     
 
-tap设备最常见的用途就是作为虚拟机网卡，这里以一个具体的虚拟机P2为例，来看看它与其所在主机，及网络上其它主机通信的数据流向                                     
+tap设备最常见的用途就是作为虚拟机网卡，这里以一个具体的虚拟机P2为例，来看看它与其所在主机，及网络上其它主机通信的数据流向      
 
-本文依然使用下面这张图作为参考                                     
+本文依然使用下面这张图作为参考                                                    
 
-![bridge](/images/openstack/openstack-virtual-devices/bridge.png)     
+![bridge](/images/openstack/openstack-virtual-devices/bridge.png)                                 
 
 虚拟机P2使用桥接模式，网桥为br0，先启动虚拟机                    
 
-``` shell
-#virsh start P2
-#virsh list --all
- Id    Name                           State
-----------------------------------------------------
- 23    P2                             running
- 
-#virsh domiflist 9
+``` shell 
+#virsh domiflist P2
 Interface  Type       Source     Model       MAC
 -------------------------------------------------------
 tap0       bridge     br0        virtio      fa:16:3e:b1:70:52
@@ -82,7 +76,7 @@ qemu-kvm 7748  qemu   26u      CHR             10,200         0t0    17439 /dev/
 ...             
 ```
 
-因此，在虚拟机P2启动时，其打开了设备文件`/dev/net/tun`并获得了读写该文件的文件描述符(FD)26，同时向内核注册了一个tap类型虚拟网卡`tap0`，`tap0`与FD 26关联，虚拟机关闭时`tap0`设备会被内核释放。此虚拟网卡`tap0`一端连接用户空间程序`qemu-kvm`，另一端连接主机链路层             
+因此，在虚拟机P2启动时，其打开了设备文件`/dev/net/tun`并获得了读写该文件的文件描述符(FD)26，同时向内核注册了一个tap类型虚拟网卡`tap0`，`tap0`与FD 26关联，虚拟机关闭时`tap0`设备会被内核释放。此虚拟网卡`tap0`一端连接用户空间程序`qemu-kvm`，另一端连接主机链路层                 
 
 **从虚拟机P2发送数据到外部网络**              
 
@@ -93,14 +87,13 @@ qemu-kvm 7748  qemu   26u      CHR             10,200         0t0    17439 /dev/
 
 这个过程中，虚拟机发出的数据通过`tap0`虚拟网卡直接注入主机链路层网桥处理逻辑中，然后被转发到外部网络。可以看出数据包没有穿过主机协议栈上层，主机仅仅起了类似物理二层交换机的数据转发功能，这是当然的也是必须的，因为虚拟机通信对象不是此主机，明白这点之后，可以对tap设备有更深的认识            
 
-Linux上的各种网络应用程序基本上都是通过Linux Socket编程接口来和内核空间的网络协议栈通信的。Linux Socket是网络应用程序的基础。是操作系统为应用程序员提供的 API，通过它，应用程序可以访问传输层协议。
-应用层通过 glibc 封装的系统调用与内核交换程序，例如 socket()、bind()、recv()、send() 等函数。     
+如下图，Linux上的各种网络应用程序基本上都是通过Linux Socket编程接口来和内核空间的网络协议栈通信的。那么问题来了，为何虚拟机进程`qemu-kvm`不能使用Linux Socket与外部网络通信呢？   
 
 ![tcpip](/images/openstack/openstack-virtual-devices/linux-tcp-ip.jpg)       
 
-那么问题来了，为何虚拟机进程`qemu-kvm`不能使用Linux Socket与外部网络通信呢？   
+需要注意的是，虽然`qemu-kvm`只是主机上的一个进程，但它实现的是一台虚拟机，虚拟机和主机是两台机器，他们都桥接在主机上的软件交换机上。明白了这点，我们就知道主机上普通的网络程序发出的网络通信是属于"主机自身发出的数据包"，而虚拟机发出的数据包当然不可能使用另一台机器(主机)的Linux Socket来通信了。   
 
-需要注意的是，虽然`qemu-kvm`只是主机上的一个进程，但它实现的是一台虚拟机，虚拟机和主机是两台机器，只不过虚拟机与外部网络通信需要借助主机上的软件交换机来转发。明白了这点，我们就知道主机上普通的网络程序是属于"主机自身发出的数据包"，而虚拟机发出的数据包当然不可能使用另一台机器(主机)的Linux Socket来通信了。 主机上能看到的是tap虚拟网卡收到的虚拟机二层以太网帧，因此主机上工作在内核协议栈IP层的iptables是无法过滤虚拟机数据包的，当然这也有解决方法，本系列第一篇文章有详细说明          
+主机上能看到的是虚拟机发到tap设备上的二层以太网帧，因此主机上工作在内核协议栈IP层的iptables是无法过滤虚拟机数据包的，当然这也有解决方法，本系列第一篇文章有详细说明           
 
 # openvpn中使用的tun设备              
 
@@ -252,6 +245,6 @@ tap796091c0-07 bridge     brqba48a3fc-e9 virtio      fa:16:3e:85:f8:c
 
 我们上面是直接在网桥`brqba48a3fc-e9`上建立虚拟机测试dhcp请求，也可以把主机上一块物理网卡添加到此网桥，这样此物理网卡所在网络上的其它所有主机都能使用此dhcp服务器。并且，仿照上面步骤，我们可以建多个Bridge，每个Bridge都建立有自己的network namespace和dhcp服务器。这其实就是openstack Bridge+Vlan(无l3 agent)网络模式下，虚拟机自动获取IP的机制，如下图      
 
-![tcpip](/images/openstack/openstack-virtual-devices/veth.jpg)           
+![veth](/images/openstack/openstack-virtual-devices/veth.png)             
 
 (本文完)    
