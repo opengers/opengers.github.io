@@ -28,3 +28,4 @@ gems:
 
 plugins:
   - jekyll-feed
+  - jekyll-tagging
