@@ -25,3 +25,6 @@ excerpt_separator: "<!--more-->"
 
 gems:
   - jekyll-sitemap
+
+plugins:
+  - jekyll-feed
