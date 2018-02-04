@@ -8,6 +8,8 @@ url: "http://www.isjian.com" # the base hostname & protocol for your site
 #twitter_username: stevenvmiller
 github_username:  opengers
 
+name: opengers
+
 # Build settings
 markdown: kramdown
 kramdown:
