@@ -11,7 +11,7 @@ tags:
 format: quote
 ---
 
->关于kvm，qemu的介绍，可以参考这篇文章：[kvm libvirt qemu实践系列(一)](http://blog.isjian.com/2015/06/kvm-libvirt-qemu-1/)  
+>关于kvm，qemu的介绍，可以参考这篇文章：[kvm libvirt qemu实践系列(一)](https://opengers.github.io/virtualization/kvm-libvirt-qemu-1/)  
 
 
 ## 测试物理环境
@@ -446,7 +446,7 @@ centosbase --> centos2 --> centos2_sn1 --> centos2_sn2 --> centos2_sn3 --> cento
 #未使用-u模式的rebase将把数据也一并合并过去，即把sn2的数据写入到sn3并修改sn3指向sn1,此为默认模式
 #rebase是向前段合并,commit是向后端合并
 
-本文系参考网上资料自己测试得出，如有错误请指出，固定链接：http://blog.isjian.com/2015/07/kvm-libvirt-qemu-3/
+本文系参考网上资料自己测试得出，如有错误请指出，固定链接：https://opengers.github.io/virtualization/kvm-libvirt-qemu-5/
 
 
 <blockquote>参考文章

@@ -13,7 +13,7 @@ tags:
 * TOC
 {:toc}    
 
-[上篇文章](http://www.isjian.com/openstack/openstack-base-use-openvswitch/) 介绍了OVS架构和主要概念，本篇主要介绍下OpenFlow在OVS中的应用，以及分析下openstack Neutron+OVS网络模式下的流表项             
+[上篇文章](https://opengers.github.io/openstack/openstack-base-use-openvswitch/) 介绍了OVS架构和主要概念，本篇主要介绍下OpenFlow在OVS中的应用，以及分析下openstack Neutron+OVS网络模式下的流表项             
 
 # 什么是OpenFlow               
 

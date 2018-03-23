@@ -16,10 +16,10 @@ ceph版本 ceph version 10.2.3
 * TOC
 {:toc}  
 
-[手工部署ceph集群](http://www.isjian.com/ceph/deploy-a-ceph-cluster-manually/)  
-[ceph-deploy部署ceph集群](http://www.isjian.com/ceph/deploy-a-ceph-cluster-use-ceph-deploy/)   
+[手工部署ceph集群](https://opengers.github.io/ceph/deploy-a-ceph-cluster-manually/)  
+[ceph-deploy部署ceph集群](https://opengers.github.io/ceph/deploy-a-ceph-cluster-use-ceph-deploy/)   
 
-官方已经有了`ceph-deploy`这个部署工具，它可以方便地部署以及扩展一个ceph集群，参考我之前写的文章[使用ceph-deploy工具部署ceph集群](http://www.isjian.com/ceph/deploy-a-ceph-cluster-use-ceph-deploy/)，虽然如此，一步步手动安装一个ceph集群还是很有必要的，一方面手动安装可以更了解ceph配置过程，便于后期维护排错，另一方面可以为那些使用Chef,juiu,Puppet,...等工具编写部署脚本的开发者提供参考，本文是自己手动安装的步骤，这里记录一下   
+官方已经有了`ceph-deploy`这个部署工具，它可以方便地部署以及扩展一个ceph集群，参考我之前写的文章[使用ceph-deploy工具部署ceph集群](https://opengers.github.io/ceph/deploy-a-ceph-cluster-use-ceph-deploy/)，虽然如此，一步步手动安装一个ceph集群还是很有必要的，一方面手动安装可以更了解ceph配置过程，便于后期维护排错，另一方面可以为那些使用Chef,juiu,Puppet,...等工具编写部署脚本的开发者提供参考，本文是自己手动安装的步骤，这里记录一下   
 
 # 环境预检    
 
@@ -35,7 +35,7 @@ m3 | osd.{8,9,10,11},mon.m3  | eth1:172.31.6.179/24 | eth0:192.168.6.179/22
 
 ----
 
-不管是`ceph-deploy`部署还是手动安装，安装前的预检工作是保证安装顺利进行的前提，之前的文章已经详细说过预检项，参考这里[环境预检](http://www.isjian.com/ceph/deploy-a-ceph-cluster-use-ceph-deploy/#section-1)，本文就不再重复  
+不管是`ceph-deploy`部署还是手动安装，安装前的预检工作是保证安装顺利进行的前提，之前的文章已经详细说过预检项，参考这里[环境预检](https://opengers.github.io/ceph/deploy-a-ceph-cluster-use-ceph-deploy/#section-1)，本文就不再重复  
 
 安装过程中会涉及许多磁盘分区操作，此时`partprobe`命令就很有用了，它可以通知操作系统内核立即更新分区表，以应用我们的分区更改操作。特别是对一个磁盘删除分区后马上新建分区的场景，更需要首先运行`partprobe`让内核更新分区表，然后再重新分区   	
 

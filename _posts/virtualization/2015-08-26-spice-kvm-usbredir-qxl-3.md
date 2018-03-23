@@ -13,8 +13,8 @@ format: quote
 ---
 
 ><small>本系类其它文章   
-[spice在kvm虚拟机中的应用(一)](http://www.isjian.com/virtualization/spice-kvm-usbredir-qxl-1/)   
-[spice在kvm虚拟化中的应用(二)](http://www.isjian.com/virtualization/spice-kvm-usbredir-qxl-2/)</small>   
+[spice在kvm虚拟机中的应用(一)](https://opengers.github.io/virtualization/spice-kvm-usbredir-qxl-1/)   
+[spice在kvm虚拟化中的应用(二)](https://opengers.github.io/virtualization/spice-kvm-usbredir-qxl-2/)</small>   
 
 # spice的USB重定向  
 

@@ -455,7 +455,7 @@ ovs-ofctl del-flows br0 "in_port=100"
 
 `ovs-vsctl`是一个综合的配置管理工具，`ovsdb-client`倾向于从数据库中查询某些信息，而`ovsdb-tool`是维护数据库文件工具         
 
-文章地址http://www.isjian.com/openstack/openstack-base-use-openvswitch/     
+文章地址https://opengers.github.io/openstack/openstack-base-use-openvswitch/     
 
 参考文章     
 ><small>

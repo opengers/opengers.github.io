@@ -10,8 +10,8 @@ tags:
   - vlan
 ---
 
-[openstack底层技术-各种虚拟网络设备一(Bridge,VLAN)](http://www.isjian.com/openstack/openstack-base-virtual-network-devices-bridge-and-vlan/)       
-[openstack底层技术-各种虚拟网络设备二(tun/tap,veth)](http://www.isjian.com/openstack/openstack-base-virtual-network-devices-tuntap-veth/)         
+[openstack底层技术-各种虚拟网络设备一(Bridge,VLAN)](https://opengers.github.io/openstack/openstack-base-virtual-network-devices-bridge-and-vlan/)       
+[openstack底层技术-各种虚拟网络设备二(tun/tap,veth)](https://opengers.github.io/openstack/openstack-base-virtual-network-devices-tuntap-veth/)         
 
 * TOC
 {:toc}    
@@ -178,7 +178,7 @@ libvirt的`virsh nwfilter-*`系列命令提供了设置虚拟机防火墙的功�
 
 Bridge+netfilter内容很多，下次有时间会专门用一篇文章介绍OpenStack中的安全组实现，关键字 `iptables+bridge+netfilter+conntrack`        
 
-Linux上还有一款虚拟交换机OVS，主要区别是OVS支持vlan tag以及流表(例如openflow)等一些高级特性，Bridge只是单纯二层交换机也不支持vlan tag，OVS具体介绍参考这里[openstack底层技术-使用openvswitch](http://www.isjian.com/openstack/openstack-base-use-openvswitch/)         
+Linux上还有一款虚拟交换机OVS，主要区别是OVS支持vlan tag以及流表(例如openflow)等一些高级特性，Bridge只是单纯二层交换机也不支持vlan tag，OVS具体介绍参考这里[openstack底层技术-使用openvswitch](https://opengers.github.io/openstack/openstack-base-use-openvswitch/)         
 
 # VLAN       
 

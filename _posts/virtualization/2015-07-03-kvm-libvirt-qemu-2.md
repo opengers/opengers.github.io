@@ -11,7 +11,7 @@ tags:
 format: quote
 ---
 
->- 在上一篇文章中[kvm libvirt qemu实践系列(一)](http://www.isjian.com/virtualization/kvm-libvirt-qemu-1/)，介绍了kvm，libvirt，以及qemu关系，本篇文章中则介绍如何创建，以及管理虚拟机  
+>- 在上一篇文章中[kvm libvirt qemu实践系列(一)](https://opengers.github.io/virtualization/kvm-libvirt-qemu-1/)，介绍了kvm，libvirt，以及qemu关系，本篇文章中则介绍如何创建，以及管理虚拟机  
 - 本文章测试服务器为centos6.6，Intel-VT虚拟化，使用ssh远程连接（已开启ssh图形转发，文中使用virt-manager工具会需要这个）
 - 在下列文章中，默认使用libvirt作为虚拟机创建，管理工具，但文中也会提及如何不通过libvirt，直接使用qemu-kvm(或qemu-system-x86-64)命令创建虚拟机  
 
@@ -262,4 +262,4 @@ virsh edit centos
 ```
 
 上面命令只是很基本的vish命令，关于virsh命令的具体用法，我会在下一篇文章中介绍
-[本文固定链接](http://www.isjian.com/virtualization/kvm-libvirt-qemu-2/)
+[本文固定链接](https://opengers.github.io/virtualization/kvm-libvirt-qemu-2/)

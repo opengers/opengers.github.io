@@ -135,7 +135,7 @@ tar xvf qemu-2.4.1.tar.bz2 && cd /opt/qemu-2.4.1
 #--disable-smartcard-nss: 禁用智能卡设置
 #--disable-rbd: 禁用rbd块设备支持，这个根据需要开启
 #--enable-numa: libnuma支持
-#--enable-spice: spice协议支持，spice协议比vnc协议拥有更好的体验，关于spice协议，请查看http://blog.isjian.com/2014/12/spice-kvm-usbredir-qxl-1/
+#--enable-spice: spice协议支持，spice协议比vnc协议拥有更好的体验，关于spice协议，请查看https://opengers.github.io/virtualization/spice-kvm-usbredir-qxl-1/
 
 make && make install
 
@@ -236,5 +236,5 @@ do
 done  
 ```
 
-><small>[本文链接](http://www.isjian.com/virtualization/kvm-libvirt-qemu-1/)  
+><small>[本文链接](https://opengers.github.io/virtualization/kvm-libvirt-qemu-1/)  
 以上介绍了kvm及其安装，关于创建虚拟机，及其管理方面，参考其它博文</small>

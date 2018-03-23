@@ -28,7 +28,7 @@ ceph版本 ceph version 10.2.2
 * 配置ceph-deploy默认使用root用户登陆通过密钥登录node4
 * 管理节点必须能够通过 SSH 无密码登陆node4。如果 ceph-deploy 以某个普通用户登录，那么这个用户必须有无密码使用sudo的权限。
 
-以上具体请参考之前文章[使用ceph-deploy工具部署ceph集群](http://www.isjian.com/ceph/ceph-deploy-ceph-storage-cluster/)
+以上具体请参考之前文章[使用ceph-deploy工具部署ceph集群](https://opengers.github.io/ceph/ceph-deploy-ceph-storage-cluster/)
 
 **新节点安装依赖包**  
 

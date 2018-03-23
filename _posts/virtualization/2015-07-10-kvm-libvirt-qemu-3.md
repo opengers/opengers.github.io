@@ -13,8 +13,8 @@ format: quote
 
 >- 本篇文章介绍通过xml文件来管理虚拟机
 - 本系列之前文章  
-  [kvm libvirt qemu实践系列(一)](http://www.isjian.com/virtualization/kvm-libvirt-qemu-1/)  
-  [kvm libvirt qemu实践系列(二)](http://www.isjian.com/virtualization/kvm-libvirt-qemu-2/)
+  [kvm libvirt qemu实践系列(一)](https://opengers.github.io/virtualization/kvm-libvirt-qemu-1/)  
+  [kvm libvirt qemu实践系列(二)](https://opengers.github.io/virtualization/kvm-libvirt-qemu-2/)
 - 测试环境为centos6.5，kvm程序来自rpm包  
 
 # 关于backing file
@@ -35,7 +35,7 @@ backing file: /data/images/centos65x64.qcow2
 可以看到`openstack1-1.disk`使用的`backing file`是`/data/images/centos65x64.qcow2`，这个`centos65x64.qcow2`即为模板镜像，其包含完整的系统和自定义的软件包。可以自己制作模板镜像，也可以从网上下载，例如[centos6的模板镜像](http://cloud.centos.org/centos/6/images/)
 其它Linux发行版镜像，请参考http://docs.openstack.org/image-guide/content/ch_obtaining_images.html
 
-由于指定了模板镜像，虚拟机`openstack1-1`启动后，其数据将会与模板镜像`centos65x64.qcow2`完全一致，操作虚拟机时，读文件是从后端镜像读，写新文件是写入到自身磁盘`openstack1-1.disk`，这个特性被称为`copy-on-write`关于更多信息，请参考[kvm libvirt qemu实践系列(五)-虚拟机快照链](http://www.isjian.com/2015/07/kvm-libvirt-qemu-5/)
+由于指定了模板镜像，虚拟机`openstack1-1`启动后，其数据将会与模板镜像`centos65x64.qcow2`完全一致，操作虚拟机时，读文件是从后端镜像读，写新文件是写入到自身磁盘`openstack1-1.disk`，这个特性被称为`copy-on-write`关于更多信息，请参考[kvm libvirt qemu实践系列(五)-虚拟机快照链](https://opengers.github.io/2015/07/kvm-libvirt-qemu-5/)
 
 如下，利用qcow2格式支持`backing file`的特性，我们可以快速创建四台虚拟机，而不用复制其整块磁盘
 
@@ -48,7 +48,7 @@ qemu-img create -b /data/images/centos65x64.qcow2 -f qcow2 openstack1-4.disk 20G
 
 # 虚拟机xml文件
 
-下面步骤来具体解释虚拟机xml文件是如何控制虚拟机运行的，假设你已经有了一个`backin file`是`centos65x64.qcow2`，可以参考[这一篇文章](http://www.isjian.com/virtualization/kvm-libvirt-qemu-2/)来运行一个虚拟机
+下面步骤来具体解释虚拟机xml文件是如何控制虚拟机运行的，假设你已经有了一个`backin file`是`centos65x64.qcow2`，可以参考[这一篇文章](https://opengers.github.io/virtualization/kvm-libvirt-qemu-2/)来运行一个虚拟机
 
 ### 创建虚拟磁盘
 
@@ -389,7 +389,7 @@ virsh domiflist kvm-1
 # 创建虚拟机快照
 
 kvm创建快照有多种方法，最简单的是使用qemu-img命令，这种方式创建的快照内置于虚拟磁盘内，是同一个文件，因此如果创建过多快照，虚拟磁盘会变得很大，迁移不方便
-关于虚拟机创建快照详细信息，参考[kvm libvirt qemu实践系列(五)-虚拟机快照链](http://www.isjian.com/2015/07/kvm-libvirt-qemu-5/) 
+关于虚拟机创建快照详细信息，参考[kvm libvirt qemu实践系列(五)-虚拟机快照链](https://opengers.github.io/2015/07/kvm-libvirt-qemu-5/) 
 
 创建快照，恢复快照前最好关闭虚拟机，下面为test-1这台虚拟机创建快照
 

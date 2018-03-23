@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: http://www.isjian.com/sitemap.xml
+Sitemap: https://opengers.github.io/sitemap.xml
