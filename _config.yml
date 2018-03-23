@@ -4,7 +4,7 @@ email: zijian1012#gmail.com
 description: > # this means to ignore newlines until "baseurl:"
   kvm,python,docker,devops
 baseurl: "" # the subpath of your site, e.g. /blog/
-url: "http://www.isjian.com" # the base hostname & protocol for your site
+url: "http://opengers.github.io" # the base hostname & protocol for your site
 #twitter_username: stevenvmiller
 github_username:  opengers
 
