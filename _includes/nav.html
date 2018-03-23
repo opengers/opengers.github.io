@@ -1,0 +1,16 @@
+<ul class="menu">
+
+    {% for opengers in site.data.menu %}
+    {% if opengers.subcategories != null %}
+    <li><a href="{{ opengers.href }}" class="page-link">{{ opengers.title }}</a>
+    <ul class="sub-menu">
+    {% for subcategory in opengers.subcategories %}
+    <li><a href="{{ subcategory.subhref }}">{{ subcategory.subtitle }}</a></li>
+    {% endfor %}
+    </ul>
+    {% else %}
+     <li><a href="{{ opengers.href }}" class="page-link">{{ opengers.title }}</a>
+    {% endif %}
+    </li>
+    {% endfor %}
+    </ul>
