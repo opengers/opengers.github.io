@@ -176,7 +176,7 @@ systemctl enable cloudinit.service
 #执行enable之后，cloudinit.service这个服务就会开机启动，从而我们的脚本cloud-init.sh就可以执行  
 ``` 
 
-[本文链接](https://opengers.github.io/virtualization/2014/12/26/create-coreOS-image-use-iso)
+[本文链接](https://opengers.github.io/virtualization/create-coreOS-image-use-iso/)
 
 
 
