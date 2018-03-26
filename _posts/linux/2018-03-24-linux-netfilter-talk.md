@@ -30,7 +30,7 @@ netfilter是linux内核中的一个数据包处理框架，用于替代原有的
 ><small>The br-nf code makes bridged IP frames/packets go through the iptables chains. Ebtables filters on the Ethernet layer, while iptables only filters IP packets       
 It should be noted that the br-nf code sometimes violates the TCP/IP Network Model. As will be seen later, it is possible, f.e., to do IP DNAT inside the Link Layer</small>      
 
-ok，图中长方形小方框已经解释清楚了，还有一种椭圆形的方框`conntrack`，即Connection Tracking，这是netfilter框架中的连接跟踪机制，连接跟踪允许内核持续跟踪通过此处的所有网络连接，从而将所有构成该连接的数据包关联起来，通俗点说，conntrack机制能够"审查"通过此处的所有网络数据包，并把数据包按网络连接相关联(比如数据包a属于`IP1:8888->IP2:80`这个tcp连接，数据包b属于`ip3:9999->IP4:53`这个udp连接),图中可以清楚看到连接跟踪机制所处的网络栈位置，因此如果不想让某个数据包被跟踪(`NOTRACK`),那就要找位于椭圆形方框`conntrack`之前的表和链来设置规则。conntrack机制是iptables实现状态匹配以及NAT的基础，它由单独的内核模块`nf_conntrack`实现，iptables中可以用`-m state`来使用改模块进行网络连接状态匹配。下面还会详细介绍          
+ok，图中长方形小方框已经解释清楚了，还有一种椭圆形的方框`conntrack`，即Connection Tracking，这是netfilter框架中的连接跟踪机制，连接跟踪允许内核持续跟踪通过此处的所有网络连接，从而将所有构成该连接的数据包关联起来，通俗点说，conntrack机制能够"审查"通过此处的所有网络数据包，并把数据包按网络连接相关联(比如数据包a属于`IP1:8888->IP2:80`这个tcp连接，数据包b属于`ip3:9999->IP4:53`这个udp连接),图中可以清楚看到连接跟踪机制所处的网络栈位置，因此如果不想让某个数据包被跟踪(`NOTRACK`),那就要找位于椭圆形方框`conntrack`之前的表和链来设置规则。conntrack机制是iptables实现状态匹配(`-m state`)以及NAT的基础，它由单独的内核模块`nf_conntrack`实现。下面还会详细介绍             
  
 接着看图中左下方`bridge check`方框，数据包从主机上的某个网络接口进入(`ingress`), 在`bridge check`处会检查此网络接口是否属于某个Bridge的port，如果是就会进入Bridge代码处理逻辑(`broute`->...), 否则就会送入网络层处理(`raw`-->...)       
 
