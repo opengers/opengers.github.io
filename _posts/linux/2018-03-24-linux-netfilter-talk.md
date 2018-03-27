@@ -30,7 +30,7 @@ netfilter是linux内核中的一个数据包处理框架，用于替代原有的
 ><small>The br-nf code makes bridged IP frames/packets go through the iptables chains. Ebtables filters on the Ethernet layer, while iptables only filters IP packets       
 It should be noted that the br-nf code sometimes violates the TCP/IP Network Model. As will be seen later, it is possible, f.e., to do IP DNAT inside the Link Layer</small>      
 
-ok，图中长方形小方框已经解释清楚了，还有一种椭圆形的方框`conntrack`，即Connection Tracking，这是netfilter框架中的连接跟踪机制，连接跟踪允许内核持续跟踪通过此处的所有网络连接，从而将所有构成该连接的数据包关联起来，通俗点说，conntrack机制能够"审查"通过此处的所有网络数据包，并把数据包按网络连接相关联(比如数据包a属于`IP1:8888->IP2:80`这个tcp连接，数据包b属于`ip3:9999->IP4:53`这个udp连接),图中可以清楚看到连接跟踪机制所处的网络栈位置，因此如果不想让某个数据包被跟踪(`NOTRACK`),那就要找位于椭圆形方框`conntrack`之前的表和链来设置规则。conntrack机制是iptables实现状态匹配(`-m state`)以及NAT的基础，它由单独的内核模块`nf_conntrack`实现。下面还会详细介绍             
+ok，图中长方形小方框已经解释清楚了，还有一种椭圆形的方框`conntrack`，即Connection Tracking，这是netfilter框架中的连接跟踪机制，连接跟踪允许内核持续跟踪通过此处的所有网络连接，从而将所有构成该连接的数据包关联起来，通俗点说，conntrack机制能够"审查"通过此处的所有网络数据包，并把数据包按网络连接相关联(比如数据包a属于`IP1:8888->IP2:80`这个tcp连接，数据包b属于`ip3:9999->IP4:53`这个udp连接),图中可以清楚看到连接跟踪代码所处的网络栈位置，因此如果不想让某些数据包被跟踪(`NOTRACK`),那就要找位于椭圆形方框`conntrack`之前的表和链来设置规则。conntrack机制是iptables实现状态匹配(`-m state`)以及NAT的基础，它由单独的内核模块`nf_conntrack`实现。下面还会详细介绍             
  
 接着看图中左下方`bridge check`方框，数据包从主机上的某个网络接口进入(`ingress`), 在`bridge check`处会检查此网络接口是否属于某个Bridge的port，如果是就会进入Bridge代码处理逻辑(`broute`->...), 否则就会送入网络层处理(`raw`-->...)       
 
@@ -44,9 +44,25 @@ ok，图中长方形小方框已经解释清楚了，还有一种椭圆形的方
 
 未完待续...
 
-# Connection Tracking     
+# Connection Tracking       
 
-pass
+当加载内核模块`nf_conntrack`后，conntrack机制就开始工作，内核当前跟踪到的所有conntrack条目可以用`cat /proc/net/nf_conntrack`查看，每个conntrack条目表示一个网络连接，conntrack条目像下面这样，它包含了数据包的原始方向信息`src=172.16.207.231 dst=172.16.207.232 sport=51071 dport=5672`和期望的回复包信息`src=172.16.207.232 dst=172.16.207.231 sport=5672 dport=51071`      
+
+ipv4     2 tcp      6 431955 ESTABLISHED <red>src=172.16.207.231 dst=172.16.207.232 sport=51071 dport=5672</red> src=172.16.207.232 dst=172.16.207.231 sport=5672 dport=51071 [ASSURED] mark=0 zone=0 use=2
+
+数据包若通过上图中三个椭圆形方框`conntrack`代码位置时就会被内核"审查"，，也就是说若后续内核收到一个与期望的回复包信息一样的数据包，此时内核就会判断他们属于同一网络连接中的数据包，           
+
+<p style='color:red'>This is some red text.</p>
+<font color="red">This is some text!</font>
+These are <b style='color:red'>red words</b>.
+
+在内核中，conntrack条目是存放在一个称作哈希表(hash table)的二维数组中，哈希表的大小称作HASHSIZE，哈希表的每一项又是一个链表(linked list)，链表也称作bucket，因此哈希表中有HASHSIZE个bucket存在，每个bucket
+
+
+存放在链表(linked list)的node中，每个链表又称作bucket，每个bucket是哈希表(hash table)中的一
+条目，
+
+
 
 # Bridge与netfilter   
 
