@@ -46,15 +46,11 @@ ok，图中长方形小方框已经解释清楚了，还有一种椭圆形的方
 
 # Connection Tracking       
 
-当加载内核模块`nf_conntrack`后，conntrack机制就开始工作，内核当前跟踪到的所有conntrack条目可以用`cat /proc/net/nf_conntrack`查看，每个conntrack条目表示一个网络连接，conntrack条目像下面这样，它包含了数据包的原始方向信息`src=172.16.207.231 dst=172.16.207.232 sport=51071 dport=5672`和期望的回复包信息`src=172.16.207.232 dst=172.16.207.231 sport=5672 dport=51071`      
-
-ipv4     2 tcp      6 431955 ESTABLISHED <red>src=172.16.207.231 dst=172.16.207.232 sport=51071 dport=5672</red> src=172.16.207.232 dst=172.16.207.231 sport=5672 dport=51071 [ASSURED] mark=0 zone=0 use=2
+当加载内核模块`nf_conntrack`后，conntrack机制就开始工作，内核当前跟踪到的所有conntrack条目可以用`cat /proc/net/nf_conntrack`查看，每个conntrack条目表示一个网络连接，conntrack条目像下面这样，它包含了数据包的原始方向信息(蓝色)和期望的回复包信息(红色)    
+       
+<small>ipv4     2 tcp      6 431955 ESTABLISHED <font color="blue">src=172.16.207.231 dst=172.16.207.232 sport=51071 dport=5672</font> <font color="red">src=172.16.207.232 dst=172.16.207.231 sport=5672 dport=51071</font> [ASSURED] mark=0 zone=0 use=2</small>
 
 数据包若通过上图中三个椭圆形方框`conntrack`代码位置时就会被内核"审查"，，也就是说若后续内核收到一个与期望的回复包信息一样的数据包，此时内核就会判断他们属于同一网络连接中的数据包，           
-
-<p style='color:red'>This is some red text.</p>
-<font color="red">This is some text!</font>
-These are <b style='color:red'>red words</b>.
 
 在内核中，conntrack条目是存放在一个称作哈希表(hash table)的二维数组中，哈希表的大小称作HASHSIZE，哈希表的每一项又是一个链表(linked list)，链表也称作bucket，因此哈希表中有HASHSIZE个bucket存在，每个bucket
 
