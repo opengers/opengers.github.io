@@ -44,36 +44,39 @@ ok，图中长方形小方框已经解释清楚了，还有一种椭圆形的方
 
 # Connection Tracking       
 
-当加载内核模块`nf_conntrack`后，conntrack机制就开始工作，如上图，内核中有三个位置(椭圆形方框`conntrack`)能够跟踪数据包。对于每个通过`conntrack`的数据包，内核都为其生成一个连接跟踪条目用以跟踪此连接，对于后续的数据包，内核会判断若此数据包属于一个已有的连接，则更新所属的连接跟踪条目的状态(比如更新为ESTABLISHED状态)，否则内核会为它新建一个连接跟踪条目。所有的连接跟踪条目存放在一张表里，称为连接跟踪表  
+当加载内核模块`nf_conntrack`后，conntrack机制就开始工作，如上图，内核中有三个位置(椭圆形方框`conntrack`)能够跟踪数据包。对于每个通过`conntrack`的数据包，内核都为其生成一个conntrack条目用以跟踪此连接，对于后续通过的数据包，内核会判断若此数据包属于一个已有的连接，则更新所对应的连接跟踪条目的状态(比如更新为ESTABLISHED状态)，否则内核会为它新建一个conntrack条目。所有的conntrack条目存放在一张表里，称为连接跟踪表                 
 
-内核是如何判断一个数据包是否属于一个已有的连接呢，我们先来了解下连接跟踪表       
+那么内核如何判断一个数据包是否属于一个已有的连接呢，我们先来了解下连接跟踪表       
       
 **连接跟踪表**     
 
-连接跟踪表的内容可以用`cat /proc/net/nf_conntrack`查看，每个conntrack条目表示一个网络连接，conntrack条目像下面这样，它包含了数据包的原始方向信息(蓝色)和期望的回复包信息(红色)，这样内核能够在后续到来的数据包中识别出属于此连接的双向数据包，并更新此连接的状态，系统允许存放的conntrack条目最大数量称作`CONNTRACK_MAX`                 
+连接跟踪表存放于系统内存中，可以用`cat /proc/net/nf_conntrack`查看当前连接跟踪表中所有的conntrack条目，每个conntrack条目表示一个连接，可以是tcp/udp/icmp/...，conntrack条目像下面这样，它包含了数据包的原始方向信息(蓝色)和期望的回复包信息(红色)，这样内核能够在后续到来的数据包中识别出属于此连接的双向数据包，并更新此连接的状态。连接跟踪表中能够存放的conntrack条目的最大值称作CONNTRACK_MAX                       
        
 <small>ipv4     2 tcp      6 431955 ESTABLISHED <font color="blue">src=172.16.207.231 dst=172.16.207.232 sport=51071 dport=5672</font> <font color="red">src=172.16.207.232 dst=172.16.207.231 sport=5672 dport=51071</font> [ASSURED] mark=0 zone=0 use=2</small>       
 
-在内核中，连接跟踪表是一个二维数组结构的哈希表(hash table)，哈希表的大小称作HASHSIZE，哈希表的每一项(hash table entry)称作bucket，因此哈希表中有HASHSIZE个bucket存在，每个bucket包含一个链表(linked list)，每个链表能够存放若干个conntrack条目(Bucket Size)，对于一个新收到的数据包，内核使用如下步骤查找其对应的conntrack条目：        
-- 第一步内核将此数据包信息(源目IP，port，协议号)进行hash得到一个hash值，在哈希表中以此hash值做索引，得到数据包所属的bucket(链表)。hash计算时间很短        
-- 遍历bucket，找到匹配的conntrack条目。Bucket Size越大，遍历时间越长       
+当然，根据conntrack跟踪的协议不同，上面条目信息也不一样，比如icmp协议           
+
+在内核中，连接跟踪表是一个二维数组结构的哈希表(hash table)，哈希表的大小称作HASHSIZE，哈希表的每一项(hash table entry)称作bucket，因此哈希表中有HASHSIZE个bucket存在，每个bucket包含一个链表(linked list)，每个链表能够存放若干个conntrack条目(Bucket Size)。对于一个新收到的数据包，内核使用如下步骤判断其是否属于一个已有连接：                   
+- 内核将此数据包信息(源目IP，port，协议号)进行hash计算得到一个hash值，在哈希表中以此hash值做索引，得到数据包所属的bucket(链表)。这一步hash计算时间是固定的并且很短                 
+- 遍历bucket，查找是否有匹配的conntrack条目。这一步是比较耗时的操作，bucket size越大，遍历时间越长                        
 
 **如何设置最大连接跟踪数**       
 
-根据上面讨论的，系统最大连接跟踪数量(CONNTRACK_MAX) = `连接跟踪表大小(HASHSIZE) * Bucket大小(Bucket Size)`。从连接跟踪表获取bucet是hash操作时间很短，而遍历bucket查找conntrack条目相对费时，因此bucket size越小越好，默认为8   
+根据上面对哈希表的解释，系统最大允许连接跟踪数(CONNTRACK_MAX) = `连接跟踪表大小(HASHSIZE) * Bucket大小(Bucket Size)`。从连接跟踪表获取bucket是hash操作时间很短，因此HASHSIZE值可以很大。而遍历bucket相对费时，因此为了conntrack性能考虑，Bucket Size越小越好，默认为8     
 
-若`nf_conntrack`模块未加载，此时只需要更改系统`HASHSIZE`值，模块加载后`CONNTRACK_MAX`会自动更新(x 8)      
+若`nf_conntrack`模块未加载，此时只需要更改`HASHSIZE`值，模块加载后`CONNTRACK_MAX`会自动设置(HASISIZE x 8)      
 
 ``` shell   
-#设置CONNTRACK_MAX为320w
+#设置hashsize为40w，也即设置CONNTRACK_MAX为320w    
 echo "options nf_conntrack hashsize=400000" > /etc/modprobe.d/nf_conntrack.conf
 #加载模块
 modprobe nf_conntrack
 #查看当前CONNTRACK_MAX
 sysctl -a | grep 'net.netfilter.nf_conntrack_max'
+#可以根据这里显示的CONNTRACK_MAX值验证Bucket Size是否为8，Bucket Size = CONNTRACK_MAX / HASISIZE
 ```      
 
-若`nf_conntrack`模块已加载，则直接更改        
+若`nf_conntrack`模块已加载，则直接更改CONNTRACK_MAX值                
 
 ``` shell
 sysctl -w net.netfilter.nf_conntrack_max=3200000
@@ -81,23 +84,41 @@ sysctl -w net.netfilter.nf_conntrack_max=3200000
 echo "options nf_conntrack hashsize=400000" > /etc/modprobe.d/nf_conntrack.conf
 ```   
 
-**如何计算连接跟踪所占内存**    
+**如何计算连接跟踪所占内存**     
 
-连接跟踪表存储在系统内存中，CONNTRACK_MAX设置越大，消耗的最大系统内存就越大，可以用下面公式根据设置的CONNTRACK_MAX值计算连接跟踪表所占最大内存，注意是最大内存，就是连接跟踪表满时所占内存             
+连接跟踪表存储在系统内存中，设置的最大连接跟踪数越多，消耗的最大系统内存就越多，可以用下面公式计算设置不同的最大连接跟踪数所占最大系统内存                               
 
 ``` shell
 size_of_mem_used_by_conntrack (in bytes) = CONNTRACK_MAX * sizeof(struct ip_conntrack) + HASHSIZE * sizeof(struct list_head)
 ```
 
-在centos7系统上，`sizeof(struct ip_conntrack)` = 376，`sizeof(struct list_head)` = 16，上面说过
+假如我们需要设置最大连接跟踪数为320w，在centos7系统上，`sizeof(struct ip_conntrack)` = 376，`sizeof(struct list_head)` = 16，并且Bucket Size默认为8，因此`HASHSIZE = CONNTRACK_MAX / 8`，因此          
 
 ``` shell
-size_of_mem_used_by_conntrack (in bytes) = CONNTRACK_MAX * 376 + HASHSIZE * 16
+size_of_mem_used_by_conntrack (in bytes) = 3200000 * 376 + (3200000 / 8) * 16
+#= 1153MB
 ```
 
+因此可以得到，在centos7系统上，设置320w的最大连接跟踪数，所消耗的内存大约为1GB        
 
+关于上面两个`sizeof(struct *)`值在你系统上的大小，可以使用如下python代码计算       
+          
+``` shell
+import ctypes
 
+#不同系统可能此库名不一样  
+LIBNETFILTER_CONNTRACK = 'libnetfilter_conntrack.so.3.6.0'
 
+nfct = ctypes.CDLL(LIBNETFILTER_CONNTRACK)
+print 'sizeof(struct nf_conntrack):', nfct.nfct_maxsize()
+print 'sizeof(struct list_head):', ctypes.sizeof(ctypes.c_void_p) * 2
+```
+
+要注意的是，conntrack机制作用只是跟踪并记录通过它的所有网络连接及其状态，并把记录信息存放在连接跟踪表里。conntrack机制本身并不能够修改或过滤数据包，能够修改过滤数据包的是iptables，正是有了conntrack提供的连接跟踪表，iptables才能够实现对数据包的状态匹配      
+
+# iptables状态匹配                
+
+pass       
 
 # Bridge与netfilter   
 
