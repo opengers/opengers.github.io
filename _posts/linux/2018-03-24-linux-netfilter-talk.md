@@ -65,22 +65,36 @@ ok，图中长方形小方框已经解释清楚了，还有一种椭圆形的方
 
 根据上面对哈希表的解释，系统最大允许连接跟踪数`CONNTRACK_MAX` = `连接跟踪表大小(HASHSIZE) * Bucket大小(bucket size)`。从连接跟踪表获取bucket是hash操作时间很短，而遍历bucket相对费时，因此为了conntrack性能考虑，bucket size越小越好，默认为8     
 
-如下，我们现在需要设置`CONNTRACK_MAX`为320w，`bucket_size`使用默认值8           
+``` shell
+#查看系统当前最大连接跟踪数CONNTRACK_MAX
+sysctl -a | grep net.netfilter.nf_conntrack_max
+#net.netfilter.nf_conntrack_max = 3200000
 
-若内核模块`nf_conntrack`还未加载，此时只需要更改`HASHSIZE`值，模块加载后`CONNTRACK_MAX`会自动设置(HASISIZE x 8)      
+#查看当前连接跟踪表大小HASHSIZE
+sysctl -a | grep net.netfilter.nf_conntrack_buckets
+#400384
+#或者
+cat /sys/module/nf_conntrack/parameters/hashsize
+#400384
+```
+
+如下，我们现在需要设置系统最大连接跟踪数为320w，`bucket_size`使用默认值8           
+
+若内核模块`nf_conntrack`还未加载，此时只需要设置`nf_conntrack`的参数`HASHSIZE`值，模块加载后`CONNTRACK_MAX`会被自动设置(HASISIZE x 8)      
 
 ``` shell   
-#设置hashsize为40w，也即CONNTRACK_MAX为320w    
+#设置hashsize为40w    
 echo "options nf_conntrack hashsize=400000" > /etc/modprobe.d/nf_conntrack.conf
 #加载模块
 modprobe nf_conntrack
 #查看当前CONNTRACK_MAX
 sysctl -a | grep 'net.netfilter.nf_conntrack_max'
-net.netfilter.nf_conntrack_max = 3200000
+#net.netfilter.nf_conntrack_max = 3200000
+
 #可以验证这里的net.netfilter.nf_conntrack_max值是否为HASISIZE * 8
 ```      
 
-若`nf_conntrack`模块已加载，则直接更改`HASHSIZE`，`CONNTRACK_MAX`值                     
+若`nf_conntrack`模块已加载                          
 
 ``` shell
 #HASHSIZE = CONNTRACK_MAX / bucket_size = 3200000 / 8
