@@ -49,7 +49,7 @@ ok，图中长方形小方框已经解释清楚了，还有一种椭圆形的方
       
 **连接跟踪表**     
 
-连接跟踪表存放于系统内存中，可以用`cat /proc/net/nf_conntrack`查看当前跟踪的所有conntrack条目。如下是一个conntrack条目，当然，根据连接协议不同，下面显示的字段信息也不一样，比如icmp协议                   
+连接跟踪表存放于系统内存中，可以用`cat /proc/net/nf_conntrack`查看当前跟踪的所有conntrack条目。如下是代表一个tcp连接的conntrack条目，根据连接协议不同，下面显示的字段信息也不一样，比如icmp协议                                  
        
 <small>ipv4     2 tcp      6 431955 ESTABLISHED <font color="blue">src=172.16.207.231 dst=172.16.207.232 sport=51071 dport=5672</font> <font color="red">src=172.16.207.232 dst=172.16.207.231 sport=5672 dport=51071</font> [ASSURED] mark=0 zone=0 use=2</small>        
 
@@ -145,11 +145,37 @@ print 'sizeof(struct nf_conntrack):', nfct.nfct_maxsize()
 print 'sizeof(struct list_head):', ctypes.sizeof(ctypes.c_void_p) * 2
 ```
 
-要注意的是，conntrack机制作用只是跟踪并记录通过它的网络连接及其状态，并把信息记录在连接跟踪表。它并不能够修改或过滤数据包，能够修改过滤数据包的是iptables，正是有了conntrack提供的连接跟踪表，iptables才能够依据该表实现对数据包的状态匹配，所谓的iptables是一个有状态的防火墙就是这个意思           
+**conntrack条目**           
 
+``` shell
+ipv4     2 tcp      6 33 SYN_SENT src=172.16.200.119 dst=172.16.202.12 sport=54786 dport=10051 [UNREPLIED] src=172.16.202.12 dst=172.16.200.119 sport=10051 dport=54786 mark=0 zone=0 use=2
+```   
+
+如上是一条conntrack条目，它代表当前某个被跟踪的连接，我们可以得到如下信息：     
+
+- 此连接使用ipv4协议，是一条tcp连接(tcp的协议类型代码是6)                       
+- `33`是这条conntrack条目在当前时间点的生存时间(从设置值开始倒计时，倒计时完后此条目将被删除)，可以使用`sysctl -a |grep conntrack | grep timeout`查看不同协议不同状态下生存时间设置值，当然这些设置值都可以调整，注意若后续有收到属于此连接的数据包，则此生存时间将被重置(重新从设置值开始倒计时)，并且状态改变，生存时间设置值也会改变       
+- `SYN_SENT`是这个连接在当前时间点的状态，`SYN_SENT`表示这个连接只在一个方向发送了一TCP SYN包，还未看到响应的SYN+ACK包。           
+- `src=172.16.200.119 dst=172.16.202.12 sport=54786 dport=10051`是此连接的源目地址、源目端口。即`172.16.200.119:54786 -SYN-> 172.16.202.12:10051`    
+- `[UNREPLIED]`说明此时这个连接还没有收到任何回应，当一个连接在两个方向上都有收到数据包时，[UNREPLIED]标志就会被移除              
+- 接下来的`src=172.16.202.12 dst=172.16.200.119 sport=10051 dport=54786`地址和端口和前面是相反的，是内核希望收到的响应包的信息。意思是若后续conntrack跟踪到某个数据包信息与此匹配，则此数据包属于此连接，并且是一个响应数据包                                                
+
+conntrack条目信息依据IP所包含的协议不同而不同，相比tcp连接，udp和icmp没有连接建立和关闭过程，因此其conntrack条目也有不同        
+
+``` shell
+#udp
+ipv4     2 udp      17 22 src=172.16.200.119 dst=172.16.200.1 sport=33636 dport=53 [UNREPLIED] src=172.16.200.1 dst=172.16.200.119 sport=53 dport=33636 mark=0 zone=0 use=2    
+#icmp
+ipv4     2 icmp     1 29 src=114.14.240.77 dst=111.31.136.9 type=8 code=0 id=57960 src=111.31.136.9 dst=114.14.240.77 type=0 code=0 id=57960 mark=0 zone=0 use=2
+```
+
+要注意的是，conntrack机制作用只是跟踪并记录通过它的网络连接及其状态，并把信息更新在连接跟踪表。它并不能够修改或过滤数据包，能够修改过滤数据包的是iptables，正是有了conntrack提供的连接跟踪表，iptables才能知道某个特定连接的状态，因此iptables是带有状态匹配的防火墙      
+        
 # iptables状态匹配                
 
-pass       
+在iptables里，包是和被跟踪连接的四种不同状态有关的。它们是NEW，ESTABLISHED，RELATED和INVALID。 后面我们会深入地讨论每一个状态。使用--state匹配操作，我们能很容易地控制 “谁或什么能发起新的会话”。
+
+除了本地产生的包由OUTPUT链处理外，所有连接跟踪都是在PREROUTING链里进行处理的，意思就是， iptables会在PREROUTING链里从新计算所有的状态。如果我们发送一个流的初始化包，状态就会在OUTPUT链 里被设置为NEW，当我们收到回应的包时，状态就会在PREROUTING链里被设置为ESTABLISHED。如果第一个包不是本地产生的，那就会在PREROUTING链里被设置为NEW状 态。综上，所有状态的改变和计算都是在nat表中的PREROUTING链和OUTPUT链里完成的。                
 
 # Bridge与netfilter   
 
