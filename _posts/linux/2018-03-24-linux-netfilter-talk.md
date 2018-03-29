@@ -13,7 +13,7 @@ tags:
 * TOC
 {:toc}    
 
-# netfilter框架      
+## netfilter框架      
 
 netfilter是linux内核中的一个数据包处理框架，用于替代原有的ipfwadm和ipchains等数据包处理程序。netfilter的功能包括数据包过滤，修改，NAT等。netfilter在内核协议栈的不同位置实现了5个钩子函数(hooks),不同类型的网络数据包会通过不同的hook点(比如数据包是要forward，或是交给local process处理)，用户层工具iptables/ebtables通过操作不同的hook点以实现对通过此hook点的数据包的处理，关于netfilter框架，可以参考[Netfilter Architecture](https://netfilter.org/documentation/HOWTO/netfilter-hacking-HOWTO-3.html)       
 
@@ -41,13 +41,13 @@ ok，图中长方形小方框已经解释清楚了，还有一种椭圆形的方
 
 上面就是关于这张图的一些解释，如果还有其它疑问，欢迎留言讨论，下面说说netfilter的应用方面            
 
-# connection tracking       
+## connection tracking       
 
 当加载内核模块`nf_conntrack`后，conntrack机制就开始工作，如上图，椭圆形方框`conntrack`在内核中有两处位置(PREROUTING和OUTPUT之前)能够跟踪数据包。对于每个通过`conntrack`的数据包，内核都为其生成一个conntrack条目用以跟踪此连接，对于后续通过的数据包，内核会判断若此数据包属于一个已有的连接，则更新所对应的conntrack条目的状态(比如更新为ESTABLISHED状态)，否则内核会为它新建一个conntrack条目。所有的conntrack条目都存放在一张表里，称为连接跟踪表                   
 
 那么内核如何判断一个数据包是否属于一个已有的连接呢，我们先来了解下连接跟踪表       
       
-**连接跟踪表**     
+### 连接跟踪表            
 
 连接跟踪表存放于系统内存中，可以用`cat /proc/net/nf_conntrack`查看当前跟踪的所有conntrack条目。如下是代表一个tcp连接的conntrack条目，根据连接协议不同，下面显示的字段信息也不一样，比如icmp协议                                  
        
@@ -61,7 +61,7 @@ ok，图中长方形小方框已经解释清楚了，还有一种椭圆形的方
 - 内核将此数据包信息(源目IP，port，协议号)进行hash计算得到一个hash值，在哈希表中以此hash值做索引，得到数据包所属的bucket(链表)。这一步hash计算时间是固定的并且很短                 
 - 遍历bucket，查找是否有匹配的conntrack条目。这一步是比较耗时的操作，`bucket size`越大，遍历时间越长                        
 
-**如何设置最大连接跟踪数**       
+### 如何设置最大连接跟踪数             
 
 根据上面对哈希表的解释，系统最大允许连接跟踪数`CONNTRACK_MAX` = `连接跟踪表大小(HASHSIZE) * Bucket大小(bucket size)`。从连接跟踪表获取bucket是hash操作时间很短，而遍历bucket相对费时，因此为了conntrack性能考虑，`bucket size`越小越好，默认为8     
 
@@ -110,9 +110,9 @@ echo 3200000 > /sys/module/nf_conntrack/parameters/hashsize
 sysctl -w net.netfilter.nf_conntrack_max=3200000
 ```      
 
-**如何计算连接跟踪所占内存**     
+### 如何计算连接跟踪所占内存             
 
-连接跟踪表存储在系统内存中，设置的最大连接跟踪数越多，消耗的最大系统内存就越多，可以用下面公式计算设置不同的最大连接跟踪数所占最大系统内存                               
+连接跟踪表存储在系统内存中，设置的最大连接跟踪数越多，消耗的最大系统内存就越多，可以用下面公式计算设置不同的最大连接跟踪数所占最大系统内存                                   
 
 ``` shell
 size_of_mem_used_by_conntrack (in bytes) = CONNTRACK_MAX * sizeof(struct ip_conntrack) + HASHSIZE * sizeof(struct list_head)
@@ -140,7 +140,7 @@ print 'sizeof(struct nf_conntrack):', nfct.nfct_maxsize()
 print 'sizeof(struct list_head):', ctypes.sizeof(ctypes.c_void_p) * 2
 ```
 
-**conntrack条目**           
+### conntrack条目                         
 
 ``` shell
 ipv4     2 tcp      6 33 SYN_SENT src=172.16.200.119 dst=172.16.202.12 sport=54786 dport=10051 [UNREPLIED] src=172.16.202.12 dst=172.16.200.119 sport=10051 dport=54786 mark=0 zone=0 use=2
@@ -166,11 +166,7 @@ ipv4     2 icmp     1 29 src=114.14.240.77 dst=111.31.136.9 type=8 code=0 id=579
 
 要注意的是，conntrack机制作用只是跟踪并记录通过它的网络连接及其状态，并把信息更新在连接跟踪表，以提供给iptables做状态匹配使用                           
         
-# iptables状态匹配            
-
-### 用户空间的状态       
-
-## 用户空间的状态               
+## iptables状态匹配                            
 
 首先我们先明确下conntrack机制跟踪数据包的位置，除了本地产生的包由OUTPUT链处理外，所有连接跟踪都是在PREROUTING链里进行处理的，意思就是， iptables会在PREROUTING链里从新计算所有的状态。如果我们发送一个流的初始化包，状态就会在OUTPUT链 里被设置为NEW，当我们收到回应的包时，状态就会在PREROUTING链里被设置为ESTABLISHED。如果第一个包不是本地产生的，那就会在PREROUTING链里被设置为NEW状 态。综上，所有状态的改变和计算都是在nat表中的PREROUTING链和OUTPUT链里完成的。            
 
@@ -186,15 +182,15 @@ iptables是带有状态匹配的防火墙，它使用`-m state`模块从连接�
 {:.mbtablestyle}                         
 
               
-# Bridge与netfilter   
+## Bridge与netfilter   
 
 pass 
 
-# netfilter与LVS
+## netfilter与LVS
 
 pass
 
-# openstack安全组实现   
+## openstack安全组实现   
 
 pass
 
