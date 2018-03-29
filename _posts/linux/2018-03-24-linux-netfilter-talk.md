@@ -168,7 +168,7 @@ ipv4     2 icmp     1 29 src=114.14.240.77 dst=111.31.136.9 type=8 code=0 id=579
         
 # iptables状态匹配            
 
-**用户空间的状态**            
+#### 用户空间的状态                
 
 首先我们先明确下conntrack机制跟踪数据包的位置，除了本地产生的包由OUTPUT链处理外，所有连接跟踪都是在PREROUTING链里进行处理的，意思就是， iptables会在PREROUTING链里从新计算所有的状态。如果我们发送一个流的初始化包，状态就会在OUTPUT链 里被设置为NEW，当我们收到回应的包时，状态就会在PREROUTING链里被设置为ESTABLISHED。如果第一个包不是本地产生的，那就会在PREROUTING链里被设置为NEW状 态。综上，所有状态的改变和计算都是在nat表中的PREROUTING链和OUTPUT链里完成的。            
 
@@ -177,13 +177,9 @@ iptables是带有状态匹配的防火墙，它使用`-m state`模块从连接�
 | State | 解释 |   
 | --------- | -------- |     
 | NEW | NEW说明这个包是我们看到的第一个 包。意思就是，这是conntrack模块看到的某个连接第一个包，它即将被匹配了。比如，我们看到一个SYN 包，是我们所留意的连接的第一个包，就要匹配它。第一个包也可能不是SYN包，但它仍会被认为是NEW状态。这样做有时会导致一些问题，但对某些情况是有非常大的帮助的。例如，在 我们想恢复某条从其他的防火墙丢失的连接时，或者某个连接已经超时，但实际上并未关闭时。 |    
-
 | ESTABLISHED | ESTABLISHED已经注意到两个方向上 的数据传输，而且会继续匹配这个连接的包。处于ESTABLISHED状态的连接是非常容 易理解的。只要发送并接到应答，连接就是ESTABLISHED的了。一个连接要从NEW变 为ESTABLISHED，只需要接到应答包即可，不管这个包是发往防火墙的，还是要由防 火墙转发的。ICMP的错误和重定向等信息包也被看作是ESTABLISHED，只要它们是我 们所发出的信息的应答。 |    
-
 | RELATED | RELATED是个比较麻烦的状态。当一 个连接和某个已处于ESTABLISHED状态的连接有关系时，就被认为是RELATED的了。换句话说，一个连接要想 是RELATED的，首先要有一个ESTABLISHED的连接。这个ESTABLISHED连接再产生一个主连接之外的连接，这 个新的连接就是RELATED的了，当然前提是conntrack模块要能理解RELATED。ftp是个很好的例子，FTP-data 连接就是和FTP-control有RELATED的。还有其他的例子，比如，通过IRC的DCC连接。有了这个状态，ICMP应 答、FTP传输、DCC等才能穿过防火墙正常工作。注意，大部分还有一些UDP协议都依赖这个机制。这些协议 是很复杂的，它们把连接信息放在数据包里，并且要求这些信息能被正确理解。 |     
-
 | INVALID | INVALID说明数据包不能被识别属于 哪个连接或没有任何状态。有几个原因可以产生这种情况，比如，内存溢出，收到不知属于哪个连接的ICMP 错误信息。一般地，我们DROP这个状态的任何东西。 |    
-
 | UNTRACKED | This is the UNTRACKED state. In brief, if a packet is marked within the raw table with the NOTRACK target, then that packet will show up as UNTRACKED in the state machine. This also means that all RELATED connections will not be seen, so some caution must be taken when dealing with the UNTRACKED connections since the state machine will not be able to see related ICMP messages et cetera. |        
 {:.mbtablestyle}                         
 
