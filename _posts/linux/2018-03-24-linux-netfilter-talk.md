@@ -168,7 +168,9 @@ ipv4     2 icmp     1 29 src=114.14.240.77 dst=111.31.136.9 type=8 code=0 id=579
         
 # iptables状态匹配            
 
-#### 用户空间的状态                
+### 用户空间的状态       
+
+## 用户空间的状态               
 
 首先我们先明确下conntrack机制跟踪数据包的位置，除了本地产生的包由OUTPUT链处理外，所有连接跟踪都是在PREROUTING链里进行处理的，意思就是， iptables会在PREROUTING链里从新计算所有的状态。如果我们发送一个流的初始化包，状态就会在OUTPUT链 里被设置为NEW，当我们收到回应的包时，状态就会在PREROUTING链里被设置为ESTABLISHED。如果第一个包不是本地产生的，那就会在PREROUTING链里被设置为NEW状 态。综上，所有状态的改变和计算都是在nat表中的PREROUTING链和OUTPUT链里完成的。            
 
