@@ -19,7 +19,7 @@ netfilter是linux内核中的一个数据包处理框架，用于替代原有的
 
 下面这张图来自维基百科[netfilter](https://en.wikipedia.org/wiki/Netfilter), 它展示了netfilter注册的hook点在内核协议栈的分布，以及packet在通过内核协议栈时，所经过的hook点，你们可能发现这张图在我的博客中出现多次了，那是因为这张图太经典了。图中有清晰的网络模型划分，因此很容易看到数据包在经过某条链时所处的层次       
 
-![netfilter](/images/openstack/openstack-virtual-devices/netfilter.png)      
+![netfilter](/images/openstack/openstack-virtual-devices/netfilter.png)       
 
 我们知道iptables只处理IP数据包(IP/PORT/SNAT/DNAT/...)，而ebtables只工作在链路层`Link Layer`处理以太网帧(比如修改源/目mac地址)。图中用有颜色的长方形方框表示iptables或ebtables的表和链，绿色小方框表示`network level`，即iptables的表和链。蓝色小方框表示`bridge level`，即ebtables的表和链，由于处理以太网帧相对简单，因此链路层的蓝色小方框相对较少。  
 
@@ -283,7 +283,10 @@ Bridge的存在，使得主机可以充当一台软件交换机来运作，这�
 
 ## netfilter与LVS     
 
-netfilter与LVS使用还是有些问题，LVS修改数据包依赖的是netfilter框架，       
+总结: LVS-DR(或LVS-Tun)模式下，不能在director上使用iptables的连接状态匹配(NEW,ESTABLISHED,INVALID,...)             
+具体原因: DR模式下，director无法收到realserver的reply包(syn+ack)，因此从director机器来看，其无法看到C/S间一个完整的三次握手过程，这就导致director上依靠连接状态工作的iptables无法匹配到ESTABLISHED这个状态，从而发生DROP 
+(类似 -m conntrack --ctstate NEW,ESTABLISHED 这种规则)
+http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.filter_rules.html 29.16. stateful filtering: LVS-DR 有详细说明过程       
 
 LVS-HOWTO
 http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.filter_rules.html
@@ -294,13 +297,11 @@ http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.filter_rules.html#statefu
 LVS/IPVS on Openstack - Bad Idea
 http://efod.se/openstack-lvs-nope/
 
+## openstack安全组实现      
 
+openstack安全组实现依赖netfilter框架，这部分我们会分析openstack安全组的具体实现流程，作为对上面讨论的netfilter知识点的总结         
 
-## openstack安全组实现   
-
-pass
-
-
+未完待续...
 
 参考文章    
 
