@@ -23,7 +23,7 @@ netfilter是linux内核中的一个数据包处理框架，用于替代原有的
 
 我们知道iptables只处理IP数据包(IP/PORT/SNAT/DNAT/...)，而ebtables只工作在链路层`Link Layer`处理以太网帧(比如修改源/目mac地址)。图中用有颜色的长方形方框表示iptables或ebtables的表和链，绿色小方框表示`network level`，即iptables的表和链。蓝色小方框表示`bridge level`，即ebtables的表和链，由于处理以太网帧相对简单，因此链路层的蓝色小方框相对较少。  
 
-我们还注意到一些代表iptables表和链的绿色小方框位于链路层，这是因为`bridge_nf`代码的作用(从2.6 kernel开始)，`bridge_nf`的引入是为了解决在链路层Bridge中处理IP数据包的问题(需要通过内核参数开启)，那为什么要在链路层Bridge中处理IP数据包，而不等数据包通过网络层时候再处理呢，这是因为不是所有的数据包都一定会通过网络层，有可能数据包从Bridge的一个port进入，经过`bridging decision`后从另一个port发出，`bridge_nf`也是openstack中实现安全组功能的基础，关于Bridge下的数据包过滤，我的另一篇文章有总结[Bridge与netfilter](https://opengers.github.io/openstack/openstack-base-virtual-network-devices-bridge-and-vlan/#bridge%E4%B8%8Enetfilter)   
+我们还注意到一些代表iptables表和链的绿色小方框位于链路层，这是因为`bridge_nf`代码的作用(从2.6 kernel开始)，`bridge_nf`的引入是为了解决在链路层Bridge中处理IP数据包的问题(需要通过内核参数开启)，那为什么要在链路层Bridge中处理IP数据包，而不等数据包通过网络层时候再处理呢，这是因为不是所有的数据包都一定会通过网络层，有可能数据包从Bridge的一个port进入，经过`bridging decision`后从另一个port发出，`bridge_nf`也是openstack中实现安全组功能的基础。    
 
 `bridge_nf`代码有时候会引起困惑，就像我们在图中看到的那样，iptables的表和链(绿色小方框)跑到了链路层，netfilter文档对此也有说明[ebtables/iptables interaction on a Linux-based bridge](http://ebtables.netfilter.org/br_fw_ia/br_fw_ia.html)              
 
@@ -179,6 +179,8 @@ ipv4     2 icmp     1 29 src=114.14.240.77 dst=111.31.136.9 type=8 code=0 id=579
 
 ### 数据包在用户空间的状态             
 
+![iptables-status](images/openstack/openstack-netfilter/iptables-status.png)            
+
 iptables是带有状态匹配的防火墙，它使用`-m state`模块从连接跟踪表查找数据包状态。上面我们分析的那条conntrack条目处于`SYN_SENT`状态，这是内核记录的状态，数据包在内核中可能会有几种不同的状态，但是映射到用户空间iptables，只有5种状态可用：NEW，ESTABLISHED，RELATED，INVALID和UNTRACKED。注意我们这里说的状态不是tcp/ip协议中tcp连接的各种状态，这里的4种状态只是。下面表格说明了这4种状态分别能够匹配什么样的数据包，记住下面两点有助于正确理解这5种状态          
 
 - 用户空间这5种状态是iptables用于完成状态匹配而定义的，不关联与特定连接协议         
@@ -216,40 +218,88 @@ iptables是带有状态匹配的防火墙，它使用`-m state`模块从连接�
 
 ### 数据包在内核中的状态      
 
-就用户而言，连接跟踪对于所有连接类型基本相同，只有上面的5种状态，但是从内核角度，不同协议有不同状态，这里我们来具体看下三种基本协议tcp/udp/icmp的conntrack条目        
+从内核角度，不同协议有不同状态，这里我们来具体看下三种基本协议tcp/udp/icmp在连接跟踪表中的不同状态             
 
 **tcp连接**      
 
+下面是172.16.1.100向172.16.1.200建立tcp通信过程中，`/proc/net/nf_conntrack`中此连接的状态变化过程                
+
+``` shell
+#SYN
+ipv4     2 tcp      6 118 SYN_SENT src=172.16.1.100 dst=172.16.1.200 sport=36884 dport=8220 [UNREPLIED] src=172.16.1.200 dst=172.16.1.100 sport=8220 dport=36884 mark=0 zone=0 use=2
+```
+
+如上，首先172.16.1.100向172.16.1.200发送SYN包，172.16.1.200收到SYN包但尚未回复，由于是新连接，conntrack将此连接添加到连接跟踪表，并标记为`SYN_SENT`状态，`[UNREPLIED]`表示172.16.1.200尚未回应。注意上面这条conntrack条目存在于两台主机的连接跟踪表中(当然，首先要两台主机都启用conntrack)，对于172.16.1.100，数据包在经过OUTPUT这个hook点时触发`conntrack`，而对于172.16.1.200，数据包在PREROUTING这个hook点时触发`conntrack`         
+
+随后，172.16.1.200回复SYN/ACK包给172.16.1.100，此时conntrack更新连接状态为`SYN_RECV`，表示收到SYN/ACk包，去掉`[UNREPLIED]`字段    
+
+``` shell 
+ipv4     2 tcp      6 59 SYN_RECV src=172.16.1.100 dst=172.16.1.200 sport=36884 dport=8220 src=172.16.1.200 dst=172.16.1.100 sport=8220 dport=36884 mark=0 zone=0 use=2
+```
+
+接着，172.16.1.100回复ACK给172.16.1.200，至此，三次握手完成，tcp连接已建立，conntrack更新连接状态为`ESTABLISHED`     
+
+``` shell
+ipv4     2 tcp      6 10799 ESTABLISHED src=172.16.1.100 dst=172.16.1.200 sport=36884 dport=8220 src=172.16.1.200 dst=172.16.1.100 sport=8220 dport=36884 [ASSURED] mark=0 zone=0 use=2
+```
+
+conntrack条目中tcp连接的各个状态超时时间，可以如下方式查看        
+
+``` shell
+# sysctl -a |grep 'net.netfilter.nf_conntrack_tcp_timeout_'
+net.netfilter.nf_conntrack_tcp_timeout_close = 10
+net.netfilter.nf_conntrack_tcp_timeout_close_wait = 60
+net.netfilter.nf_conntrack_tcp_timeout_established = 432000
+...
+```
+
+正常的tcp连接是很短暂的，我们是不太可能查看到一个tcp连接所有状态变化的，那如何构造处于特定状态的tcp包呢，一个方法是可以利用iptables的`--tcp-flags`参数，其可以匹配tcp数据包的标志位，比如下面这两条     
+
+``` shell
+#对于本机发往172.16.1.200的tcp数据包，丢弃带有SYN/ACK flag的包       
+iptables -A OUTPUT -o eth0 -p tcp --tcp-flags SYN,ACK SYN,ACK -d 172.16.1.200 -j DROP
+
+#同样，这个是丢弃带有ACK flag的包 
+iptables -A OUTPUT -o eth0 -p tcp --tcp-flags ACK ACK -d 172.16.1.100 -j DROP
+```
+
+同时利用tcp包超时重传机制，待`cat /proc/net/nf_conntrack`获取到conntrack条目后，使用`iptables -D OUTPUT X`删除之前设置的DROP规则，这样tcp连接就会正常进行下去，这个很容易测试出来              
+
+**udp连接**    
+
+UDP连接是无状态的，它没有连接的建立和关闭过程，连接跟踪表中的udp连接也没有像tcp那样的状态字段，但这不妨碍用户空间iptables对udp包的状态匹配，上面也说过，iptables中使用的各个状态与协议无关    
+
+``` shell
+#只收到udp连接第一个包
+ipv4     2 udp      17 28 src=172.16.1.100 dst=172.16.1.200 sport=26741 dport=8991 [UNREPLIED] src=172.16.1.200 dst=172.16.1.100 sport=8991 dport=26741 mark=0 zone=0 use=2
+
+#收到此连接的响应包    
+ipv4     2 udp      17 29 src=172.16.1.100 dst=172.16.1.200 sport=26741 dport=8991 src=172.16.1.200 dst=172.16.1.100 sport=8991 dport=26741 mark=0 zone=0 use=2
+```           
+
+## Bridge与netfilter      
+
+Bridge的存在，使得主机可以充当一台软件交换机来运作，这个软件交换机可以建多个port，连接到多个虚拟机。由此带来的问题是，外部主机与其上虚拟机通信是靠Bridge在二层转发(此时不经过主机IP层)，主机上的网卡类型变得复杂(物理网卡em1，网桥br0，虚拟网卡vnetX)，进入主机的数据包可选路径变多(bridge转发/交给主机本地进程)，这些内容其实挺多，参考我的另一篇[Bridge与netfilter](https://opengers.github.io/openstack/openstack-base-virtual-network-devices-bridge-and-vlan/#bridge%E4%B8%8Enetfilter)，相信这篇已经说得够清楚了     
+
+## netfilter与LVS     
+
+netfilter与LVS使用还是有些问题，LVS修改数据包依赖的是netfilter框架，       
+
+LVS-HOWTO
+http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.filter_rules.html
+
+stateful filtering: LVS-DR
+http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.filter_rules.html#stateful_filtering_LVS-DR
+
+LVS/IPVS on Openstack - Bad Idea
+http://efod.se/openstack-lvs-nope/
 
 
-
-
-
-             
-
-          
-           
-
-
-
-
-      
-## Bridge与netfilter   
-
-pass 
-
-## netfilter与LVS
-
-pass
 
 ## openstack安全组实现   
 
 pass
 
-
-
-
-       
 
 
 参考文章    
