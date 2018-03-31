@@ -171,26 +171,69 @@ ipv4     2 icmp     1 29 src=114.14.240.77 dst=111.31.136.9 type=8 code=0 id=579
 
 还有要注意的是，conntrack机制作用只是跟踪并记录通过它的网络连接及其状态，并把信息更新在连接跟踪表，以提供给iptables做状态匹配使用                           
         
-## iptables状态匹配                     
+## iptables状态匹配          
 
-先明确下conntrack跟踪的位置，上面也提过conntrack跟踪数据包的位置在PREROUTING和OUTPUT这两个hook点，本地产生的数据包会在OUTPUT处被跟踪，从外部进入(主机的任意接口，包括Bridge的port)的数据包会在PREROUTING处被跟踪，从netfilter框架图上可以看到`conntrack`跟踪位置很靠前，仅在iptables`raw`表之后，`raw`表主要作用就是允许我们对不想被跟踪的数据包打`NOTRACK`标签，这样后面的`conntrack`看到此数据包带有`NOTRACK`标签就不会做任何处理。`conntrack`跟踪位置很靠前也就意味着其后面的iptables表和链都能使用状态匹配。并且`conntrack`能够跟踪到进出主机的任何原始数据包(比如还未NAT)。        
+下面"iptables状态匹配"这部分参考自iptables文档[iptables-tutorial#The state machine](https://www.frozentux.net/iptables-tutorial/iptables-tutorial.html#STATEMACHINE)，我找不到比它更全面的文章了              
 
-iptables是带有状态匹配的防火墙，它使用`-m state`模块从连接跟踪表查找数据包状态。上面我们分析的那条conntrack条目处于`SYN_SENT`状态，这是内核记录的状态，数据包在内核中可能会有几种不同的状态，但是映射到用户空间iptables，只有4种状态可用：NEW，ESTABLISHED，RELATED 和INVALID。注意我们这里说的状态不是tcp/ip协议中tcp连接的各种状态，这里的4种状态只是iptables用于完成状态匹配而定义的，适用于各种连接协议。下面说明了这4种状态分别能够匹配什么样的数据包(注意conntrack记录在前，iptables匹配在后)             
+先明确下conntrack跟踪的位置，上面也提过conntrack跟踪数据包的位置在PREROUTING和OUTPUT这两个hook点，本地产生的数据包会在OUTPUT处被跟踪，从外部进入(主机的任意接口，包括Bridge的port)的数据包会在PREROUTING处被跟踪，从netfilter框架图上可以看到`conntrack`位置很靠前，仅在iptables的`raw`表之后，先于`conntrack`被调用允许我们对某些特定的数据包打`NOTRACK`标签，这样后面的`conntrack`就不会记录此类带有`NOTRACK`标签的数据包。`conntrack`跟踪位置很靠前一方面是保证其后面的iptables表和链都能使用状态匹配，另一方面使得`conntrack`能够跟踪到任何进出主机的原始数据包(比如数据包还未NAT/FORWARD)。                    
 
-| State | 解释 |   
+### 数据包在用户空间的状态             
+
+iptables是带有状态匹配的防火墙，它使用`-m state`模块从连接跟踪表查找数据包状态。上面我们分析的那条conntrack条目处于`SYN_SENT`状态，这是内核记录的状态，数据包在内核中可能会有几种不同的状态，但是映射到用户空间iptables，只有5种状态可用：NEW，ESTABLISHED，RELATED，INVALID和UNTRACKED。注意我们这里说的状态不是tcp/ip协议中tcp连接的各种状态，这里的4种状态只是。下面表格说明了这4种状态分别能够匹配什么样的数据包，记住下面两点有助于正确理解这5种状态          
+
+- 用户空间这5种状态是iptables用于完成状态匹配而定义的，不关联与特定连接协议         
+- conntrack记录在前，iptables匹配在后(见netfilter框架图)                     
+
+| 状态 | 解释 |   
 | --------- | -------- |     
 | NEW | NEW匹配连接的第一个包。意思就是，iptables从连接跟踪表中查到此包是某连接的第一个包。这里的NEW状态是依据conntrack条目中只看到一个方向的数据包(`[UNREPLIED]`)，而不管conntrack条目的连接类型(tcp/udp/icmp)，因此NEW并不单指tcp连接的第一个SYN包 |    
 | ESTABLISHED | ESTABLISHED匹配连接的响应包及后续的包。意思是，iptables从连接跟踪表中查到此包是属于一个已经收到响应的连接(即没有`[UNREPLIED]`字段)。因此在iptables状态中，只要发送并接到响应，连接就认为是ESTABLISHED的了。这个特点使iptables可以控制由谁发起的连接才可以通过，比如A与B通信，A发给B数据包属于NEW状态，B回复给A的数据包就变为ESTABLISHED状态。ICMP的错误和重定向等信息包也被看作是ESTABLISHED，只要它们是我们所发出的信息的应答。 |    
-| RELATED | RELATED匹配那些属于RELATED连接的包，这句话说了跟没说一样。RELATED状态有点复杂，当一个连接与另一个已经是ESTABLISHED的连接有关时，这个连接就被认为是RELATED。这意味着，一个连接要想成为RELATED，必须首先有一个已经是ESTABLISHED的连接存在。这个ESTABLISHED连接再产生一个主连接之外的新连接，这个新连接就是RELATED状态了，当然首先conntrack模块要能"读懂"它是RELATED。拿ftp来说，FTP数据传输连接就是RELATED与先前已建立的FTP控制连接，还有通过IRC的DCC连接。有了RELATED这个状态，ICMP错误消息、FTP传输、DCC等才能穿过防火墙正常工作。有些依赖此机制的TCP协议和UDP协议非常复杂，他们的连接被封装在其它的TCP或UDP包的数据部分(可以了解下overlay/vxlan/gre)，这使得conntrack需要借助其它辅助模块才能正确"读懂"这些复杂数据包 |     
-| INVALID | INVALID说明数据包不能被识别属于哪个连接或没有任何状态。有几个原因可以产生这种情况，比如，内存溢出，收到不知属于哪个连接的ICMP 错误信息。一般地，我们DROP这个状态的任何东西。 |    
-| UNTRACKED | This is the UNTRACKED state. In brief, if a packet is marked within the raw table with the NOTRACK target, then that packet will show up as UNTRACKED in the state machine. This also means that all RELATED connections will not be seen, so some caution must be taken when dealing with the UNTRACKED connections since the state machine will not be able to see related ICMP messages et cetera. |        
-{:.mbtablestyle}                         
-本表格参考自[](https://www.frozentux.net/iptables-tutorial/cn/iptables-tutorial-cn-1.1.19.html#STATEMACHINE)
+| RELATED | RELATED匹配那些属于RELATED连接的包，这句话说了跟没说一样。RELATED状态有点复杂，当一个连接与另一个已经是ESTABLISHED的连接有关时，这个连接就被认为是RELATED。这意味着，一个连接要想成为RELATED，必须首先有一个已经是ESTABLISHED的连接存在。这个ESTABLISHED连接再产生一个主连接之外的新连接，这个新连接就是RELATED状态了，当然首先conntrack模块要能"读懂"它是RELATED。拿ftp来说，FTP数据传输连接就是RELATED与先前已建立的FTP控制连接，还有通过IRC的DCC连接。有了RELATED这个状态，ICMP错误消息、FTP传输、DCC等才能穿过防火墙正常工作。有些依赖此机制的TCP协议和UDP协议非常复杂，他们的连接被封装在其它的TCP或UDP包的数据部分(可以了解下overlay/vxlan/gre)，这使得conntrack需要借助其它辅助模块才能正确"读懂"这些复杂数据包，比如`nf_conntrack_ftp`这个辅助模块  |     
+| INVALID | INVALID匹配那些无法识别或没有任何状态的数据包。这可能是由于系统内存不足或收到不属于任何已知连接的ICMP错误消息。一般情况下我们应该DROP此类状态的包  |         
+| UNTRACKED | UNTRACKED状态比较简单，它匹配那些带有`NOTRACK`标签的数据包。需要注意的一点是，如果你在`raw`表中对某些数据包设置有`NOTRACK`标签，那上面的4种状态将无法匹配这样的数据包，因此你需要单独考虑`NOTRACK`包的放行规则  |        
+{:.mbtablestyle}                 
 
- iptables会在PREROUTING链里从新计算所有的状态。如果我们发送一个流的初始化包，状态就会在OUTPUT链 里被设置为NEW，当我们收到回应的包时，状态就会在PREROUTING链里被设置为ESTABLISHED。如果第一个包不是本地产生的，那就会在PREROUTING链里被设置为NEW状 态。综上，所有状态的改变和计算都是在nat表中的PREROUTING链和OUTPUT链里完成的。   
+状态的存在使防火墙可以非常强大和有效，来看下面这个常见的防火墙规则，它允许本机主动访问外网的所有数据包，以及放通外网的icmp协议           
+
+``` shell
+#iptables-save  -t filter
+*filter
+:INPUT DROP [1453341:537074675]
+:FORWARD DROP [10976649:6291806497]
+:OUTPUT ACCEPT [1221855153:247285484556]
+-A INPUT -p icmp -j ACCEPT 
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT 
+```    
+
+主机进程与外网机器通信经历如下步骤，因为我们除了filter表，其它表没设置任何规则，所以下面步骤就省略其它表的匹配过程                   
+
+1. 进程产生要发送的数据包，数据包通过`raw`表`OUTPUT`链(可以决定是否要NOTRACK)     
+1. 数据包通过`conntrack`，conntrack记录此连接到连接跟踪表(`[UNREPLIED]`) -- NEW          
+1. 通过OUTPUT链从主机接口发出(NEW状态) -- NEW                   
+1. 响应包从主机某个接口进入，到达`raw`表`PREROUTING`链(可以决定是否要NOTRACK) -- NEW                
+1. 响应包通过`conntrack`，conntrack发现此数据包为一个连接的响应包，更新对应连接状态(去掉`[UNREPLIED]`，至此两个方向都看到包了) -- ESTABLISHED              
+1. 响应包通过`filter`表`INPUT`链，匹配到`--state RELATED,ESTABLISHED`，放行 -- ESTABLISHED      
+
+### 数据包在内核中的状态      
+
+就用户而言，连接跟踪对于所有连接类型基本相同，只有上面的5种状态，但是从内核角度，不同协议有不同状态，这里我们来具体看下三种基本协议tcp/udp/icmp的conntrack条目        
+
+**tcp连接**      
 
 
-              
+
+
+
+
+             
+
+          
+           
+
+
+
+
+      
 ## Bridge与netfilter   
 
 pass 
