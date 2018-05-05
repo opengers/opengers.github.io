@@ -1,0 +1,81 @@
+title Keystone V3 admin API start flow (Newton) \n(By http://opengers.github.io)
+ 
+participant ""
+participant CLI
+participant WSGI Server \n(httpd)  as H
+
+CLI->H: systemctl start httpd
+activate H
+
+note over H: load mod_wsgi \nconf.d/wsgi-keystone.conf
+par File: wsgi-keystone.conf
+    note over H: WSGIScriptAlias / /usr/bin/keystone-wsgi-admin
+end
+
+participant "WSGI Application \n( application = initialize_application() )" as A
+
+H->A: get callable function(application)
+activate A
+
+par File: /usr/bin/keystone-wsgi-admin
+    note over A: from keystone.server.wsgi import initialize_admin_application\napplication = initialize_admin_application()          
+end
+
+par File: keystone/server/wsgi.py
+    note over A: name = 'admin' \n_get_config_files() --> "keystone.conf"
+    note over A: initialize_application('admin', 'keystone.conf')
+    note over A: keystone/server/backends.py:load_backends() \nDRIVERS = dict(\n        catalog_api=catalog.Manager(),\n        credential_api=credential.Manager(), ... )
+    note over A: find_paste_config() --> "/etc/keystone/keystone-paste.ini"
+    note over A: application = deploy.loadapp('keystone-paste.ini', 'admin')
+end
+
+participant PasteDeploy \n(conf:keystone-paste.ini) as P
+
+A->P: deploy.loadapp('keystone-paste.ini', 'admin')
+activate P
+par File: paste/deploy/loadwsgi.py
+    note over P: paste.deploy.loadapp(uri, name=None, **kw)
+    note over P: loadobj() \n     context = loadcontext() \n     #return context.create()          
+    par context = loadcontext()
+        note over P: _loadconfig() \n    path = /etc/keystone/keystone-paste.ini, name = admin \n    loader = ConfigLoader(path) \n    return loader.get_context() 
+        note over P: ConfigLoader.get_context(object_type, name='main') \n    section = "composite:admin" \n    self.parser.options(section) \-\-\> ['use', '/v2.0', '/v3', '/', '__file__', 'here'] \n    local_conf = {'/v2.0': 'admin_api', '/v3': 'api_v3', 'use': 'egg:Paste#urlmap', '/': 'admin_version_api'} \n    global_conf = {'__file__': '/etc/keystone/keystone-paste.ini', 'here': '/etc/keystone'} \n    context = self.get_context(name='egg:Paste#urlmap') #'use' in local_conf
+        note over P: context = <paste.deploy.loadwsgi.LoaderContext object at 0x4a7ae50> \ncontext.loader = <paste.deploy.loadwsgi.ConfigLoader object at 0x38b2e10> \ncontext.entry_point_name = urlmap \ncontext.local_conf = {'/v2.0': 'admin_api', '/v3': 'api_v3', '/': 'admin_version_api'} \ncontext.protocol = paste.composite_factory \ncontext.object = <function urlmap_factory at 0x38bea28> \ncontext.create = paste.deploy.loadwsgi.LoaderContext.create
+        note over P: return context \-\-\> loadobj()
+    end
+    note over P: loadobj() \n     #context = loadcontext() \n     return context.create()  
+end
+
+par File: paste/deploy/util.py
+    note over P: fix_call(callable, *args, **kw) \n    callable = <function urlmap_factory at 0xx> \n    return callable(*args, **kw) #\-\-\> paste/urlmap.py:urlmap_factory()
+end
+
+loop File: paste/urlmap.py
+    note over P: urlmap_factory(loader, global_conf, **local_conf) \n    loader = <paste.deploy.loadwsgi.ConfigLoader object at xxx> \n    local_conf = {'/v2.0': 'admin_api', '/v3': 'api_v3', '/': 'admin_version_api'}\n    for path, app_name in local_conf.items()\n        path = '/v3', app_name = 'api_v3' \n        app = loader.get_app(app_name, global_conf=global_conf) \n        #paste/deploy/loadwsgi.py:ConfigLoader.get_app() \n        urlmap[path] = app \n    return urlmap
+end
+
+par File: paste/deploy/loadwsgi.py
+    note over P: ConfigLoader.get_app(app_name, global_conf) \n    return self.app_context(name=name, global_conf).create()
+    note over P: ConfigLoader.get_context(object_type, name='api_v3') \n    section = pipeline:api_v3 \n    local_conf = {'pipeline': 'cors sizelimit ... service_v3'} \n    section.startswith('pipeline:') \n        context.app_context = self.get_context(APP, pipeline[-1], global_conf) \n        context.filter_contexts = [self.get_context(FILTER, name, global_conf) for name in pipeline[:-1]] \n    return context
+    note over P: context.create() \n\n_PipeLine.invoke(context) \n    app = context.app_context.create()\n    filters = [c.create() for c in context.filter_contexts] \n    filters.reverse() \n    for filter in filters \n        app = filter(app) \n    return app \n#\-\-\> paste/urlmap.py:urlmap_factory()
+end
+
+
+#note over P: callable = <function urlmap_factory> \nargs = (<paste.deploy.loadwsgi.ConfigLoader object at 0x50fbcd0>, \n{'__file__': '/etc/keystone/keystone-paste.ini', 'here': '/etc/keystone'}) \nkw = {'/v2.0': 'admin_api', '/v3': 'api_v3', '/': 'admin_version_api'}
+#note over P: "paste/urlmap.py:urlmap_factory(loader, global_conf, **local_conf) \nloader --> <paste.deploy.loadwsgi.ConfigLoader object at 0x50fbcd0>\n global_conf --> {'__file__': '/etc/keystone/keystone-paste.ini', 'here': '/etc/keystone'} \nlocal_conf --> {'/v2.0': 'admin_api', '/v3': 'api_v3', '/': 'admin_version_api'}"
+#note over P: paste/urlmap.py:urlmap_factory() \nlocal_conf.items()
+#loop ('/v2.0', 'admin_api'), ('/v3', 'api_v3'), ('/', 'admin_version_api')
+#    note over P: path --> "/v3", app_name --> "api_v3" \napp = loader.get_app(app_name, global_conf=global_conf) \nurlmap[path] = app
+#end
+note over P: urlmap = \n{(None, '/v3'): <oslo_middleware.cors.CORS object at 0x5531e10>, \n(None, ''): <oslo_middleware.cors.CORS object at 0x560e490>, \n(None, '/v2.0'): <oslo_middleware.cors.CORS object at 0x553c110>}
+
+P->A: return application
+deactivate P
+
+A->H: return application
+deactivate A
+
+note over H: LISTEN controller:35357
+
+""->H: POST http://controller:35357/v3/auth/tokens
+note over H: Generate client request body(env)
+H->A: application(env, start_reponse)
