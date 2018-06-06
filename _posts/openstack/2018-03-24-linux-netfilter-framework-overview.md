@@ -14,7 +14,7 @@ tags:
 * TOC
 {:toc}    
 
-## netfilter框架      
+# netfilter框架      
 
 netfilter是linux内核中的一个数据包处理框架，用于替代原有的ipfwadm和ipchains等数据包处理程序。netfilter的功能包括数据包过滤，修改，SNAT/DNAT等。netfilter在内核协议栈的不同位置实现了5个hook点，其它内核模块(比如ip_tables)可以向这些hook点注册处理函数，这样当数据包经过这些hook点时，其上注册的处理函数就被依次调用，用户层工具像iptables一般都需要相应内核模块ip_tables配合以完成与netfilter的交互。netfilter hooks、ip{6}_tables、connection tracking、和NAT子系统一起构成了netfilter框架的主要部分。可以参考[Netfilter Architecture](https://netfilter.org/documentation/HOWTO/netfilter-hacking-HOWTO-3.html)了解更多内容                   
 
@@ -42,13 +42,13 @@ ok，图中长方形小方框已经解释清楚了，还有一种椭圆形的方
 
 上面就是关于这张图的一些解释，如果还有其它疑问，欢迎留言讨论，下面说说netfilter框架的各个部分                           
 
-## connection tracking       
+# connection tracking       
 
 当加载内核模块`nf_conntrack`后，conntrack机制就开始工作，如上图，椭圆形方框`conntrack`在内核中有两处位置(PREROUTING和OUTPUT之前)能够跟踪数据包。对于每个通过`conntrack`的数据包，内核都为其生成一个conntrack条目用以跟踪此连接，对于后续通过的数据包，内核会判断若此数据包属于一个已有的连接，则更新所对应的conntrack条目的状态(比如更新为ESTABLISHED状态)，否则内核会为它新建一个conntrack条目。所有的conntrack条目都存放在一张表里，称为连接跟踪表                    
 
 那么内核如何判断一个数据包是否属于一个已有的连接呢，我们先来了解下连接跟踪表       
       
-### 连接跟踪表            
+## 连接跟踪表            
 
 连接跟踪表存放于系统内存中，可以用`cat /proc/net/nf_conntrack`查看当前跟踪的所有conntrack条目。如下是代表一个tcp连接的conntrack条目，根据连接协议不同，下面显示的字段信息也不一样，比如icmp协议                 
        
@@ -62,7 +62,7 @@ ok，图中长方形小方框已经解释清楚了，还有一种椭圆形的方
 - 内核提取此数据包信息(源目IP，port，协议号)进行hash计算得到一个hash值，在哈希表中以此hash值做索引，索引结果为数据包所属的bucket(链表)。这一步hash计算时间固定并且很短                   
 - 遍历hash得到的bucket，查找是否有匹配的conntrack条目。这一步是比较耗时的操作，`bucket size`越大，遍历时间越长                        
 
-### 如何设置最大连接跟踪数             
+## 如何设置最大连接跟踪数             
 
 根据上面对哈希表的解释，系统最大允许连接跟踪数`CONNTRACK_MAX` = `连接跟踪表大小(HASHSIZE) * Bucket大小(bucket size)`。从连接跟踪表获取bucket是hash操作时间很短，而遍历bucket相对费时，因此为了conntrack性能考虑，`bucket size`越小越好，默认为8     
 
@@ -111,7 +111,7 @@ echo 3200000 > /sys/module/nf_conntrack/parameters/hashsize
 sysctl -w net.netfilter.nf_conntrack_max=3200000
 ```
 
-### 如何计算连接跟踪所占内存             
+## 如何计算连接跟踪所占内存             
 
 连接跟踪表存储在系统内存中，因此需要考虑内存占用问题，可以用下面公式计算设置不同的最大连接跟踪数所占最大系统内存                                     
 
@@ -141,7 +141,7 @@ print 'sizeof(struct nf_conntrack):', nfct.nfct_maxsize()
 print 'sizeof(struct list_head):', ctypes.sizeof(ctypes.c_void_p) * 2
 ```
 
-### conntrack条目                         
+## conntrack条目                         
 
 conntrack从经过它的数据包中提取详细的，唯一的信息，因此能保持对每一个连接的跟踪。关于conntrack如何确定一个连接，对于tcp/udp，连接由他们的源目地址，源目端口唯一确定。对于icmp，由type，code和id字段确定。    
 
@@ -162,13 +162,13 @@ ipv4     2 tcp      6 33 SYN_SENT src=172.16.200.119 dst=172.16.202.12 sport=547
 
 注意conntrack机制并不能够修改或过滤数据包，它只是跟踪网络连接并维护连接跟踪表，以提供给iptables做状态匹配使用，也就是说，如果你iptables中用不到状态匹配，那就没必要启用conntrack                                         
         
-## iptables状态匹配          
+# iptables状态匹配          
 
 本部分参考自iptables文档[iptables-tutorial#The state machine](https://www.frozentux.net/iptables-tutorial/iptables-tutorial.html#STATEMACHINE)，我找不到比它更全面的文章了              
 
 先明确下conntrack在内核协议栈所处位置，上面也提过conntrack跟踪数据包的位置在PREROUTING和OUTPUT这两个hook点，主机自身进程产生的数据包会通过OUTPUT处的`conntrack`，从主机任意接口进入(包括Bridge的port)的数据包会通过PREROUTING处的`conntrack`，从netfilter框架图上可以看到`conntrack`位置很靠前，仅在iptables的`raw`表之后，`raw`表主要作用就是允许我们对某些特定的数据包打上`NOTRACK`标记，这样后面的`conntrack`就不会记录此类带有`NOTRACK`标签的数据包。`conntrack`位置很靠前一方面是保证其后面的iptables表和链都能使用状态匹配，另一方面使得`conntrack`能够跟踪到任何进出主机的原始数据包(比如数据包还未NAT/FORWARD)。      
 
-### iptables状态匹配模块                            
+## iptables状态匹配模块                            
 
 ![iptables-status](/images/openstack/openstack-netfilter/iptables-status.png)            
 
@@ -210,7 +210,7 @@ iptables是带有状态匹配的防火墙，它使用`-m state`模块从连接�
 
 像上面这种允许本机主动出流量的需求，如果不用conntrack会很难实现，那你可能会说我也可以使用iptables          
 
-### 数据包在内核中的状态      
+## 数据包在内核中的状态      
 
 从内核角度，不同协议有不同状态，这里我们来具体看下三种协议tcp/udp/icmp在连接跟踪表中的不同状态             
 
@@ -290,7 +290,7 @@ ipv4     2 icmp     1 28 src=103.229.215.2 dst=113.31.136.7 type=8 code=0 id=351
 ipv4     2 icmp     1 29 src=103.229.215.2 dst=113.31.136.7 type=8 code=0 id=35102 src=113.31.136.7 dst=103.229.215.2 type=0 code=0 id=35102 mark=0 zone=0 use=2
 ```
 
-### 如何管理连接跟踪表                 
+## 如何管理连接跟踪表                 
 
 有一个用户空间工具conntrack，其提供了对连接跟踪表的增删改查功能，可以用`yum install conntrack-tools`来安装，下面是几个例子               
         
@@ -312,11 +312,11 @@ conntrack -D -s 1.2.3.4
 
 需要这个工具是因为在对instance进行安全组/port/ip方面的变更后，需要同时删除连接跟踪表中旧的相关条目，比如某台instance之前放通本机80端口，某外部主机与此instance 80端口有连接并且有流量，那此时iptables从连接跟踪表中识别到此连接状态就是ESTABLISHED，然后此时突然有个需求需要禁止本机的80端口，如果不删除与本机80端口有关的处于ESTABLISHED状态的conntrack条目，而iptables又会放行处于RELATED,ESTABLISHED状态的连接，这样就会造成80端口仍能够连接         
 
-## Bridge与netfilter      
+# Bridge与netfilter      
 
 从netfilter框架图中可以看到，最下层蓝色区域为bridge level。Bridge的存在，使得主机可以充当一台虚拟的普通二层交换机来运作，这个虚拟交换机可以建多个port，连接到多个虚拟机。由此带来的问题是，外部机器与其上虚拟机通信流量只会经过主机二层(靠Bridge转发，此时不经过主机IP层)，主机上的网卡类型变得复杂(物理网卡em1，网桥br0，虚拟网卡vnetX)，进入主机的数据包可选路径变多(bridge转发/交给主机本地进程)。幸好，netfilter框架都可以解决，这部分内容在我的另一篇文章[Bridge与netfilter](https://opengers.github.io/openstack/openstack-base-virtual-network-devices-bridge-and-vlan/#bridge%E4%B8%8Enetfilter)，相信已经说得够清楚了。                 
 
-## conntrack与LVS     
+# conntrack与LVS     
 
 LVS的修改数据包功能也是依赖netfilter框架，在LVS机器上应用iptables时需要注意一个问题就是，LVS-DR(或LVS-Tun)模式下，不能在director上使用iptables的状态匹配(NEW,ESTABLISHED,INVALID,...)           
 

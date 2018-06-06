@@ -180,9 +180,9 @@
 }
 
 h1 /* .post-title */ {
-/*    font-size: 42px; */
+/*    font-size: 50px; */
     letter-spacing: -1px;
-    line-height: 1;
+    line-height: 2;
 		font-family: 'Titillium Web', sans-serif;
 		color: #522d80;
 
@@ -197,7 +197,7 @@ h1 /* .post-title */ {
     h2 {
 		font-family: 'Titillium Web', sans-serif;
 	font-weight: 500;
-/*        font-size: 32px; */
+/*        font-size: 40px; */
 
         @include media-query($on-laptop) {
 /*            font-size: 28px; */
@@ -206,7 +206,7 @@ h1 /* .post-title */ {
 
     h3 {
 		font-style: italic;
-/*        font-size: 26px; */
+/*        font-size: 30px; */
 
         @include media-query($on-laptop) {
 /*            font-size: 22px; */
