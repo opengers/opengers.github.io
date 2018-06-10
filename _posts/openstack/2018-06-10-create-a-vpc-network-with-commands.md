@@ -25,20 +25,63 @@ VPC(Virtual Private Cloud)，即虚拟私有云，是openstack或各大云平台
 
 上面简单介绍了下VPC，接下来我们仿照openstack Neutron中bridge+vxlan实现VPC的方式，来用命令实现一个类似的VPC网络             
 
-# 准备硬件环境     
+# 准备硬件环境               
 
-第一步当然是准备我们的硬件环境，这里需要三台测试机器(物理机或虚拟机，如果用虚拟机，需要注意虚拟机嵌套)，三台机器要求如下      
+第一步当然是准备我们的硬件环境，这里需要三台节点(物理机或虚拟机，如果用虚拟机，需要注意虚拟机嵌套)，三台节点要求如下         
 
-- 第一台机器作为网络节点，用作虚拟机dhcp，NAT网关等          
-- 后两台机器作为两台计算节点，用于实现并测试VPC间的逻辑隔离，同一VPC内同一IP网段的虚拟机可能分布在两台计算节点上，我们会看到他们是如何通过隧道封装进行通信                
-
-| hostname | ip | 作用 | 
-| --------- | -------- |
-| ctl | eth0: 172.16.207.228\neth1 | 
-| node-1 | eth0: 172.16.207.229 |   
-| node-2 | eth0: 172.16.207.230 | 
+| 网卡 | 网络节点ip(ctl) | 计算节点node-1 ip | 计算节点node-2 ip | 用途 |
+| --------- | -------- | -------- | -------- | -------- |
+| eth0 | 172.16.207.228  |  172.16.207.229 | 172.16.207.230 | 管理网络，openstac中用于API/MQ/db通信连接，此测试环境中仅仅作为ssh连接使用 |
+| eth1 | 10.1.1.228 | 10.1.1.229 | 10.1.1.230 | 隧道网络，vpc内虚拟机数据包封装后，通过此网络传输到其它节点上 |
+| eth2 | UP即可，不需要配置IP | 不需要此接口 | 不需要此接口 | 外部网络，vpc内虚拟机通过此接口以NAT方式访问外网 |
 {:.mbtablestyle}       
 <br />
+
+如下，我使用的是在同一物理机上建三台虚拟机做节点           
+
+``` shell
+[root@jpcloud inadm]# virsh list --all | grep vpc
+ 284   vpc-test1                      running
+ 285   vpc-test2                      running
+ 286   vpc-test3                      running
+
+[root@jpcloud inadm]# virsh domiflist vpc-test1
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+vnet1      bridge     br1        virtio      52:54:00:5e:28:ec
+vnet2      bridge     br-tun     virtio      52:54:00:a5:fd:7d
+vnet3      bridge     br1        virtio      52:54:00:9b:b3:a5
+
+[root@jpcloud inadm]# virsh domiflist vpc-test2
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+vnet4      bridge     br1        virtio      52:54:00:d4:a5:d4
+vnet5      bridge     br-tun     virtio      52:54:00:d5:1f:6a
+
+[root@jpcloud inadm]# virsh domiflist vpc-test3
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+vnet6      bridge     br1        virtio      52:54:00:31:46:69
+vnet7      bridge     br-tun     virtio      52:54:00:51:8f:b9
+
+[root@jpcloud inadm]# brctl show
+bridge name     bridge id               STP enabled     interfaces
+br1             8000.f8bc1212cbe1       no              em2
+                                                        vnet1
+                                                        vnet3
+                                                        vnet4
+                                                        vnet6
+
+br-tun          8000.f8bc1212cbe2       no              vnet2
+                                                        vnet5
+                                                        vnet7
+```
+
+- 本环境中不部署openstack，因此管理网络接口eth0只是用作ssh到机器上去           
+- eth1用作隧道传输数据使用，不需要访问外网，只需要保证三台节点ip互通即可，我这里是建了个bridge `br-tun`桥接了三台机器。eth1不必须，可以与eth0共用    
+- vpc内虚拟机访问外网需要通过iptables NAT转换，eth2用作外部接口，我这里和eth0都放在br1网桥上                          
+- node-1和node-2是两台用于创建虚拟机的计算节点，后面我们会看到同一VPC内同一IP网段位于不同节点上的虚拟机是如何通过隧道进行通信           
+- 其实三台节点都只需要一块网卡eth0就可以了，只是这种把所有通信流量混在一起的方式不利于理解各个网络的实际作用，而且真正生产环境也不会只用一块网卡这种做法            
 
 
 
