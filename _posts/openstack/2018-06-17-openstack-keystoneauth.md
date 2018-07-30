@@ -1,5 +1,5 @@
 ---
-title: openstack中统一认证组件keystoneauth                                               
+title: openstack中统一认证组件keystoneauth介绍及使用                                                       
 author: opengers
 layout: post
 permalink: /openstack/openstack-keystoneauth/
@@ -14,13 +14,20 @@ tags:
 
 # keystoneauth组件介绍                  
 
-与openstack api交互有多种方法，可以自己开发client直接调用api或者直接使用openstack提供的sdk `openstacksdk`，也可以使用python-xxxclient等。 本文中client指那些需要与openstack api交互的项目，比如python-xxxclient或openstacksdk，这些client封装了具体的api请求过程，提供给用户更友好的操作方式， 比如nova命令来自`python-novaclieent`，neutron命令来自`python-neutronclient`，openstack命令来自`python-openstackclient`。       
+与openstack api交互有多种方法    
 
-这些client都需要的就是认证和发起请求，因此认证和请求这部分应当独立出来，这就是keystoneauth组件，这样各个client就不需要都自己实现一套认证请求流程了，各个client可以专注于自己的功能实现      
+1. 可以自己开发client直接调用api           
+1. 可以直接使用openstack提供的封装sdk项目[openstacksdk](https://docs.openstack.org/openstacksdk/latest/)                     
+1. 可以使用python-xxxclient等项目，比如`python-novaclient`，`python-neutronclient`      
+1. 可以直接使用命令行工具`nova`，`neutron`，`openstack`等        
+     
+首先本文中client指那些与openstack api交互的项目，比如python-xxxclient或openstacksdk，这些client封装了具体的api请求过程，提供给用户更友好的操作方式， 比如nova命令来自`python-novaclieent`，neutron命令来自`python-neutronclient`，openstack命令来自`python-openstackclient`。       
+
+这些client的共性是他们都需要认证和发起请求，因此认证和请求这部分可以独立出来实现，各个client就不需要都自己实现一套认证请求流程了，这就是keystoneauth的作用，各个client可以专注于自己的功能实现      
           
 keystoneauth是一个相对独立的组件，它在整个openstack生态中提供统一认证和服务请求，因此client中不再需要处理token/headers/api地址这些信息，client需要做的只是import keystoneauth，提供必要的参数(region/用户凭据/api版本等)并调用keystoneauth中的接口，keystoneauth负责管理token和组装完整的api url(根据catalog和api的path)并最终发出api请求，client可以对返回值做友好处理后返回给用户                                                   
 
-keystoneauth中实现认证和服务请求的是`keystoneauth1.session.Session`类，我们可以用它来初始化一个Session对象，此对象可以存储用户凭据(用户名密码)和连接信息(比如token)，使用同一个Session对象的各个client之间会共享认证和请求信息。 我们先来看看如何初始化一个Ssession对象           
+keystoneauth中实现认证和服务请求的是`keystoneauth1.session.Session`类，我们可以用它来初始化一个Session对象，此对象可以存储用户凭据(用户名密码)和连接信息(比如token)，使用同一个Session对象的各个client之间会共享认证和请求信息。 我们先来看看如何初始化一个Session对象           
 
 ``` shell
 #[root@controller openstack]# cat ses.py
