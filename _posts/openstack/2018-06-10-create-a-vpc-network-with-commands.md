@@ -14,7 +14,11 @@ tags:
 * TOC
 {:toc}    
 
+<<<<<<< HEAD
 ><small>openstack中常用的一种vpc实现方式为bridge+vxlan，本文会通过敲命令方式一步一步地模仿实现一个这样的vpc网络(同网段跨节点通信，可以dhcp，绑定浮动IP等)，这样能够更深入理解vpc的实现原理，本文主要基于openstack中的VPC</small>        
+=======
+><small>openstack网络中常用的一种vpc实现方式为bridge+vxlan，本文会通过敲命令方式一步一步地模仿实现一个这样的vpc网络(同网段跨节点通信，可以dhcp，绑定浮动IP等)，这样能够更深入理解vpc的实现原理，本文主要基于openstack中的VPC</small>        
+>>>>>>> 480040f475ef1dcd21cd51cf230319e0b3cd58d0
 
 VPC(Virtual Private Cloud)，即虚拟私有云，是openstack或各大云平台提供给用户的一个隔离的专属的网络环境，其构建在通用硬件设备之上，具有很大灵活性，允许我们自定义自己的网络拓扑，ip网段，网关，路由规则等。               
         
@@ -83,7 +87,40 @@ br-tun          8000.f8bc1212cbe2       no              vnet2
 - node-1和node-2是两台用于创建虚拟机的计算节点，后面我们会看到同一VPC内同一IP网段位于不同节点上的虚拟机是如何通过隧道进行通信           
 - 其实三台节点都只需要一块网卡eth0就可以了，只是这种把所有通信流量混在一起的方式不利于理解各个网络的实际作用，而且真正生产环境也不会只用一块网卡这种做法            
 
+<<<<<<< HEAD
 
+=======
+# 新建一个vpc     
+
+``` shell
+#node-1 && node-2
+[root@node-1 ~]# ip link add vxlan-200 type vxlan id 200 dev eth1 dstport 8472
+[root@node-1 ~]# brctl addbr brq-200
+[root@node-1 ~]# brctl addif brq-200 vxlan-200
+[root@node-1 ~]# ip link set brq-200 up
+
+#新建虚拟机vm1
+    <interface type='bridge'>
+      <mac address='52:54:00:98:8c:40'/>
+      <source bridge='brq-200'/>
+      <model type='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </interface>
+[root@node-1 ~]# virsh start vm1
+[root@node-1 ~]# virsh domiflist vm1
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+vnet0      bridge     brq-200    virtio      52:54:00:98:8c:40
+
+[root@node-2 ~]# virsh domiflist vm2
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+vnet0      bridge     brq-200    virtio      52:54:00:35:ac:92    
+
+```
+
+未完待续...
+>>>>>>> 480040f475ef1dcd21cd51cf230319e0b3cd58d0
 
 
 
