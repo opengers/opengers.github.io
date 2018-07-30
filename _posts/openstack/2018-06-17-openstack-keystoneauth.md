@@ -12,7 +12,7 @@ tags:
 * TOC
 {:toc}    
 
-## keystoneauth组件        
+# keystoneauth组件介绍                  
 
 与openstack api交互有多种方法，可以自己开发client直接调用api或者直接使用openstack提供的sdk `openstacksdk`，也可以使用python-xxxclient等。 本文中client指那些需要与openstack api交互的项目，比如python-xxxclient或openstacksdk，这些client封装了具体的api请求过程，提供给用户更友好的操作方式， 比如nova命令来自`python-novaclieent`，neutron命令来自`python-neutronclient`，openstack命令来自`python-openstackclient`。       
 
@@ -49,7 +49,9 @@ Type "help", "copyright", "credits" or "license" for more information.
 
 如上，我们初始化了一个Session类的实例对象`sess`，初始化Session需要提供必要的参数，我们在使用命令行之前需要source的环境变量(`OS_PROJECT_NAME`,`OS_USERNAME`,`OS_PASSWORD`,...)其实最后也是传递给了keystoneauth。现在来看看能用这个对象做什么                   
 
-**获取token**    
+# keystoneauth组件可以做什么      
+
+## 获取token          
 
 ``` shell
 >>> sess.auth
@@ -67,7 +69,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 
 此Token可以被多个使用此sess对象的client共享，这样各个client就不需要都走一边完整的获取token流程       
 
-**过滤endpoint地址**          
+##过滤endpoint地址                   
 
 我们平常在使用openstack命令时并没有指定具体的api地址，实际上，组装出完整的api地址也是keystoneauth的责任，那么Session对象是如何知道完整的api地址呢                 
 
@@ -98,7 +100,7 @@ openstack中的各个服务在安装时都要向endpoint注册(`openstack endpoi
 
 上面也提到，组装出完整的api地址是keystoneauth的责任，client只需要提供必要的endpoint过滤参数以及访问路径(比如`/users`)，最终完整api url就是endpoint url + '/users'          
 
-**直接发送api请求**          
+## 直接发送api请求                    
 
 事实上，我们可以直接用sess对象发起api请求，其它client的api请求最终也是调用的sess对象                             
 
@@ -131,7 +133,7 @@ response = sess.get('/servers/detail',endpoint_filter=compute_endpoint_filter)
 1. sess.get()发起请求，带有必要的参数，请求headers等信息，请求的token来自sess.get_auth_headers()                 
 1. sess.get接口其实是调用的sess.request(url=URL, method=GET, json=BODY, ...)                   
 
-**配合client**       
+## 配合client                  
 
 上面那种直接调用Session对象发送api还是太麻烦，client对此有更高层次的封装      
 
