@@ -1,5 +1,5 @@
 ---
-title: openstack中统一认证组件keystoneauth介绍及使用                                                       
+title: openstack统一认证组件keystoneauth     
 author: opengers
 layout: post
 permalink: /openstack/openstack-keystoneauth/
@@ -12,14 +12,14 @@ tags:
 * TOC
 {:toc}    
 
-# keystoneauth组件介绍                  
+# keystoneauth介绍                  
 
 与openstack api交互有多种方法    
 
-1. 可以自己开发client直接调用api           
-1. 可以直接使用openstack提供的封装sdk项目[openstacksdk](https://docs.openstack.org/openstacksdk/latest/)                     
-1. 可以使用python-xxxclient等项目，比如`python-novaclient`，`python-neutronclient`      
-1. 可以直接使用命令行工具`nova`，`neutron`，`openstack`等        
+- 可以自己开发client直接调用api           
+- 可以直接使用openstack提供的封装sdk项目[openstacksdk](https://docs.openstack.org/openstacksdk/latest/)                     
+- 可以使用python-xxxclient等项目，比如`python-novaclient`，`python-neutronclient`      
+- 可以直接使用命令行工具`nova`，`neutron`，`openstack`等        
      
 首先本文中client指那些与openstack api交互的项目，比如python-xxxclient或openstacksdk，这些client封装了具体的api请求过程，提供给用户更友好的操作方式， 比如nova命令来自`python-novaclieent`，neutron命令来自`python-neutronclient`，openstack命令来自`python-openstackclient`。       
 
@@ -56,7 +56,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 
 如上，我们初始化了一个Session类的实例对象`sess`，初始化Session需要提供必要的参数，我们在使用命令行之前需要source的环境变量(`OS_PROJECT_NAME`,`OS_USERNAME`,`OS_PASSWORD`,...)其实最后也是传递给了keystoneauth。现在来看看能用这个对象做什么                   
 
-# keystoneauth组件可以做什么      
+# keystoneauth的使用      
 
 ## 获取token          
 
@@ -76,7 +76,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 
 此Token可以被多个使用此sess对象的client共享，这样各个client就不需要都走一边完整的获取token流程       
 
-##过滤endpoint地址                   
+## 过滤endpoint地址                   
 
 我们平常在使用openstack命令时并没有指定具体的api地址，实际上，组装出完整的api地址也是keystoneauth的责任，那么Session对象是如何知道完整的api地址呢                 
 
