@@ -96,7 +96,7 @@ u'http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9'
 - min_version,max_version: 用于过滤在其范围内的api版本，openstack中各个服务都有多个版本，比如目前keystone是v3版本(v1,v2版本弃用)，nova是v2版本，注意这里的api版本指的是"major versions"，不是microversion，每一个"major versions"都有其专用endpoint url，而microversion是每一个主版本支持的版本范围，比如你可以说nova api v2.0版本不支持microversion，nova api v2.1版本支持的microversion是`2.1 ~ 2.38`。关于api版本可以看[API Versions](https://developer.openstack.org/api-ref/compute/#api-versions)，关于microversion可以看[Microversion Specification](http://specs.openstack.org/openstack/api-wg/guidelines/microversion_specification.html)        
 - region_name: endpoint所属region，就是从哪个region中过滤endpoint url                             
 
-上面说的是Session如何获取endpoint url，同时client也会向Session对象提供请求方法和请求path，比如`GET /servers/detail`，`POST /servers`(完整的api列表可以看[Compute API](https://developer.openstack.org/api-ref/compute/)，这样，Session对象就能组装出此请求完整的url，比如获取所有虚拟机详情的url`http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9/servers/detail`        
+上面说的是Session如何获取endpoint url，同时client也会向Session对象提供请求方法和请求path，比如`GET /servers/detail`，`POST /servers`(完整的api列表可以看[Compute API](https://developer.openstack.org/api-ref/compute/))，这样，Session对象就能组装出此请求完整的url，比如获取所有虚拟机详情的url`http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9/servers/detail`        
 
 ## 直接发送api请求                    
 
