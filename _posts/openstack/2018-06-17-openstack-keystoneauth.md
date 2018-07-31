@@ -12,20 +12,27 @@ tags:
 * TOC
 {:toc}    
 
-# keystoneauth介绍                  
+# openstack api && client                           
 
-与openstack api交互有多种方法    
+openstack的精华在于其丰富的api，与openstack api交互有多种方法               
 
-- 可以自己开发client直接调用api           
-- 可以直接使用openstack提供的封装sdk项目[openstacksdk](https://docs.openstack.org/openstacksdk/latest/)                     
-- 可以使用python-xxxclient等项目，比如`python-novaclient`，`python-neutronclient`      
-- 可以直接使用命令行工具`nova`，`neutron`，`openstack`等        
-     
-首先本文中client指那些与openstack api交互的项目，比如python-xxxclient或openstacksdk，这些client封装了具体的api请求过程，提供给用户更友好的操作方式， 比如nova命令来自`python-novaclieent`，neutron命令来自`python-neutronclient`，openstack命令来自`python-openstackclient`。       
+- 可以直接基于openstack api自己开发client                
+- 可以使用openstack官方提供的sdk[openstacksdk](https://docs.openstack.org/openstacksdk/latest/)                     
+- 可以使用python-xxxclient，比如`python-novaclient`，`python-neutronclient`，python-xxxclient只是提供单个项目方面的封装                          
+- 可以直接使用命令行工具`nova`，`neutron`，`openstack`等      
+- 其它        
 
-这些client的共性是他们都需要认证和发起请求，因此认证和请求这部分可以独立出来实现，各个client就不需要都自己实现一套认证请求流程了，这就是keystoneauth的作用，各个client可以专注于自己的功能实现      
+虽然有众多的client，但这些client都只是实现了api的部分功能，幸好各个client都易于扩展，如有需要，我们可以修改client添加自己想要的功能                      
+
+本文中client指那些需要与openstack api交互的项目，比如python-xxxclient或openstacksdk，这些client封装了具体的api请求过程，提供给用户更友好的操作方式， 比如nova命令来自`python-novaclieent`，neutron命令来自`python-neutronclient`，openstack命令来自`python-openstackclient`。       
+
+![openstack-api-client](/images/openstack/openstack-keystoneauth/openstack-api-client.png)            
+
+不管哪个client，他们访问api都需要认证和发起请求，因此认证和请求这部分可以独立出来实现，这就是keystoneauth组件的作用，各个client只需传递必要的参数给keystoneauth用以控制认证和请求过程，client可以专注于自己的功能实现      
+
+# keystoneauth组件          
           
-keystoneauth是一个相对独立的组件，它在整个openstack生态中提供统一认证和服务请求，因此client中不再需要处理token/headers/api地址这些信息，client需要做的只是import keystoneauth，提供必要的参数(region/用户凭据/api版本等)并调用keystoneauth中的接口，keystoneauth负责管理token和组装完整的api url(根据catalog和api的path)并最终发出api请求，client可以对返回值做友好处理后返回给用户                                                   
+keystoneauth是一个相对独立的组件，它在整个openstack生态中提供统一认证和服务请求，因此client中不再需要处理token/headers/api地址这些信息，client需要做的只是提供必要的参数(region/用户凭据/api版本等/请求path)并调用keystoneauth中的接口，keystoneauth负责管理token和组装完整的api url(根据catalog和api的path)并最终发出api请求，client可以对返回值做友好处理后返回给用        
 
 keystoneauth中实现认证和服务请求的是`keystoneauth1.session.Session`类，我们可以用它来初始化一个Session对象，此对象可以存储用户凭据(用户名密码)和连接信息(比如token)，使用同一个Session对象的各个client之间会共享认证和请求信息。 我们先来看看如何初始化一个Session对象           
 
