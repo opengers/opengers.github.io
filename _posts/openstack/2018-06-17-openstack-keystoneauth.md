@@ -19,8 +19,7 @@ openstack的精华在于其丰富的api，与openstack api交互有多种方法
 - 可以直接基于openstack api自己开发client                
 - 可以使用openstack官方提供的sdk[openstacksdk](https://docs.openstack.org/openstacksdk/latest/)                     
 - 可以使用python-xxxclient，比如`python-novaclient`，`python-neutronclient`，python-xxxclient只是提供单个项目方面的封装                          
-- 可以直接使用命令行工具`nova`，`neutron`，`openstack`等      
-- 其它        
+- 可以直接使用命令行工具`nova`，`neutron`，`openstack`等              
 
 虽然有众多的client，但这些client都只是实现了api的部分功能，幸好各个client都易于扩展，如有需要，我们可以修改client添加自己想要的功能                      
 
@@ -39,11 +38,8 @@ keystoneauth中实现认证和服务请求的是`keystoneauth1.session.Session`�
 ``` shell
 #[root@controller openstack]# cat ses.py
 #----
-#!/usr/bin/env python
-
 from keystoneauth1.identity import v3
 from keystoneauth1 import session
-
 auth = v3.Password(username='admin',
                    password='admin',
                    project_name='admin',
@@ -61,7 +57,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> from ses import sess
 ```
 
-如上，我们初始化了一个Session类的实例对象`sess`，初始化Session需要提供必要的参数，我们在使用命令行之前需要source的环境变量(`OS_PROJECT_NAME`,`OS_USERNAME`,`OS_PASSWORD`,...)其实最后也是传递给了keystoneauth。现在来看看能用这个对象做什么                   
+如上，我们初始化了一个Session类的实例对象`sess`，这里初始化Session需要提供必要的参数，这些参数其实就是我们在使用命令行之前需要source的环境变量(`OS_PROJECT_NAME`,`OS_USERNAME`,`OS_PASSWORD`,...)。现在来看看能用这个对象做什么                   
 
 # keystoneauth的使用      
 
@@ -71,48 +67,36 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> sess.auth
 <keystoneauth1.identity.v3.password.Password object at 0x3c17750>
 
->>> sess.get_token()
-'gAAAAABbWX72UZT-RJnHtuFXpqecNuGFIhEAke_Rira3gfUesIuyvM5w2sEV6bnXC_uyo7rOn5RmYbZwADn2eT6AuvHXkRGHVoE25A6bkkXr6vWGZAd8fXHITK751UBrg8obFBGGNWoZpPhG87qFtmZ1yuLM3uebFFB4lfCTXoJ70D0my0X1GRc'      
-
 >>> sess.get_auth_headers()
 {'X-Auth-Token': 'gAAAAABbWX72UZT-RJnHtuFXpqecNuGFIhEAke_Rira3gfUesIuyvM5w2sEV6bnXC_uyo7rOn5RmYbZwADn2eT6AuvHXkRGHVoE25A6bkkXr6vWGZAd8fXHITK751UBrg8obFBGGNWoZpPhG87qFtmZ1yuLM3uebFFB4lfCTXoJ70D0my0X1GRc'}
-
 ``` 
 
-如上，当执行`get_token()`后，使用`sess.auth`里保存的用户凭证向keystone api提交POST请求(`POST http://controller:35357/v3/auth/tokens`)获取一个token        
+如上，当执行`get_auth_headers()`后，sess使用`sess.auth`里保存的用户凭证向keystone api提交POST请求(`POST http://controller:35357/v3/auth/tokens`)获取一个token，此Token可以被多个使用此sess对象的client共享     
 
-此Token可以被多个使用此sess对象的client共享，这样各个client就不需要都走一边完整的获取token流程       
+## 服务发现                          
 
-## 过滤endpoint地址                   
+在openstack api中，一个完整的请求url由`endpoint url(service url)`和`request path`组成       
 
-我们平常在使用openstack命令时并没有指定具体的api地址，实际上，组装出完整的api地址也是keystoneauth的责任，那么Session对象是如何知道完整的api地址呢                 
+openstack中的各个服务在安装时都要向endpoint注册其服务类型及endpoint url，命令`openstack endpoint list`可以看到当前openstack中已注册的所有服务，在请求token的api调用返回中也包含有endpoint url(catalog中)。openstack集群中有多个服务，因此client在请求api时需要向Session对象指明请求的服务类型(compute,network,...)以及服务的版本，这样Session对象可以获取到对应服务的正确endpoint      url，如下是获取compute服务v2版本的endpoint url                      
 
 ``` shell
-#指定endpoint过滤条件
->>> identity_endpoint_filter={'service_type': 'identity',
+>>> identity_endpoint_filter={'service_type': 'compute',
 ... 'interface': 'admin',
 ... 'region_name': 'bjff-1',
 ... 'min_version': '2.0',
 ... 'max_version': '3.4',}
 
-#根据endpoint_filter获取对应的endpoint url
->>> sess.get_endpoint(sess.auth, **identity_endpoint_filter)
-u'http://controller:35357/v3/'
-
-#service_type改为compute，再获取endpoint url
->>> identity_endpoint_filter['service_type'] = 'compute'
 >>> sess.get_endpoint(sess.auth, **identity_endpoint_filter)
 u'http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9'
-```     
+```      
 
-openstack中的各个服务在安装时都要向endpoint注册(`openstack endpoint list`可以看到当前openstack中已注册的所有服务)，`identity_endpoint_filter`过滤参数作用就是在openstack endpoint中找出匹配项的url，当然，我们这里是手动指定的`identity_endpoint_filter`参数，实际上的过滤参数是client根据用户输入的命令所属的服务类型以及环境变量生成的                                      
+简单说下过滤参数含义：   
 
-简单说下过滤参数含义：  
+- service_type： 服务类型，比如`identity`, `compute`, `volume`等(openstack endpoint list中可以看到)                 
+- min_version,max_version: 用于过滤在其范围内的api版本，openstack中各个服务都有多个版本，比如目前keystone是v3版本(v1,v2版本弃用)，nova是v2版本，注意这里的api版本指的是"major versions"，不是microversion，每一个"major versions"都有其专用url，而microversion是每一个主版本支持的版本范围。 关于api版本可以看[API Versions](https://developer.openstack.org/api-ref/compute/#api-versions)，关于microversion可以看[Microversion Specification](http://specs.openstack.org/openstack/api-wg/guidelines/microversion_specification.html)        
+- region_name: endpoint所属region                
 
-- service_type： 服务类型，比如`identity`, `compute`, `volume`等(openstack endpoint list中可以看到)             
-- min_version,max_version: 用于过滤在其范围内的api主版本，openstack中各个服务都有其主版本，比如目前keystone是v3版本，nova是v2版本，注意不是microversion            
-
-上面也提到，组装出完整的api地址是keystoneauth的责任，client只需要提供必要的endpoint过滤参数以及访问路径(比如`/users`)，最终完整api url就是endpoint url + '/users'          
+上面说的是Session如何获取endpoint url，同时client也会向Session对象提供请求方法和请求path，比如`GET /servers/detail`，`POST /servers`这样，Session对象就能组装出完整的url，比如获取当前project所有虚拟机列表的url`http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9/servers/detail`       
 
 ## 直接发送api请求                    
 
