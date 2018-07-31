@@ -1,5 +1,5 @@
 ---
-title: openstack统一认证组件keystoneauth     
+title: 理解openstack统一认证组件keystoneauth         
 author: opengers
 layout: post
 permalink: /openstack/openstack-keystoneauth/
