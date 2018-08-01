@@ -143,7 +143,9 @@ openstack API可能会经常有些小更新，microversion的引入使得opensta
 - sess.get()发起请求，带有必要的参数，请求headers等信息，请求的token来自sess.get_auth_headers()                 
 - sess.get()接口其实是调用的sess.request(url=API URL, method=GET, json=BODY, ...)                   
 
-## client集成keystoneauth                            
+## client集成keystoneauth               
+
+**python-xxxclient**                     
 
 上面那种直接调用Session对象发送请求还是太麻烦，更方便的是使用文章开头提到的各种client           
 
@@ -179,6 +181,8 @@ openstack API可能会经常有些小更新，microversion的引入使得opensta
 >>> glance_client.images.list()
 <generator object list at 0x32b2c80>
 ```   
+
+**python-openstackclient**       
 
 
 
