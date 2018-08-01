@@ -75,7 +75,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 
 ## 服务发现                          
 
-在openstack api中，一个完整的请求url由`endpoint url(service url)`和`request path`组成       
+在openstack api中，一个完整的请求url由`endpoint url(service url)`和`path`组成       
 
 openstack中的各个服务在安装时都要向endpoint注册其服务类型及endpoint url，命令`openstack endpoint list`可以看到当前openstack中已注册的所有服务，在请求token的api调用返回中也包含有endpoint url(catalog中)。openstack集群中有多个服务，因此client在请求api时需要向Session对象指明请求的服务类型(compute,network,...)以及服务的版本，这样Session对象可以获取到对应服务的正确endpoint      url，如下是获取compute服务v2版本的endpoint url                      
 
@@ -92,15 +92,15 @@ u'http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9'
 
 简单说下过滤参数含义：   
 
-- service_type： 服务类型，比如`identity`, `compute`, `volume`等(openstack endpoint list中可以看到)                 
-- min_version,max_version: 用于过滤在其范围内的api版本，openstack中各个项目都有多个版本，比如目前keystone是v3版本(v1,v2版本弃用)，nova是v2.1版本，注意这里的api版本指的是"major versions"，不是microversion，每一个"major versions"都有其专用endpoint url，而microversion是每一个主版本支持的微版本范围，microversion没有专用url，它是在请求headers中指定。 比如你可以说Compute API v2.0版本不支持microversion。Compute API v2.1支持microversion，其支持的微版本范围是`2.1 ~ 2.38`。关于api版本可以看[API Versions](https://developer.openstack.org/api-ref/compute/#api-versions)，关于microversion可以看[Microversions](https://developer.openstack.org/api-guide/compute/microversions.html)        
+- service_type: 服务类型，比如`identity`, `compute`, `volume`等(openstack endpoint list中可以看到)                 
+- min_version,max_version: 用于过滤在其范围内的api版本，openstack中各个项目的api都有版本概念，比如目前keystone是v3版本(v1,v2版本弃用)，nova是v2.1版本，注意这里的api版本指的是"major versions"，不是microversion，每一个"major versions"都有其专用endpoint url，而microversion是每一个主版本支持的微版本范围，microversion没有专用url，它是在请求headers中指定。 比如你可以说Compute API v2.0版本不支持microversion。Compute API v2.1支持microversion，其支持的微版本范围是`2.1 ~ 2.38`。关于api版本可以看[API Versions](https://developer.openstack.org/api-ref/compute/#api-versions)，关于microversion可以看[Microversions](https://developer.openstack.org/api-guide/compute/microversions.html)        
 - region_name: endpoint所属region，就是从哪个region中过滤endpoint url                             
 
-上面说的是Session如何获取endpoint url，同时client也会向Session对象提供请求方法和请求path，比如`GET /servers/detail`，`POST /servers`(完整的api列表可以看[Compute API](https://developer.openstack.org/api-ref/compute/))，这样，Session对象就能组装出此请求完整的url，比如获取所有虚拟机详情的url`http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9/servers/detail`        
+上面说的是Session如何获取endpoint url，同时client也会向Session对象提供请求方法和path，比如`GET /servers/detail`，`POST /servers`(完整的api列表可以看[Compute API](https://developer.openstack.org/api-ref/compute/))，这样，Session对象就能组装出此请求完整的url，比如获取所有虚拟机详情的url`http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9/servers/detail`        
 
 ## 使用Session对象直接发送api请求                    
 
-事实上，我们可以直接用sess对象发起api请求，其它client的api请求最终也是调用的sess对象                             
+事实上，我们可以直接用Session对象发起api请求，其它client的api请求最终也是调用的Session对象完成                                   
 
 确认下endpoint_filter     
 
@@ -139,7 +139,7 @@ openstack API可能会经常有些小更新，microversion的引入使得opensta
 
 - 根据sess.auth凭证申请对应Token              
 - 根据`compute_endpoint_filter`过滤出正确的endpoint url(`http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9`)            
-- 根据请求path`/servers`组合出完整api url(`http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9/servers`)                   
+- 根据请求path`/servers`组合出完整请求url(`http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9/servers`)                   
 - sess.get()发起请求，带有必要的参数，请求headers等信息，请求的token来自sess.get_auth_headers()                 
 - sess.get()接口其实是调用的sess.request(url=API URL, method=GET, json=BODY, ...)                   
 
@@ -149,15 +149,6 @@ openstack API可能会经常有些小更新，microversion的引入使得opensta
 
 比如平常使用的`nova list`命令来自`python-novaclient`项目，下面演示了`python-novaclient`中是如何使用Session对象       
 
-列出所有镜像              
-
-``` shell
->>> from glanceclient import Client as gsclient
->>> glance_client = gsclient('2', session=sess)
->>> glance_client.images.list()
-<generator object list at 0x32b2c80>
-```    
-
 列出所有虚拟机        
 
 ``` shell
@@ -165,8 +156,11 @@ openstack API可能会经常有些小更新，microversion的引入使得opensta
 >>> nova_client = noclient.Client('2', session=sess)
 >>> nova_client.servers.list()
 [<Server: bjff-nginx02>, <Server: bjff-nginx03>, <Server: bjff-nginx01>]
+```
 
-#当然，也可以创建虚拟机
+当然，也可以创建虚拟机     
+
+``` shell
 >>> nova_client.servers.create('instance1',
 ... image='a88fe8b1-15ed-41af-898a-162447ca8d66',
 ... flavor='82f7cfad-d792-4d39-bde1-e89369c36244',
@@ -174,6 +168,17 @@ openstack API可能会经常有些小更新，microversion的引入使得opensta
 ... min_count=1,max_count=1)
 <Server: instance1>
 ```
+
+还有`glance image-list`命令来自`python-glanceclient`        
+
+列出所有镜像              
+
+``` shell
+>>> from glanceclient import Client as gsclient
+>>> glance_client = gsclient('2', session=sess)
+>>> glance_client.images.list()
+<generator object list at 0x32b2c80>
+```   
 
 
 
