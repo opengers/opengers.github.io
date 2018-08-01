@@ -184,5 +184,8 @@ openstack API可能会经常有些小更新，microversion的引入使得opensta
 
 **python-openstackclient**       
 
+python-openstackclient提供了`openstack`CLI，目的是统一其它各个项目的CLI(nova,neutron,glance,...)，python-openstackclient中
+
+
 
 
