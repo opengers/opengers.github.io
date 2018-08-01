@@ -80,60 +80,72 @@ Type "help", "copyright", "credits" or "license" for more information.
 openstack中的各个服务在安装时都要向endpoint注册其服务类型及endpoint url，命令`openstack endpoint list`可以看到当前openstack中已注册的所有服务，在请求token的api调用返回中也包含有endpoint url(catalog中)。openstack集群中有多个服务，因此client在请求api时需要向Session对象指明请求的服务类型(compute,network,...)以及服务的版本，这样Session对象可以获取到对应服务的正确endpoint      url，如下是获取compute服务v2版本的endpoint url                      
 
 ``` shell
->>> identity_endpoint_filter={'service_type': 'compute',
+>>> compute_endpoint_filter={'service_type': 'compute',
 ... 'interface': 'admin',
 ... 'region_name': 'bjff-1',
 ... 'min_version': '2.0',
 ... 'max_version': '3.4',}
 
->>> sess.get_endpoint(sess.auth, **identity_endpoint_filter)
+>>> sess.get_endpoint(sess.auth, **compute_endpoint_filter)
 u'http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9'
 ```      
 
 简单说下过滤参数含义：   
 
 - service_type： 服务类型，比如`identity`, `compute`, `volume`等(openstack endpoint list中可以看到)                 
-- min_version,max_version: 用于过滤在其范围内的api版本，openstack中各个服务都有多个版本，比如目前keystone是v3版本(v1,v2版本弃用)，nova是v2版本，注意这里的api版本指的是"major versions"，不是microversion，每一个"major versions"都有其专用endpoint url，而microversion是每一个主版本支持的版本范围，比如你可以说nova api v2.0版本不支持microversion，nova api v2.1版本支持的microversion是`2.1 ~ 2.38`。关于api版本可以看[API Versions](https://developer.openstack.org/api-ref/compute/#api-versions)，关于microversion可以看[Microversion Specification](http://specs.openstack.org/openstack/api-wg/guidelines/microversion_specification.html)        
+- min_version,max_version: 用于过滤在其范围内的api版本，openstack中各个项目都有多个版本，比如目前keystone是v3版本(v1,v2版本弃用)，nova是v2.1版本，注意这里的api版本指的是"major versions"，不是microversion，每一个"major versions"都有其专用endpoint url，而microversion是每一个主版本支持的微版本范围，microversion没有专用url，它是在请求headers中指定。 比如你可以说Compute API v2.0版本不支持microversion。Compute API v2.1支持microversion，其支持的微版本范围是`2.1 ~ 2.38`。关于api版本可以看[API Versions](https://developer.openstack.org/api-ref/compute/#api-versions)，关于microversion可以看[Microversions](https://developer.openstack.org/api-guide/compute/microversions.html)        
 - region_name: endpoint所属region，就是从哪个region中过滤endpoint url                             
 
 上面说的是Session如何获取endpoint url，同时client也会向Session对象提供请求方法和请求path，比如`GET /servers/detail`，`POST /servers`(完整的api列表可以看[Compute API](https://developer.openstack.org/api-ref/compute/))，这样，Session对象就能组装出此请求完整的url，比如获取所有虚拟机详情的url`http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9/servers/detail`        
 
-## 直接发送api请求                    
+## 使用Session对象直接发送api请求                    
 
 事实上，我们可以直接用sess对象发起api请求，其它client的api请求最终也是调用的sess对象                             
 
+确认下endpoint_filter     
+
 ``` shell
-#确认下endpoint_filter
 >>> identity_endpoint_filter
 {'service_type': 'identity', 'interface': 'admin', 'min_version': '2.0', 'max_version': '3.4', 'region_name': 'bjff-1'}
-#获取所有user(user list)
->>> response = sess.get('/users',endpoint_filter=identity_endpoint_filter)
+```   
+
+获取所有user列表       
+
+``` shell              
+>>> response = sess.get('/users',endpoint_filter=identity_endpoint_filter)        
 >>> response.json()
 {u'users': [{u'password_expires_at': None, u'links': {u'self': u'http://controller:35357/v3/users/006cbddb9dde423695d00d94e68f1b19'}, u'enabled': True, u'id': u'006cbddb9dde423695d00d94e68f1b19... }
+```
 
-#service type改为compute
->>> compute_endpoint_filter['service_type'] = 'compute'
+当然，也可以获取所有虚拟机列表        
+
+``` shell
 >>> compute_endpoint_filter
 {'service_type': 'compute', 'interface': 'admin', 'min_version': '2.0', 'max_version': '3.4', 'region_name': 'bjff-1'}
-#获取所有虚拟机(server list)
 >>> response = sess.get('/servers',endpoint_filter=compute_endpoint_filter)
 >>> response.json()
 {u'servers': [{u'id': u'0a57d543-1e8f-49c3-a731-c9198dd3ecb7', u'links': [{u'href': u'http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9/servers/0a57d543-1e8f-49c3-a731-c9198dd3ecb7', u'rel': u'self'}, {u'href': ...}
+```
 
-#当然还可以获取所有虚拟机详细信息  
-response = sess.get('/servers/detail',endpoint_filter=compute_endpoint_filter)
+openstack API可能会经常有些小更新，microversion的引入使得openstack API可以保持向后兼容，API每次小更新都会增加microversion的版本号，但是client完全不用改动，API有处理不同microversion版本的能力，同时如果你想使用API的新功能，只需要调整microversion到新功能最低需求版本即可        
+
+上面说过，Compute API v2.1支持microversion，因此我们可以在请求中指定需要的microversion版本号，如果不显式指定microversion版本号，默认使用最小版本2.1        
+
+``` shell
+>>> response = sess.get('/servers', microversion='2.20', endpoint_filter=compute_endpoint_filter)    
 ```
 
 简单说下`sess.get('/servers',endpoint_filter=compute_endpoint_filter)`处理过程如下：       
 
-1. 根据`compute_endpoint_filter`过滤出正确的endpoint url(http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9)            
-1. 组合出完整api地址`http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9/servers`             
-1. sess.get()发起请求，带有必要的参数，请求headers等信息，请求的token来自sess.get_auth_headers()                 
-1. sess.get接口其实是调用的sess.request(url=URL, method=GET, json=BODY, ...)                   
+- 根据sess.auth凭证申请对应Token              
+- 根据`compute_endpoint_filter`过滤出正确的endpoint url(`http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9`)            
+- 根据请求path`/servers`组合出完整api url(`http://controller:8774/v2.1/1987639927c94519ab8aaf3413a68df9/servers`)                   
+- sess.get()发起请求，带有必要的参数，请求headers等信息，请求的token来自sess.get_auth_headers()                 
+- sess.get()接口其实是调用的sess.request(url=API URL, method=GET, json=BODY, ...)                   
 
-## 配合client                  
+## client集成keystoneauth                            
 
-上面那种直接调用Session对象发送api还是太麻烦，client对此有更高层次的封装      
+上面那种直接调用Session对象发送请求还是太麻烦，更方便的是使用文章开头提到的各种client           
 
 比如平常使用的`nova list`命令来自`python-novaclient`项目，下面演示了`python-novaclient`中是如何使用Session对象       
 
