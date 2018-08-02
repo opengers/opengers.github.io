@@ -255,7 +255,9 @@ openstacksdk是openstack官方提供的sdk项目，其依赖的项目只有keyst
 [Munch({u'status': u'ACTIVE', u'subnets': [u'230a5bbb-a15d-41c6-86aa-05596bbcc2a8'], u'description': u'', u'provider:physical_network': u'provlan', u'tags': [], u'ipv6_address_scope': None, u'updated_at': u'2018-05-25T02:03:15Z',
 ```    
 
-所有Connection对象支持的方法可以在openstacksdk文档里找到[Connection Object](https://docs.openstack.org/openstacksdk/latest/user/connection.html#connection-object)，或者可以看Connection类的具体实现，位置在`openstack/cloud/openstackcloud.py:class OpenStackCloud():`         
+所有Connection对象支持的方法可以在openstacksdk文档里找到[Connection Object](https://docs.openstack.org/openstacksdk/latest/user/connection.html#connection-object)，或者可以看Connection类的具体实现，位置在`openstack/cloud/openstackcloud.py:class OpenStackCloud():`       
+  
+(本文完) 
 
 
 
