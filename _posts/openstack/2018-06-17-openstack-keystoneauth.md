@@ -184,7 +184,82 @@ openstack API可能会经常有些小更新，microversion的引入使得opensta
 
 **python-openstackclient**       
 
-python-openstackclient提供了`openstack`CLI，目的是统一其它各个项目的CLI(nova,neutron,glance,...)，python-openstackclient中
+python-openstackclient提供了`openstack`CLI，目的是统一其它各个项目的CLI(nova,neutron,glance,...)，但是python-openstackclient需要依赖其它的python-xxxclient，比如实现compute方面封装需要依赖python-novaclient。社区正在改变python-openstackclient对其它python-xxxclient的依赖，比如目前network方面封装已经不依赖python-neutronclient，而是依赖的openstacksdk项目实现。 
+
+**openstacksdk**     
+
+openstacksdk是openstack官方提供的sdk项目，其依赖的项目只有keystoneauth，其主要接口是`openstack.connection.Connection`类，此类的属性方法实现了openstack中各个项目的常用api封装    
+
+如下，我们先初始化一个Connection对象(注意下面session参数还是上面初始化的`sess`对象)               
+
+``` shell
+>>> from openstack import connection
+>>> conn = connection.Connection(
+... session = sess,
+... compute_api_version='2',
+... region_name='bjff-1',
+... image_api_version='2',
+... identity_api_version='3',
+... identity_interface='admin',)
+>>> conn
+<openstack.connection.Connection object at 0x7fc88f8245d0>
+```      
+
+- session: 还是文章开头初始化的`sess`对象     
+- compute_api_version: 可以指定各个项目的主api版本，写法为xxx_api_version，比如image_api_version，identity_api_version       
+- region_name: 初始化Connection对象需要指定region，默认为RegionOne        
+
+使用上面初始化的`conn`对象，来看看能做些什么      
+
+列出所有虚拟机           
+
+``` shell
+>>> conn.list_servers(all_projects=False，detailed=True)
+[Munch({'vm_state': u'active', u'OS-EXT-STS:task_state': None, 'addresses': Munch({u'vlan1023': [Munch({u'OS-EXT-IPS-MAC:mac_addr': u'fa:16:3e:58:5e:db', u'version': 4, u'addr': u'10.0.91.207', u'OS-EXT-IPS:type': u'fixed'})]}),...]   
+```
+
+列出所有flavor     
+
+``` shell
+>>> conn.list_flavors()
+[Munch({'name': u'j3', 'ephemeral': 0, 'ram': 2048, 'is_disabled': False, 'properties': Munch({u'OS-FLV-DISABLED:disabled': False, u'OS-FLV-EXT-DATA:ephemeral': 0, u'os-flavor-access:is_public': True}),...]
+```
+
+创建虚拟机    
+
+``` shell
+>>> result = conn.create_server('test7',
+...                  image='a88fe8b1-15ed-41af-898a-162447ca8d66',
+...                  flavor='18f2ea84-0004-4b68-a65e-081c46409472',
+...                  #flavor='f135c479-1858-4949-97dd-d2044330f244',
+...                  #flavor='9d324612-f3e7-4eaf-91a2-1b9d3fb96065',
+...                  network=['2bcb3404-9f7c-4bb9-9bac-521c97be19e2'],
+...                  availability_zone = 'bjff-rbd',
+...                  return_reservation_id = True,
+...                  min_count=3, max_count=3)
+>>> result
+{u'reservation_id': u'r-05rutmkb'}
+```
+
+列出镜像列表      
+
+``` shell
+>>> conn.list_images()
+[Munch({'container_format': u'bare', 'min_ram': 0, 'locations': [], u'hw_scsi_model': u'virtio-scsi', 'file': u'/v2/images/a88fe8b1-15ed-41af-898a-162447ca8d66/file','owner': u'1987639927c94519ab8aaf3413a68df9', '
+``` 
+
+列出所有网络       
+
+``` shell
+>>> conn.list_networks()
+[Munch({u'status': u'ACTIVE', u'subnets': [u'230a5bbb-a15d-41c6-86aa-05596bbcc2a8'], u'description': u'', u'provider:physical_network': u'provlan', u'tags': [], u'ipv6_address_scope': None, u'updated_at': u'2018-05-25T02:03:15Z',
+```    
+
+所有Connection对象支持的方法可以在openstacksdk文档里找到[Connection Object](https://docs.openstack.org/openstacksdk/latest/user/connection.html#connection-object)，或者可以看Connection类的具体实现，位置在`openstack/cloud/openstackcloud.py:class OpenStackCloud():`         
+
+
+
+
 
 
 
