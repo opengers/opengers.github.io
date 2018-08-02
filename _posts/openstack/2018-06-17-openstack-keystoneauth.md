@@ -231,14 +231,13 @@ openstacksdk是openstack官方提供的sdk项目，其依赖的项目只有keyst
 >>> result = conn.create_server('test7',
 ...                  image='a88fe8b1-15ed-41af-898a-162447ca8d66',
 ...                  flavor='18f2ea84-0004-4b68-a65e-081c46409472',
-...                  #flavor='f135c479-1858-4949-97dd-d2044330f244',
-...                  #flavor='9d324612-f3e7-4eaf-91a2-1b9d3fb96065',
 ...                  network=['2bcb3404-9f7c-4bb9-9bac-521c97be19e2'],
 ...                  availability_zone = 'bjff-rbd',
 ...                  return_reservation_id = True,
-...                  min_count=3, max_count=3)
+...                  min_count=1, max_count=1)
 >>> result
 {u'reservation_id': u'r-05rutmkb'}
+#根据reservation_id可以list出这批虚拟机   
 ```
 
 列出镜像列表      
