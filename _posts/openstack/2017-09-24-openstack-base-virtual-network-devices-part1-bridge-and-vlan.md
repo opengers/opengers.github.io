@@ -1,5 +1,5 @@
 ---
-title: openstack底层技术-虚拟网络设备(Bridge,VLAN)            
+title: 云计算底层技术-虚拟网络设备(Bridge,VLAN)            
 author: opengers
 layout: post
 permalink: /openstack/openstack-base-virtual-network-devices-bridge-and-vlan/
